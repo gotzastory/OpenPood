@@ -26,8 +26,10 @@ type StoredSettings = Omit<AppSettings, 'apiKey'> & { apiKeyEncrypted: string };
 
 const defaults: StoredSettings = {
   apiKeyEncrypted: '',
-  apiBaseUrl: 'https://api.openai.com/v1',
-  model: 'whisper-1',
+  // Recommended stack: OpenRouter + Whisper Large V3 Turbo (STT) +
+  // Gemini 3.5 Flash Lite (polish / translate / ask).
+  apiBaseUrl: 'https://openrouter.ai/api/v1',
+  model: 'openai/whisper-large-v3-turbo',
   hotkey: 'Control+Space',
   language: '',
   micDeviceId: '',
@@ -36,7 +38,7 @@ const defaults: StoredSettings = {
   maxDurationSec: 120,
   onboardingCompleted: false,
   aiPolishEnabled: false,
-  chatModel: 'gpt-4o-mini',
+  chatModel: 'google/gemini-3.5-flash-lite',
   translateHotkey: 'Control+Alt+T',
   askHotkey: 'Control+Alt+A',
   translateTargetLang: 'en',

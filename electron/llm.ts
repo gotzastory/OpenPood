@@ -21,7 +21,7 @@ export async function chatComplete(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: settings.chatModel || 'gpt-4o-mini',
+      model: settings.chatModel || 'google/gemini-3.5-flash-lite',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userText },

@@ -8,20 +8,25 @@ interface ProviderPreset {
 
 const PROVIDERS: ProviderPreset[] = [
   {
+    key: "openrouter",
+    name: "OpenRouter (แนะนำ)",
+    sub: "whisper-large-v3-turbo · gemini-3.5-flash-lite",
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: "openai/whisper-large-v3-turbo",
+  },
+  {
     key: "openai",
     name: "OpenAI",
     sub: "api.openai.com · whisper-1",
     baseUrl: "https://api.openai.com/v1",
     model: "whisper-1",
   },
-  {
-    key: "openrouter",
-    name: "OpenRouter",
-    sub: "openrouter.ai · openai/whisper-1",
-    baseUrl: "https://openrouter.ai/api/v1",
-    model: "openai/whisper-1",
-  },
 ];
+
+const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
+  openrouter: "google/gemini-3.5-flash-lite",
+  openai: "gpt-4o-mini",
+};
 
 const TOTAL_STEPS = 4;
 
@@ -51,9 +56,9 @@ export async function mountOnboarding(root: HTMLElement) {
   const existing = await window.typeless.getSettings();
   const state: WizardState = {
     step: 0,
-    provider: existing.apiBaseUrl.includes("openrouter")
-      ? "openrouter"
-      : "openai",
+    provider: existing.apiBaseUrl.includes("openai.com")
+      ? "openai"
+      : "openrouter",
     apiKey: existing.apiKey,
     micDeviceId: existing.micDeviceId,
     hotkey: existing.hotkey || "Control+Space",
@@ -314,6 +319,7 @@ export async function mountOnboarding(root: HTMLElement) {
           apiKey: state.apiKey,
           apiBaseUrl: preset.baseUrl,
           model: preset.model,
+          chatModel: CHAT_MODEL_BY_PROVIDER[state.provider],
           micDeviceId: state.micDeviceId,
           hotkey: state.hotkey,
           onboardingCompleted: true,

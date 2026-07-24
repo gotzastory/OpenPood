@@ -132,7 +132,7 @@ export async function mountSettings(root: HTMLElement) {
       </label>
       <label class="${FIELD_LABEL} mb-4">
         Chat model (ใช้กับ AI polish, Translate, Ask anything)
-        <input id="chatModel" type="text" value="${current.chatModel}" placeholder="gpt-4o-mini" class="${FIELD_INPUT}" />
+        <input id="chatModel" type="text" value="${current.chatModel}" placeholder="google/gemini-3.5-flash-lite" class="${FIELD_INPUT}" />
       </label>
       <label class="${FIELD_LABEL}">
         ไมโครโฟน
@@ -177,6 +177,9 @@ export async function mountSettings(root: HTMLElement) {
 
   providerPreset.addEventListener("change", () => {
     provider = providerPreset.value as ProviderKey;
+    const chatModelInput = document.getElementById(
+      "chatModel",
+    ) as HTMLInputElement;
     if (provider !== "custom") {
       apiBaseUrlInput.value = PROVIDER_PRESETS[provider].baseUrl;
       apiBaseUrlInput.disabled = true;
@@ -184,6 +187,10 @@ export async function mountSettings(root: HTMLElement) {
         provider,
         PROVIDER_PRESETS[provider].models[0].id,
       );
+      chatModelInput.value =
+        provider === "openrouter"
+          ? "google/gemini-3.5-flash-lite"
+          : "gpt-4o-mini";
     } else {
       apiBaseUrlInput.disabled = false;
       modelField.innerHTML = modelFieldHtml(provider, "");

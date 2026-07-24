@@ -8,13 +8,14 @@ export const OPENAI_MODELS: TranscriptionModel[] = [
 ];
 
 // OpenRouter's /api/v1/models?output_modalities=transcription list, as of the last check.
+// First entry is the app default when switching the Settings provider to OpenRouter.
 export const OPENROUTER_MODELS: TranscriptionModel[] = [
-  { id: "openai/whisper-1", name: "OpenAI — Whisper 1" },
-  { id: "openai/whisper-large-v3", name: "OpenAI — Whisper Large V3" },
   {
     id: "openai/whisper-large-v3-turbo",
-    name: "OpenAI — Whisper Large V3 Turbo",
+    name: "OpenAI — Whisper Large V3 Turbo (แนะนำ)",
   },
+  { id: "openai/whisper-large-v3", name: "OpenAI — Whisper Large V3" },
+  { id: "openai/whisper-1", name: "OpenAI — Whisper 1" },
   {
     id: "openai/gpt-4o-mini-transcribe",
     name: "OpenAI — GPT-4o Mini Transcribe",

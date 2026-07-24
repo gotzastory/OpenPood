@@ -70,7 +70,7 @@ async function requestTranscription(
   const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
   const form = new FormData();
   form.append('file', blob, `audio.${ext}`);
-  form.append('model', settings.model || 'whisper-1');
+  form.append('model', settings.model || 'openai/whisper-large-v3-turbo');
   form.append('language', language);
   form.append('prompt', buildPrompt(promptBias));
 
