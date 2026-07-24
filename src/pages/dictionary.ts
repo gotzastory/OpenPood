@@ -8,7 +8,7 @@ export async function mountDictionary(root: HTMLElement) {
   function render() {
     root.innerHTML = `
       <h1 class="${PAGE_TITLE} mb-2">Dictionary</h1>
-      <p class="mb-5 text-[13px] text-neutral-400">เพิ่มคำศัพท์เฉพาะ ชื่อเฉพาะ หรือศัพท์เทคนิคที่ต้องการให้แปลงเสียงแม่นยำขึ้น — รวมถึงคำภาษาอังกฤษที่พูดสำเนียงไทยแล้วมักถูกแปลงผิดเป็นคำไทยที่ออกเสียงคล้ายกัน (เช่น พิมพ์ "or" เพิ่มไว้ ถ้ามันเคยถูกแปลงเป็น "บอก")</p>
+      <p class="mb-5 text-[13px] text-neutral-400">คำในนี้เป็นแค่ใบ้ Whisper ให้โน้มเอียงมาใช้คำเหล่านี้ — ไม่การันตีว่าจะออกตรงทุกครั้ง ถ้ายังผิดซ้ำ ให้ใช้ Correction rules ด้านล่าง (ดู History ว่ามันถอดเป็นคำอะไรจริงๆ แล้วใส่คำนั้นในช่องซ้าย)</p>
       <div class="mb-4.5 flex gap-2">
         <label for="dict-input" class="sr-only">เพิ่มคำในพจนานุกรม</label>
         <input id="dict-input" type="text" placeholder="พิมพ์คำแล้วกด Enter" class="flex-1 rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none transition-colors hover:border-neutral-400 focus-visible:border-neutral-500 focus-visible:ring-2 focus-visible:ring-neutral-900/10" />
@@ -28,7 +28,7 @@ export async function mountDictionary(root: HTMLElement) {
       </div>
 
       <h2 class="mb-2 mt-7 text-[15px] font-bold">Correction rules</h2>
-      <p class="mb-4.5 text-[13px] text-neutral-400">แก้คำที่ถอดเสียงผิดซ้ำๆ ให้เปลี่ยนเป็นคำที่ถูกต้องอัตโนมัติทุกครั้ง (เช่น "บอก" → "or")</p>
+      <p class="mb-4.5 text-[13px] text-neutral-400">แทนที่ข้อความหลังถอดเสียงแบบตรงตัว (เช่น Whisper ออก "บอก" → เปลี่ยนเป็น "or") — ช่องซ้ายต้องเหมือนที่ขึ้นใน History เป๊ะ ไม่ใช่คำที่คุณตั้งใจพูด</p>
       <div class="mb-4.5 flex gap-2">
         <label for="corr-from-input" class="sr-only">คำที่มักถูกแปลงผิด</label>
         <input id="corr-from-input" type="text" placeholder="คำที่มักถูกแปลงผิด" class="flex-1 rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none transition-colors hover:border-neutral-400 focus-visible:border-neutral-500 focus-visible:ring-2 focus-visible:ring-neutral-900/10" />

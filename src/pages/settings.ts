@@ -107,13 +107,13 @@ export async function mountSettings(root: HTMLElement) {
       <label class="${FIELD_LABEL}">
         ภาษา
         <select id="language" class="${FIELD_SELECT}">
-          <option value="" ${current.language === "" ? "selected" : ""}>อัตโนมัติ (แนะนำสำหรับพูดสลับภาษา เช่น ไทย-อังกฤษ)</option>
-          <option value="th" ${current.language === "th" ? "selected" : ""}>ไทย</option>
-          <option value="en" ${current.language === "en" ? "selected" : ""}>อังกฤษ</option>
+          <option value="" ${current.language === "" ? "selected" : ""}>ไทย + อังกฤษ (แนะนำ)</option>
+          <option value="th" ${current.language === "th" ? "selected" : ""}>ไทยเท่านั้น</option>
+          <option value="en" ${current.language === "en" ? "selected" : ""}>อังกฤษเท่านั้น</option>
         </select>
       </label>
       <p class="-mt-3 mb-4 text-xs leading-relaxed text-neutral-400">
-        การล็อกภาษาจะช่วยให้แม่นขึ้นถ้าพูดภาษาเดียวล้วน แต่ถ้าพูดสลับคำภาษาอื่นกลางประโยค (เช่น พูดไทยแทรกคำอังกฤษ) โมเดลมักแปลง/เดาคำเหล่านั้นผิดเพี้ยนเป็นเสียงภาษาที่ล็อกไว้แทน — เลือก "อัตโนมัติ" จะช่วยให้คำที่สลับภาษาถูกต้องขึ้น
+        โหมดแนะนำล็อกการรู้จำเป็นภาษาไทย (ไม่ปล่อย Whisper เดาเป็นญี่ปุ่น/เวียดนาม/เกาหลีเอง) แต่ยังใบ้ให้รองรับคำอังกฤษที่พูดแทรก — ถ้าพูดอังกฤษล้วนให้เลือก "อังกฤษเท่านั้น"
       </p>
       <label class="${FIELD_LABEL}">
         แปลเป็นภาษา (โหมด Translate)

@@ -37,14 +37,21 @@ export function setCorrections(rules: CorrectionRule[]): CorrectionRule[] {
   return cleaned;
 }
 
-// Literal substring replace (not regex) — rules are user-typed words/phrases,
-// not patterns, so treat `from` as exact text to avoid surprising regex
-// special-character behavior.
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Substring replace — not a free-form regex. Latin-only `from` matches
+// case-insensitively (Whisper often changes casing); Thai/mixed stays exact
+// so we don't accidentally rewrite unrelated syllables.
 export function applyCorrections(text: string): string {
-  return listCorrections().reduce(
-    (result, { from, to }) => result.split(from).join(to),
-    text,
-  );
+  return listCorrections().reduce((result, { from, to }) => {
+    if (!from) return result;
+    if (/^[\x00-\x7F]+$/.test(from)) {
+      return result.replace(new RegExp(escapeRegExp(from), 'gi'), to);
+    }
+    return result.split(from).join(to);
+  }, text);
 }
 
 export function dictionaryPrompt(): string {

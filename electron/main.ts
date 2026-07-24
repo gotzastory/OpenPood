@@ -182,16 +182,24 @@ app.whenReady().then(() => {
         const selectedText = mode === 'ask' ? await readSelectedText() : '';
 
         const bias = dictionaryPrompt();
-        const rawText = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
-        let text = applyCorrections(rawText);
+        let text = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
 
         if (mode === 'translate') {
+          // Corrections on the transcript before translate so wrong-script
+          // substitutions don't get translated as-is.
+          text = applyCorrections(text);
           text = await translateText(text, settings);
         } else if (mode === 'ask') {
+          text = applyCorrections(text);
           text = await answerOrEdit(text, selectedText, settings);
-        } else if (settings.aiPolishEnabled) {
-          const category = await getActiveAppCategory();
-          text = await polishText(text, settings, category);
+        } else {
+          if (settings.aiPolishEnabled) {
+            const category = await getActiveAppCategory();
+            text = await polishText(text, settings, category);
+          }
+          // After polish: AI cleanup used to run after corrections and could
+          // undo exact replacements the user configured (e.g. "บอก" → "or").
+          text = applyCorrections(text);
         }
 
         await pasteAtCursor(text);
