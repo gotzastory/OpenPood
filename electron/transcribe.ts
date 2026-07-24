@@ -1,4 +1,5 @@
 import type { AppSettings } from './config';
+import { geminiTranscribe, isGeminiProvider } from './gemini';
 
 export class TranscriptionError extends Error {}
 
@@ -53,6 +54,26 @@ function buildPrompt(promptBias: string): string {
   return extra ? `${TH_EN_PROMPT_BIAS} ${extra}` : TH_EN_PROMPT_BIAS;
 }
 
+// Gemini has no Whisper-style `language`/`prompt` fields — steer via instruction text.
+function buildGeminiPrompt(promptBias: string, language: string): string {
+  const langHint =
+    language === 'en'
+      ? 'Transcribe in English only.'
+      : language === 'th'
+        ? 'Transcribe primarily in Thai. Keep English words the speaker says in Latin script (do not transliterate them into Thai).'
+        : 'The speaker mixes Thai and English. Write Thai in Thai script and English loanwords in Latin script.';
+  const terms = promptBias.trim();
+  return [
+    'Transcribe the speech to plain text.',
+    langHint,
+    'Output ONLY the transcript — no titles, timestamps, speaker labels, or commentary.',
+    `Language sample / spelling bias: ${TH_EN_PROMPT_BIAS}`,
+    terms ? `Preferred spellings / terms: ${terms}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 // Empty settings.language means "Thai + English", not full auto-detect.
 // Full auto-detect is what produced Japanese / Vietnamese / Korean ghosts.
 function apiLanguage(settings: AppSettings): string {
@@ -66,6 +87,20 @@ async function requestTranscription(
   promptBias: string,
   language: string,
 ): Promise<string> {
+  if (isGeminiProvider(settings)) {
+    try {
+      const text = await geminiTranscribe(
+        audioBuffer,
+        mimeType,
+        settings,
+        buildGeminiPrompt(promptBias, language),
+      );
+      return normalizeThaiSpacing(text);
+    } catch (err) {
+      throw new TranscriptionError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const ext = mimeType.includes('webm') ? 'webm' : 'wav';
   const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
   const form = new FormData();

@@ -1,6 +1,7 @@
 import {
   OPENAI_MODELS,
   OPENROUTER_MODELS,
+  GEMINI_MODELS,
   type TranscriptionModel,
 } from "../transcriptionModels";
 import {
@@ -22,16 +23,26 @@ async function listMicDevices(): Promise<MediaDeviceInfo[]> {
   return devices.filter((d) => d.kind === "audioinput");
 }
 
-type ProviderKey = "openai" | "openrouter" | "custom";
+type ProviderKey = "openai" | "openrouter" | "gemini" | "custom";
 
 const PROVIDER_PRESETS: Record<
   Exclude<ProviderKey, "custom">,
-  { baseUrl: string; models: TranscriptionModel[] }
+  { baseUrl: string; models: TranscriptionModel[]; chatModel: string }
 > = {
-  openai: { baseUrl: "https://api.openai.com/v1", models: OPENAI_MODELS },
+  openai: {
+    baseUrl: "https://api.openai.com/v1",
+    models: OPENAI_MODELS,
+    chatModel: "gpt-4o-mini",
+  },
   openrouter: {
     baseUrl: "https://openrouter.ai/api/v1",
     models: OPENROUTER_MODELS,
+    chatModel: "google/gemini-3.5-flash-lite",
+  },
+  gemini: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    models: GEMINI_MODELS,
+    chatModel: "gemini-3.5-flash-lite",
   },
 };
 
@@ -51,6 +62,7 @@ const TRANSLATE_LANGUAGES: Record<string, string> = {
 function detectProvider(baseUrl: string): ProviderKey {
   if (baseUrl === PROVIDER_PRESETS.openai.baseUrl) return "openai";
   if (baseUrl === PROVIDER_PRESETS.openrouter.baseUrl) return "openrouter";
+  if (baseUrl === PROVIDER_PRESETS.gemini.baseUrl) return "gemini";
   return "custom";
 }
 
@@ -92,12 +104,13 @@ export async function mountSettings(root: HTMLElement) {
         <select id="provider-preset" class="${FIELD_SELECT}">
           <option value="openai" ${provider === "openai" ? "selected" : ""}>OpenAI (api.openai.com)</option>
           <option value="openrouter" ${provider === "openrouter" ? "selected" : ""}>OpenRouter (openrouter.ai)</option>
+          <option value="gemini" ${provider === "gemini" ? "selected" : ""}>Gemini (Google AI Studio)</option>
           <option value="custom" ${provider === "custom" ? "selected" : ""}>กำหนดเอง</option>
         </select>
       </label>
       <label class="${FIELD_LABEL}">
         API Key
-        <input id="apiKey" type="password" value="${current.apiKey}" placeholder="sk-..." class="${FIELD_INPUT}" />
+        <input id="apiKey" type="password" value="${current.apiKey}" placeholder="${provider === "gemini" ? "AIza..." : "sk-..."}" class="${FIELD_INPUT}" />
       </label>
       <label class="${FIELD_LABEL}">
         API Base URL
@@ -131,7 +144,7 @@ export async function mountSettings(root: HTMLElement) {
         ปรับข้อความด้วย AI หลัง Dictate (ตัดคำติดปาก ใส่วรรคตอน ปรับโทนตามแอปปลายทาง)
       </label>
       <label class="${FIELD_LABEL} mb-4">
-        Chat model (ใช้กับ AI polish, Translate, Ask anything)
+        Chat model (ใช้กับ AI polish, Translate)
         <input id="chatModel" type="text" value="${current.chatModel}" placeholder="google/gemini-3.5-flash-lite" class="${FIELD_INPUT}" />
       </label>
       <label class="${FIELD_LABEL}">
@@ -180,6 +193,7 @@ export async function mountSettings(root: HTMLElement) {
     const chatModelInput = document.getElementById(
       "chatModel",
     ) as HTMLInputElement;
+    const apiKeyInput = document.getElementById("apiKey") as HTMLInputElement;
     if (provider !== "custom") {
       apiBaseUrlInput.value = PROVIDER_PRESETS[provider].baseUrl;
       apiBaseUrlInput.disabled = true;
@@ -187,13 +201,12 @@ export async function mountSettings(root: HTMLElement) {
         provider,
         PROVIDER_PRESETS[provider].models[0].id,
       );
-      chatModelInput.value =
-        provider === "openrouter"
-          ? "google/gemini-3.5-flash-lite"
-          : "gpt-4o-mini";
+      chatModelInput.value = PROVIDER_PRESETS[provider].chatModel;
+      apiKeyInput.placeholder = provider === "gemini" ? "AIza..." : "sk-...";
     } else {
       apiBaseUrlInput.disabled = false;
       modelField.innerHTML = modelFieldHtml(provider, "");
+      apiKeyInput.placeholder = "sk-...";
     }
   });
 

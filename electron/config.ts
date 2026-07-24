@@ -15,7 +15,6 @@ export interface AppSettings {
   aiPolishEnabled: boolean;
   chatModel: string;
   translateHotkey: string;
-  askHotkey: string;
   translateTargetLang: string;
 }
 
@@ -27,7 +26,7 @@ type StoredSettings = Omit<AppSettings, 'apiKey'> & { apiKeyEncrypted: string };
 const defaults: StoredSettings = {
   apiKeyEncrypted: '',
   // Recommended stack: OpenRouter + Whisper Large V3 Turbo (STT) +
-  // Gemini 3.5 Flash Lite (polish / translate / ask).
+  // Gemini 3.5 Flash Lite (polish / translate).
   apiBaseUrl: 'https://openrouter.ai/api/v1',
   model: 'openai/whisper-large-v3-turbo',
   hotkey: 'Control+Space',
@@ -40,7 +39,6 @@ const defaults: StoredSettings = {
   aiPolishEnabled: false,
   chatModel: 'google/gemini-3.5-flash-lite',
   translateHotkey: 'Control+Alt+T',
-  askHotkey: 'Control+Alt+A',
   translateTargetLang: 'en',
 };
 

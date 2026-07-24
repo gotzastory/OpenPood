@@ -47,7 +47,7 @@
 | OS | Windows 10 / 11 (x64) |
 | ไมโครโฟน | มีไมค์ (built-in หรือ USB) และอนุญาตสิทธิ์ไมค์ให้แอป |
 | อินเทอร์เน็ต | จำเป็นตอนถอดเสียง / ใช้ AI (เรียก API ของ provider ที่เลือก) |
-| API key | [OpenRouter](https://openrouter.ai/keys) (แนะนำ) หรือ [OpenAI](https://platform.openai.com/api-keys) |
+| API key | [OpenRouter](https://openrouter.ai/keys) (แนะนำ), [Google AI Studio](https://aistudio.google.com/app/apikey), หรือ [OpenAI](https://platform.openai.com/api-keys) |
 
 ---
 
@@ -73,7 +73,6 @@
 |---|---|---|
 | **Dictate** | `Ctrl+Space` | อัดเสียง → ถอดเป็นข้อความ → วางที่ cursor |
 | **Translate** | `Ctrl+Alt+T` | พูดภาษาใดก็ได้ → แปลเป็นภาษาเป้าหมายใน Settings แล้ววาง |
-| **Ask anything** | `Ctrl+Alt+A` | เลือกข้อความไว้ก่อน แล้วพูดสั่งแก้ / ถาม → ได้ผลลัพธ์กลับมา |
 
 เปลี่ยนปุ่มลัดได้จากหน้า Home หรือ Settings (กดคีย์จริง — ไม่ต้องจำ syntax ของ Electron)
 
@@ -89,10 +88,10 @@
 
 - **Dictate ด้วยปุ่มลัดทั่วระบบ** — กดจากแอปไหนก็ได้ พูด ปล่อย ข้อความไปวางตรง cursor
 - **Floating pill** — widget โปร่งใส ลอยกลางล่างจอ ไม่แย่ง focus
-- **หลาย provider** — OpenAI, OpenRouter หรือ endpoint ที่เข้ากันกับ OpenAI `/audio/transcriptions` (เช่น self-hosted whisper.cpp)
+- **หลาย provider** — OpenAI, OpenRouter, Gemini (Google AI Studio) หรือ endpoint ที่เข้ากันกับ OpenAI `/audio/transcriptions` (เช่น self-hosted whisper.cpp)
 - **Dictionary** — คำเฉพาะ / ชื่อเฉพาะ / ศัพท์เทคนิค ช่วย bias การถอดเสียง
 - **Correction rules** — แทนที่คำที่ถอดผิดซ้ำๆ แบบตรงตัวหลังถอดเสียง
-- **AI polish / Translate / Ask** — เก็บประโยค แปล หรือถามจากเสียง (ใช้ chat model)
+- **AI polish / Translate** — เก็บประโยค หรือแปลจากเสียง (ใช้ chat model)
 - **History** — ประวัติการถอดเสียงสูงสุด 500 รายการ คัดลอกซ้ำได้
 - **ตั้งค่าปุ่มลัดแบบกดจริง** — กดคีย์ที่ต้องการ ระบบจับ accelerator ให้เอง
 - **เปิดตอน Windows เริ่ม** — เปิด/ปิดได้ใน Settings
@@ -101,12 +100,12 @@
 
 ## โมเดลที่แนะนำ
 
-แนะนำใช้ **OpenRouter** คีย์เดียว ครอบทั้งถอดเสียงและ AI polish / Translate / Ask:
+แนะนำใช้ **OpenRouter** คีย์เดียว ครอบทั้งถอดเสียงและ AI polish / Translate:
 
 | หน้าที่ | โมเดล | ทำไม |
 |---|---|---|
 | **ถอดเสียง (STT)** | [`openai/whisper-large-v3-turbo`](https://openrouter.ai/openai/whisper-large-v3-turbo) | แม่นกว่า `whisper-1` โดยเฉพาะไทย + คำอังกฤษปน และเร็ว/ถูกกว่า Large V3 เต็ม |
-| **Chat (polish / translate / ask)** | [`google/gemini-3.5-flash-lite`](https://openrouter.ai/google/gemini-3.5-flash-lite) | เร็ว ถูก เหมาะงานสั้นๆ อย่างเก็บประโยค / แปล / ตอบถาม |
+| **Chat (polish / translate)** | [`google/gemini-3.5-flash-lite`](https://openrouter.ai/google/gemini-3.5-flash-lite) | เร็ว ถูก เหมาะงานสั้นๆ อย่างเก็บประโยค / แปล |
 
 ค่า default ของแอปตั้งแบบนี้ไว้แล้ว — เปิดครั้งแรกแค่ใส่ API key ก็ใช้ได้
 
@@ -125,10 +124,11 @@
 | Provider | Base URL | STT (default) | Chat (แนะนำ) |
 |---|---|---|---|
 | **OpenRouter (แนะนำ)** | `https://openrouter.ai/api/v1` | `openai/whisper-large-v3-turbo` | `google/gemini-3.5-flash-lite` |
+| Gemini (Google AI Studio) | `https://generativelanguage.googleapis.com/v1beta` | `gemini-3.5-flash` | `gemini-3.5-flash-lite` |
 | OpenAI | `https://api.openai.com/v1` | `whisper-1` | `gpt-4o-mini` |
 | กำหนดเอง | ใส่เอง | ใส่เอง | ใส่เอง |
 
-OpenRouter ใช้คีย์เดียวเรียกได้ทั้ง `/audio/transcriptions` และ `/chat/completions`
+OpenRouter / OpenAI ใช้คีย์เดียวเรียกได้ทั้ง `/audio/transcriptions` และ `/chat/completions` — Gemini ใช้ API แบบ native (`generateContent` + audio) จาก [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ---
 

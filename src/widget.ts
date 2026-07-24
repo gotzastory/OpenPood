@@ -6,7 +6,6 @@ const BAR_COUNT = 24;
 const MODE_LABEL: Record<RecordingMode, string> = {
   dictate: "Dictate",
   translate: "Translate",
-  ask: "Ask anything",
 };
 
 function beep(freq: number) {

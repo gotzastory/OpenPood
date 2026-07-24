@@ -42,7 +42,7 @@ const USE_CASES: UseCase[] = [
   },
 ];
 
-type HotkeySettingsKey = "hotkey" | "translateHotkey" | "askHotkey";
+type HotkeySettingsKey = "hotkey" | "translateHotkey";
 
 const MODES: {
   name: string;
@@ -61,12 +61,6 @@ const MODES: {
     desc: "พูดภาษาไหนก็ได้ → แปลเป็นภาษาที่ตั้งไว้ใน Settings อัตโนมัติ",
     icon: icons.languages,
     settingsKey: "translateHotkey",
-  },
-  {
-    name: "Ask anything",
-    desc: "เลือกข้อความในแอปไหนก็ได้ แล้วพูดสั่งแก้ไขหรือถามได้เลย",
-    icon: icons.messageQuestion,
-    settingsKey: "askHotkey",
   },
 ];
 

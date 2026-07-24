@@ -1,10 +1,11 @@
 import type { AppSettings } from './config';
+import { geminiChatComplete, isGeminiProvider } from './gemini';
 
 export class LlmError extends Error {}
 
-// Shared chat-completion call used by AI polish, Translate, and Ask anything —
-// all three just need "system prompt + user text -> completion text" against
-// whatever OpenAI-compatible endpoint the user already configured for STT.
+// Shared chat-completion call used by AI polish and Translate —
+// both need "system prompt + user text -> completion text" against
+// whatever provider the user already configured for STT.
 export async function chatComplete(
   settings: AppSettings,
   systemPrompt: string,
@@ -12,6 +13,14 @@ export async function chatComplete(
 ): Promise<string> {
   if (!settings.apiKey) {
     throw new LlmError('ยังไม่ได้ตั้งค่า API key ในหน้า Settings');
+  }
+
+  if (isGeminiProvider(settings)) {
+    try {
+      return await geminiChatComplete(settings, systemPrompt, userText);
+    } catch (err) {
+      throw new LlmError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   const res = await fetch(`${settings.apiBaseUrl.replace(/\/$/, '')}/chat/completions`, {

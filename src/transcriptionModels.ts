@@ -7,6 +7,16 @@ export const OPENAI_MODELS: TranscriptionModel[] = [
   { id: "whisper-1", name: "Whisper 1" },
 ];
 
+// Google AI Studio / Gemini multimodal models used as STT via generateContent + audio.
+// First entry is the app default when switching the Settings provider to Gemini.
+export const GEMINI_MODELS: TranscriptionModel[] = [
+  { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash (แนะนำ)" },
+  { id: "gemini-3.6-flash", name: "Gemini 3.6 Flash" },
+  { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite" },
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+  { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite" },
+];
+
 // OpenRouter's /api/v1/models?output_modalities=transcription list, as of the last check.
 // First entry is the app default when switching the Settings provider to OpenRouter.
 export const OPENROUTER_MODELS: TranscriptionModel[] = [

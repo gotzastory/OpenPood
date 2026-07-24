@@ -1,5 +1,5 @@
 interface ProviderPreset {
-  key: "openai" | "openrouter";
+  key: "openai" | "openrouter" | "gemini";
   name: string;
   sub: string;
   baseUrl: string;
@@ -15,6 +15,13 @@ const PROVIDERS: ProviderPreset[] = [
     model: "openai/whisper-large-v3-turbo",
   },
   {
+    key: "gemini",
+    name: "Gemini (Google AI Studio)",
+    sub: "aistudio.google.com · gemini-3.5-flash",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    model: "gemini-3.5-flash",
+  },
+  {
     key: "openai",
     name: "OpenAI",
     sub: "api.openai.com · whisper-1",
@@ -25,6 +32,7 @@ const PROVIDERS: ProviderPreset[] = [
 
 const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
   openrouter: "google/gemini-3.5-flash-lite",
+  gemini: "gemini-3.5-flash-lite",
   openai: "gpt-4o-mini",
 };
 
@@ -58,7 +66,9 @@ export async function mountOnboarding(root: HTMLElement) {
     step: 0,
     provider: existing.apiBaseUrl.includes("openai.com")
       ? "openai"
-      : "openrouter",
+      : existing.apiBaseUrl.includes("generativelanguage.googleapis.com")
+        ? "gemini"
+        : "openrouter",
     apiKey: existing.apiKey,
     micDeviceId: existing.micDeviceId,
     hotkey: existing.hotkey || "Control+Space",
@@ -142,7 +152,7 @@ export async function mountOnboarding(root: HTMLElement) {
         </div>
         <div class="mb-4.5">
           <label class="${FIELD_LABEL}">API Key</label>
-          <input id="ob-apikey" type="password" placeholder="sk-..." value="${state.apiKey}" class="${FIELD_INPUT}" />
+          <input id="ob-apikey" type="password" placeholder="${state.provider === "gemini" ? "AIza..." : "sk-..."}" value="${state.apiKey}" class="${FIELD_INPUT}" />
         </div>
         <div id="ob-error"></div>
         <div class="mt-2 flex items-center gap-4">

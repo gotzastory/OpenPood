@@ -17,11 +17,9 @@ import {
 import { LlmError } from './llm';
 import { polishText } from './polish';
 import { translateText } from './translate';
-import { answerOrEdit } from './ask';
-import { readSelectedText } from './selection';
 import { getActiveAppCategory } from './activeWindow';
 
-type RecordingMode = 'dictate' | 'translate' | 'ask';
+type RecordingMode = 'dictate' | 'translate';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -133,7 +131,6 @@ function registerHotkeys(settings: AppSettings) {
   const bindings: [string, RecordingMode][] = [
     [settings.hotkey, 'dictate'],
     [settings.translateHotkey, 'translate'],
-    [settings.askHotkey, 'ask'],
   ];
   for (const [accelerator, mode] of bindings) {
     if (!accelerator) continue;
@@ -160,7 +157,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('settings:set', (_e, partial: Partial<AppSettings>) => {
     const updated = setSettings(partial);
-    if (partial.hotkey || partial.translateHotkey || partial.askHotkey) registerHotkeys(updated);
+    if (partial.hotkey || partial.translateHotkey) registerHotkeys(updated);
     if (partial.launchAtStartup !== undefined) applyLaunchAtStartup(partial.launchAtStartup);
     return updated;
   });
@@ -176,11 +173,6 @@ app.whenReady().then(() => {
       const settings = getSettings();
       const mode = payload.mode ?? 'dictate';
       try {
-        // Must happen before transcription: the widget never steals OS
-        // focus, so the target app's selection is still intact right now,
-        // but pasteAtCursor()/clipboard use later on would clobber it.
-        const selectedText = mode === 'ask' ? await readSelectedText() : '';
-
         const bias = dictionaryPrompt();
         let text = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
 
@@ -189,9 +181,6 @@ app.whenReady().then(() => {
           // substitutions don't get translated as-is.
           text = applyCorrections(text);
           text = await translateText(text, settings);
-        } else if (mode === 'ask') {
-          text = applyCorrections(text);
-          text = await answerOrEdit(text, selectedText, settings);
         } else {
           if (settings.aiPolishEnabled) {
             const category = await getActiveAppCategory();

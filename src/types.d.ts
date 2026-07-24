@@ -12,11 +12,10 @@ export interface AppSettings {
   aiPolishEnabled: boolean;
   chatModel: string;
   translateHotkey: string;
-  askHotkey: string;
   translateTargetLang: string;
 }
 
-export type RecordingMode = "dictate" | "translate" | "ask";
+export type RecordingMode = "dictate" | "translate";
 
 export interface TranscribeResult {
   ok: boolean;

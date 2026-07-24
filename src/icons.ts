@@ -22,9 +22,6 @@ export const icons = {
   languages: icon(
     '<path d="M4 5h9"/><path d="M8.5 3v2"/><path d="M5 9c1.5 3 4 5 7 6"/><path d="M11 9c-1 2.5-2.5 4.5-4.5 6"/><path d="M14 21l4-9 4 9"/><path d="M15.2 18h5.6"/>',
   ),
-  messageQuestion: icon(
-    '<path d="M21 12a8 8 0 1 1-3.4-6.5"/><path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1.4.9-1.4 1.7"/><path d="M12 16.5h.01"/>',
-  ),
   mail: icon(
     '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   ),

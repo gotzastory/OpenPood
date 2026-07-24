@@ -16,7 +16,7 @@ export interface HistoryStats {
   wpm: number;
 }
 
-export type RecordingMode = 'dictate' | 'translate' | 'ask';
+export type RecordingMode = 'dictate' | 'translate';
 
 const api = {
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
