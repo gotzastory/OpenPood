@@ -3,6 +3,8 @@ import electron from 'vite-plugin-electron/simple';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  // Relative asset URLs so public/ icons work under Electron's file:// protocol.
+  base: './',
   plugins: [
     tailwindcss(),
     electron({

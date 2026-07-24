@@ -13,32 +13,32 @@ const USE_CASES: UseCase[] = [
   {
     name: "Gmail",
     desc: "พูดความคิด แล้วได้อีเมลที่เรียบร้อยพร้อมส่ง",
-    logo: "/icons/gmail-2026.svg",
+    logo: "./icons/gmail-2026.svg",
   },
   {
     name: "Slack",
     desc: "อัปเดตทีมด้วยข้อความที่ชัดเจนโดยไม่สะดุดความคิด",
-    logo: "/icons/slack.svg",
+    logo: "./icons/slack.svg",
   },
   {
     name: "ChatGPT",
     desc: "พูด prompt แล้วได้คำตอบที่ดีกว่าเร็วกว่า",
-    logo: "/icons/openai-chatgpt.svg",
+    logo: "./icons/openai-chatgpt.svg",
   },
   {
     name: "Google Docs",
     desc: "แปลงความคิดที่พูดเป็นงานเขียนที่มีโครงสร้าง",
-    logo: "/icons/google-docs-2026.svg",
+    logo: "./icons/google-docs-2026.svg",
   },
   {
     name: "WhatsApp",
     desc: "แปลงข้อความสั้นๆ ให้เป็นข้อความที่เป็นธรรมชาติ",
-    logo: "/icons/whatsapp.svg",
+    logo: "./icons/whatsapp.svg",
   },
   {
     name: "Claude",
     desc: "ระดมความคิดและขัดเกลาไอเดียโดยไม่ต้องพิมพ์",
-    logo: "/icons/claude.svg",
+    logo: "./icons/claude.svg",
   },
 ];
 
@@ -93,8 +93,8 @@ export async function mountHome(root: HTMLElement) {
         <div class="grid grid-cols-3 gap-3.5">
           ${USE_CASES.map(
             (u) => `
-            <div class="rounded-xl border border-neutral-200 bg-white p-4">
-              <img src="${u.logo}" alt="${u.name}" class="mb-2.5 h-8 w-8" />
+            <div class="min-w-0 rounded-xl border border-neutral-200 bg-white p-4">
+              <img src="${u.logo}" alt="" class="mb-2.5 h-8 w-8 object-contain" />
               <h4 class="mb-1 text-sm font-medium">${u.name}</h4>
               <p class="text-[12.5px] leading-snug text-neutral-400">${u.desc}</p>
             </div>

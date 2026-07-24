@@ -175,7 +175,7 @@ npm install
 npm run dist
 ```
 
-ได้ไฟล์ `release/OpenPud Setup 0.1.0.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
+ได้ไฟล์ `release/OpenPud Setup 0.1.1.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
 
 ### สถาปัตยกรรมโดยย่อ
 
