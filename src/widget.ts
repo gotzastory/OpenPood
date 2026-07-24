@@ -1,0 +1,149 @@
+import { MicRecorder, type RecorderState } from "./recorder";
+import type { RecordingMode } from "./types";
+
+const BAR_COUNT = 24;
+
+const MODE_LABEL: Record<RecordingMode, string> = {
+  dictate: "Dictate",
+  translate: "Translate",
+  ask: "Ask anything",
+};
+
+function beep(freq: number) {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.12);
+  osc.onended = () => ctx.close();
+}
+
+export function mountWidget(root: HTMLElement) {
+  root.innerHTML = `
+    <div
+      id="pill-wrap"
+      data-state="idle"
+      class="group flex h-full flex-col items-center justify-end gap-2 pb-3.5 opacity-0 translate-y-1.5 pointer-events-none transition-[opacity,transform] duration-150 ease-out data-[state=recording]:opacity-100 data-[state=recording]:translate-y-0 data-[state=processing]:opacity-100 data-[state=processing]:translate-y-0"
+    >
+      <div id="mic-label" class="whitespace-nowrap rounded-full border border-white/10 bg-[rgba(24,24,28,0.92)] px-2.5 py-1 text-[11px] text-neutral-200"></div>
+      <div id="pill" class="flex h-11 items-center justify-center rounded-full border border-white/10 bg-[rgba(20,20,24,0.95)] px-[18px] text-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+        <canvas id="wave" width="160" height="28" class="hidden group-data-[state=recording]:block"></canvas>
+        <div id="processing-content" class="hidden items-center gap-2 whitespace-nowrap text-xs group-data-[state=processing]:flex">
+          <span class="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-white"></span>
+          <span>กำลังวิเคราะห์...</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const pillWrap = document.getElementById("pill-wrap")!;
+  const micLabel = document.getElementById("mic-label")!;
+  const canvas = document.getElementById("wave") as HTMLCanvasElement;
+  const ctx = canvas.getContext("2d")!;
+
+  const recorder = new MicRecorder();
+  let state: RecorderState = "idle";
+  let rafId = 0;
+  let analyser: AnalyserNode | null = null;
+  let recordStartedAt = 0;
+  let maxDurationTimer = 0;
+  let pendingMode: RecordingMode = "dictate";
+
+  function setState(next: RecorderState) {
+    state = next;
+    pillWrap.dataset.state = next;
+  }
+
+  function drawLiveBars() {
+    if (!analyser) return;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const barWidth = 3;
+    const gap = 3.5;
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const v = data[Math.floor((i / BAR_COUNT) * data.length)] / 255;
+      const barH = Math.max(3, v * h);
+      const x = i * (barWidth + gap);
+      ctx.fillRect(x, h / 2 - barH / 2, barWidth, barH);
+    }
+    rafId = requestAnimationFrame(drawLiveBars);
+  }
+
+  async function beginRecording() {
+    const settings = await window.typeless.getSettings();
+    try {
+      let started;
+      try {
+        started = await recorder.start(settings.micDeviceId || undefined);
+      } catch (err) {
+        // Selected device may no longer exist (unplugged/changed) — fall back to the OS default mic.
+        if (settings.micDeviceId) {
+          started = await recorder.start();
+        } else {
+          throw err;
+        }
+      }
+      analyser = started.analyser;
+      recordStartedAt = Date.now();
+      micLabel.textContent =
+        pendingMode === "dictate"
+          ? `Using ${started.deviceLabel}`
+          : `${MODE_LABEL[pendingMode]} · ${started.deviceLabel}`;
+      setState("recording");
+      drawLiveBars();
+      if (settings.playSound) beep(880);
+      if (settings.maxDurationSec > 0) {
+        maxDurationTimer = window.setTimeout(
+          finishRecording,
+          settings.maxDurationSec * 1000,
+        );
+      }
+    } catch (err) {
+      setState("idle");
+      console.error(err);
+    }
+  }
+
+  function stopWave() {
+    cancelAnimationFrame(rafId);
+    analyser = null;
+    clearTimeout(maxDurationTimer);
+  }
+
+  async function finishRecording() {
+    if (state !== "recording") return;
+    stopWave();
+    setState("processing");
+    try {
+      const settings = await window.typeless.getSettings();
+      if (settings.playSound) beep(440);
+      const { buffer, mimeType } = await recorder.stop();
+      const durationMs = Date.now() - recordStartedAt;
+      await window.typeless.runTranscription(buffer, mimeType, durationMs, pendingMode);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setState("idle");
+    }
+  }
+
+  function toggleFromHotkey(mode: RecordingMode) {
+    if (state === "idle") {
+      pendingMode = mode;
+      beginRecording();
+    } else if (state === "recording") {
+      finishRecording();
+    }
+  }
+
+  window.typeless.onToggleRecording(toggleFromHotkey);
+}

@@ -1,0 +1,86 @@
+# OpenPud
+
+โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ Windows — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่ใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
+
+สร้างด้วย **Electron + TypeScript + Vite + Tailwind CSS v4**
+
+## ฟีเจอร์
+
+- 🎙️ **Dictate ด้วยปุ่มลัดทั่วระบบ** — กดจากแอปไหนก็ได้ พูด ปล่อย ข้อความไปวางให้ตรงตำแหน่ง cursor
+- 🫧 **Floating pill** — widget โปร่งใส ลอยกลางล่างจอ ไม่แย่ง keyboard focus จากแอปที่กำลังพิมพ์อยู่
+- 🔌 **รองรับหลาย provider** — OpenAI, OpenRouter หรือ endpoint ที่ compatible กับ OpenAI `/audio/transcriptions` เอง (เช่น self-hosted whisper.cpp)
+- 📖 **Dictionary** — เพิ่มคำเฉพาะ/ชื่อเฉพาะ/ศัพท์เทคนิค ช่วยให้แปลงเสียงแม่นยำขึ้น
+- 🕓 **History** — เก็บประวัติการอัดเสียงย้อนหลัง (สูงสุด 500 รายการ) คัดลอกซ้ำได้ทุกเมื่อ
+- ⌨️ **ตั้งค่าปุ่มลัดแบบกดจริง** — ไม่ต้องพิมพ์ syntax accelerator เอง กดคีย์ที่ต้องการแล้วระบบจับให้เลย (ตั้งค่าได้จากไอคอนเฟืองในแถว Dictate หน้า Home)
+- 🈺 **Translate / Ask anything** — เร็วๆ นี้
+
+## ดาวน์โหลด / ติดตั้ง (.exe)
+
+ยังไม่มี release แจก — ต้อง build เองด้วยคำสั่ง:
+
+```bash
+npm install
+npm run dist
+```
+
+ได้ไฟล์ติดตั้งที่ `release/OpenPud Setup 0.0.0.exe` (NSIS, ไม่ต้อง admin) — รันแล้วติดตั้งได้เลย เปิดครั้งแรกจะเจอ onboarding wizard พาไปตั้งค่า API key ทีละขั้น
+
+ต้องการแบบไม่ติดตั้ง (portable): ใช้ `release/win-unpacked/OpenPud.exe` ที่ได้จากคำสั่งเดียวกัน
+
+## เริ่มต้นใช้งาน (dev)
+
+```bash
+npm install
+npm run dev
+```
+
+เปิดแอปหลักได้จาก **tray icon** (มุมล่างขวา) → ตั้งค่า **API Key** และผู้ให้บริการก่อนใช้งานครั้งแรก (มี onboarding wizard พาไปทีละขั้นตอนตอนเปิดแอปครั้งแรก)
+
+> ระหว่างเทสรันซ้ำ: ปิดโปรเซส `electron.exe` / `node.exe` ที่ค้างอยู่ก่อน ไม่งั้น instance ที่สองจะแย่ง global hotkey และพอร์ต Vite dev server กัน
+
+## คำสั่งที่ใช้บ่อย
+
+| คำสั่ง | ทำอะไร |
+|---|---|
+| `npm run dev` | รัน Vite + Electron แบบ dev, hot reload ทั้ง renderer และ main process |
+| `npm run build` | typecheck แล้ว build ทั้งสองฝั่งเป็น production |
+| `npm run dist` | build แล้ว pack เป็นไฟล์ติดตั้ง Windows (.exe, NSIS) ด้วย electron-builder |
+
+ไม่มี lint/test แยก แต่ typecheck สองฝั่งแยกกันได้ เพราะแต่ละฝั่งมี `tsconfig.json` และ global types ต่างกัน (`DOM` สำหรับ renderer, `node` สำหรับ main process):
+
+```bash
+npx tsc -p tsconfig.json --noEmit          # renderer (src/)
+npx tsc -p electron/tsconfig.json --noEmit # main process (electron/)
+```
+
+## สถาปัตยกรรม
+
+Electron แยกเป็น 2 โปรเซสอิสระ คุยกันผ่าน `contextBridge` (`electron/preload.ts`) เท่านั้น — `contextIsolation: true`, `nodeIntegration: false`
+
+- **`electron/`** — main process (Node context)
+  - `main.ts` — สร้างหน้าต่าง widget + dashboard, จัดการ global hotkey, tray icon
+  - `transcribe.ts` — ส่งไฟล์เสียงไป OpenAI-compatible `/audio/transcriptions` endpoint
+  - `pasteText.ts` — คัดลอกข้อความไปคลิปบอร์ดแล้วจำลอง Ctrl+V ผ่าน PowerShell `SendKeys` (เลี่ยง native module ที่ ABI มักไม่ตรงกับ Electron)
+  - `config.ts` / `history.ts` / `dictionary.ts` — persistence ด้วย `electron-store` (JSON plain, ไม่เข้ารหัส)
+- **`src/`** — renderer process (DOM context, ไม่มี Node access)
+  - `widget.ts` + `recorder.ts` — floating pill, อัดเสียงผ่าน `getUserMedia` + `MediaRecorder`
+  - `shell.ts` + `pages/*.ts` — dashboard (Home / History / Dictionary / Settings) เปิดจาก tray icon
+  - `pages/onboarding.ts` — first-run wizard แยกธีมจาก dashboard
+  - `hotkey.ts` — helper ร่วมสำหรับ render/capture คีย์ลัด (ใช้ทั้งใน modal ตั้งค่า Dictate)
+
+## STT backend ที่รองรับ
+
+เลือกได้จาก dropdown "ผู้ให้บริการ" ในหน้า Settings ซึ่งจะเติม base URL + model ให้อัตโนมัติ:
+
+| Provider   | Base URL                       | Model              |
+|------------|---------------------------------|---------------------|
+| OpenAI     | `https://api.openai.com/v1`     | `whisper-1`         |
+| OpenRouter | `https://openrouter.ai/api/v1`  | `openai/whisper-1`  |
+
+หรือเลือก "กำหนดเอง" เพื่อชี้ไปที่ endpoint ที่ compatible กับ OpenAI ตัวอื่น
+
+## ความเป็นส่วนตัวของข้อมูล
+
+Settings, History และ Dictionary เก็บเป็น JSON ในเครื่องล้วน (`electron-store`) ไม่มีการซิงก์ขึ้นคลาวด์ — มีแค่เสียงพูดเท่านั้นที่ถูกส่งออกไปนอกเครื่อง และส่งไปยัง endpoint แปลงข้อความที่ตั้งค่าไว้เท่านั้น
+
+ดูรายละเอียดสถาปัตยกรรมเชิงลึกเพิ่มเติมได้ที่ `CLAUDE.md`
