@@ -12,6 +12,7 @@ export interface AppSettings {
   playSound: boolean;
   maxDurationSec: number;
   onboardingCompleted: boolean;
+  stripFillersEnabled: boolean;
   aiPolishEnabled: boolean;
   chatModel: string;
   translateHotkey: string;
@@ -36,6 +37,7 @@ const defaults: StoredSettings = {
   playSound: true,
   maxDurationSec: 120,
   onboardingCompleted: false,
+  stripFillersEnabled: true,
   aiPolishEnabled: false,
   chatModel: 'google/gemini-3.5-flash-lite',
   translateHotkey: 'Control+Alt+T',

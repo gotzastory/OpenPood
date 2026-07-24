@@ -9,6 +9,7 @@ export interface AppSettings {
   playSound: boolean;
   maxDurationSec: number;
   onboardingCompleted: boolean;
+  stripFillersEnabled: boolean;
   aiPolishEnabled: boolean;
   chatModel: string;
   translateHotkey: string;

@@ -16,6 +16,7 @@ import {
 } from './dictionary';
 import { LlmError } from './llm';
 import { polishText } from './polish';
+import { stripFillers } from './stripFillers';
 import { translateText } from './translate';
 import { getActiveAppCategory } from './activeWindow';
 
@@ -175,6 +176,12 @@ app.whenReady().then(() => {
       try {
         const bias = dictionaryPrompt();
         let text = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
+
+        // Cheap local pass before any LLM step — strips "อืมม" / "เอ่ออ" / "um"
+        // without an API round-trip. Runs for both dictate and translate.
+        if (settings.stripFillersEnabled) {
+          text = stripFillers(text);
+        }
 
         if (mode === 'translate') {
           // Corrections on the transcript before translate so wrong-script

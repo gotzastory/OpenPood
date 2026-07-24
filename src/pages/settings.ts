@@ -140,8 +140,12 @@ export async function mountSettings(root: HTMLElement) {
         </select>
       </label>
       <label class="mb-1.5 flex flex-row items-center gap-2 text-[13px] text-neutral-600">
+        <input id="stripFillersEnabled" type="checkbox" class="w-auto" ${current.stripFillersEnabled ? "checked" : ""} />
+        ตัดคำติดปากอัตโนมัติ (อืมม, เอ่ออ, um, uh) — ไม่ใช้ AI
+      </label>
+      <label class="mb-1.5 flex flex-row items-center gap-2 text-[13px] text-neutral-600">
         <input id="aiPolishEnabled" type="checkbox" class="w-auto" ${current.aiPolishEnabled ? "checked" : ""} />
-        ปรับข้อความด้วย AI หลัง Dictate (ตัดคำติดปาก ใส่วรรคตอน ปรับโทนตามแอปปลายทาง)
+        ปรับข้อความด้วย AI หลัง Dictate (ใส่วรรคตอน ปรับโทนตามแอปปลายทาง)
       </label>
       <label class="${FIELD_LABEL} mb-4">
         Chat model (ใช้กับ AI polish, Translate)
@@ -227,6 +231,9 @@ export async function mountSettings(root: HTMLElement) {
     const translateTargetLang = (
       document.getElementById("translateTargetLang") as HTMLSelectElement
     ).value;
+    const stripFillersEnabled = (
+      document.getElementById("stripFillersEnabled") as HTMLInputElement
+    ).checked;
     const aiPolishEnabled = (
       document.getElementById("aiPolishEnabled") as HTMLInputElement
     ).checked;
@@ -253,6 +260,7 @@ export async function mountSettings(root: HTMLElement) {
         model,
         language,
         translateTargetLang,
+        stripFillersEnabled,
         aiPolishEnabled,
         chatModel,
         micDeviceId,
