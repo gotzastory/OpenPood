@@ -1,5 +1,7 @@
 # OpenPud
 
+<img width="1047" height="648" alt="image" src="https://github.com/user-attachments/assets/5ba7cc44-ff90-4f9b-b04e-37198390a177" />
+
 โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
 
 สร้างด้วย Electron + TypeScript + Vite + Tailwind CSS v4
