@@ -44,7 +44,41 @@ const defaults: StoredSettings = {
   translateTargetLang: 'en',
 };
 
+// Shape sent to the renderer over `settings:get` — the plaintext key never
+// crosses the IPC boundary; pages only learn whether one is saved.
+export type RendererSettings = Omit<AppSettings, 'apiKey'> & {
+  apiKey: '';
+  hasApiKey: boolean;
+};
+
 const rawStore = new Store<StoredSettings>({ defaults });
+
+// Runtime allowlist for `settings:set` — IPC payloads come from the renderer
+// and must not be able to write arbitrary keys (incl. dotted paths) into the
+// store. apiKey is handled separately via encryption.
+const WRITABLE_KEYS = new Set<string>(
+  Object.keys(defaults).filter((k) => k !== 'apiKeyEncrypted'),
+);
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+}
+
+// Reject plain-http remote endpoints: the Bearer token/API key is attached to
+// every request, so a non-TLS base URL leaks it in cleartext (and doubles as
+// an SSRF vector). http:// stays allowed for loopback so local Whisper /
+// LM Studio / Ollama-style servers keep working.
+export function validateApiBaseUrl(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return 'API Base URL ไม่ใช่ URL ที่ถูกต้อง';
+  }
+  if (url.protocol === 'https:') return null;
+  if (url.protocol === 'http:' && isLoopbackHost(url.hostname)) return null;
+  return 'API Base URL ต้องเป็น https:// (อนุญาต http:// เฉพาะ localhost)';
+}
 
 function encryptApiKey(apiKey: string): string {
   if (!apiKey) return '';
@@ -77,12 +111,26 @@ export function getSettings(): AppSettings {
   return { ...rest, apiKey: decryptApiKey(apiKeyEncrypted) };
 }
 
+export function getRendererSettings(): RendererSettings {
+  const { apiKey, ...rest } = getSettings();
+  return { ...rest, apiKey: '', hasApiKey: apiKey.length > 0 };
+}
+
 export function setSettings(partial: Partial<AppSettings>): AppSettings {
   const { apiKey, ...rest } = partial;
   for (const [key, value] of Object.entries(rest)) {
-    rawStore.set(key as keyof Omit<StoredSettings, 'apiKeyEncrypted'>, value as never);
+    if (!WRITABLE_KEYS.has(key)) continue;
+    // Value must match the default's primitive type — rejects objects, dotted
+    // paths and type confusion from a compromised renderer.
+    if (typeof value !== typeof (defaults as Record<string, unknown>)[key]) continue;
+    if (key === 'apiBaseUrl') {
+      const error = validateApiBaseUrl(value as string);
+      if (error) throw new Error(error);
+    }
+    // Cast is safe: key membership and value type are checked above.
+    rawStore.set(key as keyof StoredSettings, value as StoredSettings[keyof StoredSettings]);
   }
-  if (apiKey !== undefined) {
+  if (typeof apiKey === 'string') {
     rawStore.set('apiKeyEncrypted', encryptApiKey(apiKey));
   }
   return getSettings();

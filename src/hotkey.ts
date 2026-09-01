@@ -1,9 +1,13 @@
+import { escapeHtml } from "./escape";
+
 export function renderHotkeyBadges(hotkey: string): string {
+  // Hotkey is free text persisted from settings/onboarding — escape it, or a
+  // crafted value becomes stored XSS on the Home page.
   return hotkey
     .split("+")
     .map(
       (k) =>
-        `<span class="rounded-[7px] border-[1.5px] border-neutral-300 bg-neutral-50 px-2.5 py-[5px] text-xs font-semibold text-neutral-700">${k.trim()}</span>`,
+        `<span class="rounded-[7px] border-[1.5px] border-neutral-300 bg-neutral-50 px-2.5 py-[5px] text-xs font-semibold text-neutral-700">${escapeHtml(k.trim())}</span>`,
     )
     .join("");
 }

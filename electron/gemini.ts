@@ -56,7 +56,8 @@ async function generateContent(
 
   const data = (await res.json().catch(() => ({}))) as GeminiResponse;
   if (!res.ok) {
-    const msg = data.error?.message || JSON.stringify(data);
+    // Server-controlled body — cap it (it can end up in an OS notification).
+    const msg = (data.error?.message || JSON.stringify(data)).slice(0, 300);
     throw new Error(`Gemini API error (${res.status}): ${msg}`);
   }
 

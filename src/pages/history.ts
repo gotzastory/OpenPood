@@ -1,5 +1,10 @@
 import { icons } from "../icons";
 import { BTN, PAGE_TITLE, EMPTY_STATE } from "../uiClasses";
+import { escapeHtml } from "../escape";
+
+// Module-level so remounting the page replaces the previous subscription
+// instead of stacking one listener per navigation to /history.
+let unsubscribeHistoryUpdates: (() => void) | null = null;
 
 export async function mountHistory(root: HTMLElement) {
   async function render() {
@@ -53,12 +58,7 @@ export async function mountHistory(root: HTMLElement) {
     });
   }
 
-  window.typeless.onHistoryUpdated(render);
+  unsubscribeHistoryUpdates?.();
+  unsubscribeHistoryUpdates = window.typeless.onHistoryUpdated(render);
   await render();
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
 }

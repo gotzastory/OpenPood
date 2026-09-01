@@ -1,5 +1,6 @@
 import { clipboard } from 'electron';
 import { execFile } from 'node:child_process';
+import { POWERSHELL_EXE } from './powershell';
 
 // Simulates Ctrl+V in whatever window currently has OS focus. We deliberately
 // avoid native modules (robotjs/nut-js) since their prebuilt binaries are
@@ -32,7 +33,7 @@ public static class NativePaste {
 [NativePaste]::CtrlV()
 `.trim();
     execFile(
-      'powershell.exe',
+      POWERSHELL_EXE,
       ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', script],
       { windowsHide: true },
       (error) => {

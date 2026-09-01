@@ -40,8 +40,9 @@ export async function chatComplete(
   });
 
   if (!res.ok) {
+    // Server-controlled body — cap it (it can end up in an OS notification).
     const body = await res.text().catch(() => '');
-    throw new LlmError(`Chat completion API error (${res.status}): ${body}`);
+    throw new LlmError(`Chat completion API error (${res.status}): ${body.slice(0, 300)}`);
   }
 
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };

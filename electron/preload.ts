@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { AppSettings } from './config';
+import type { AppSettings, RendererSettings } from './config';
 import type { HistoryEntry } from './history';
 import type { CorrectionRule } from './dictionary';
 
@@ -19,8 +19,10 @@ export interface HistoryStats {
 export type RecordingMode = 'dictate' | 'translate';
 
 const api = {
-  getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
-  setSettings: (partial: Partial<AppSettings>): Promise<AppSettings> =>
+  // Settings coming back over IPC are redacted: apiKey is always '' and
+  // hasApiKey says whether one is saved (the real key stays in main).
+  getSettings: (): Promise<RendererSettings> => ipcRenderer.invoke('settings:get'),
+  setSettings: (partial: Partial<AppSettings>): Promise<RendererSettings> =>
     ipcRenderer.invoke('settings:set', partial),
   openMainWindow: (route = '/'): Promise<void> => ipcRenderer.invoke('app:open-main-window', route),
   runTranscription: (

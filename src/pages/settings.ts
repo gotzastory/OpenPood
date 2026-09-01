@@ -11,6 +11,7 @@ import {
   FIELD_INPUT,
   FIELD_SELECT,
 } from "../uiClasses";
+import { escapeHtml } from "../escape";
 
 async function listMicDevices(): Promise<MediaDeviceInfo[]> {
   try {
@@ -71,7 +72,7 @@ function modelFieldHtml(provider: ProviderKey, currentModel: string): string {
     return `
       <label class="${FIELD_LABEL}">
         Model
-        <input id="model" type="text" value="${currentModel}" placeholder="whisper-1" class="${FIELD_INPUT}" />
+        <input id="model" type="text" value="${escapeHtml(currentModel)}" placeholder="whisper-1" class="${FIELD_INPUT}" />
       </label>
     `;
   }
@@ -83,7 +84,7 @@ function modelFieldHtml(provider: ProviderKey, currentModel: string): string {
         ${models
           .map(
             (m) =>
-              `<option value="${m.id}" ${m.id === currentModel ? "selected" : ""}>${m.name}</option>`,
+              `<option value="${escapeHtml(m.id)}" ${m.id === currentModel ? "selected" : ""}>${escapeHtml(m.name)}</option>`,
           )
           .join("")}
       </select>
@@ -110,11 +111,11 @@ export async function mountSettings(root: HTMLElement) {
       </label>
       <label class="${FIELD_LABEL}">
         API Key
-        <input id="apiKey" type="password" value="${current.apiKey}" placeholder="${provider === "gemini" ? "AIza..." : "sk-..."}" class="${FIELD_INPUT}" />
+        <input id="apiKey" type="password" value="" placeholder="${current.hasApiKey ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน" : provider === "gemini" ? "AIza..." : "sk-..."}" class="${FIELD_INPUT}" />
       </label>
       <label class="${FIELD_LABEL}">
         API Base URL
-        <input id="apiBaseUrl" type="text" value="${current.apiBaseUrl}" ${provider !== "custom" ? "disabled" : ""} class="${FIELD_INPUT}" />
+        <input id="apiBaseUrl" type="text" value="${escapeHtml(current.apiBaseUrl)}" ${provider !== "custom" ? "disabled" : ""} class="${FIELD_INPUT}" />
       </label>
       <div id="model-field">${modelFieldHtml(provider, current.model)}</div>
       <label class="${FIELD_LABEL}">
@@ -149,7 +150,7 @@ export async function mountSettings(root: HTMLElement) {
       </label>
       <label class="${FIELD_LABEL} mb-4">
         Chat model (ใช้กับ AI polish, Translate)
-        <input id="chatModel" type="text" value="${current.chatModel}" placeholder="google/gemini-3.5-flash-lite" class="${FIELD_INPUT}" />
+        <input id="chatModel" type="text" value="${escapeHtml(current.chatModel)}" placeholder="google/gemini-3.5-flash-lite" class="${FIELD_INPUT}" />
       </label>
       <label class="${FIELD_LABEL}">
         ไมโครโฟน
@@ -158,9 +159,9 @@ export async function mountSettings(root: HTMLElement) {
           ${mics
             .map(
               (m, i) =>
-                `<option value="${m.deviceId}" ${m.deviceId === current.micDeviceId ? "selected" : ""}>${
-                  m.label || `Microphone ${i + 1}`
-                }</option>`,
+                `<option value="${escapeHtml(m.deviceId)}" ${m.deviceId === current.micDeviceId ? "selected" : ""}>${escapeHtml(
+                  m.label || `Microphone ${i + 1}`,
+                )}</option>`,
             )
             .join("")}
         </select>
@@ -206,11 +207,12 @@ export async function mountSettings(root: HTMLElement) {
         PROVIDER_PRESETS[provider].models[0].id,
       );
       chatModelInput.value = PROVIDER_PRESETS[provider].chatModel;
-      apiKeyInput.placeholder = provider === "gemini" ? "AIza..." : "sk-...";
     } else {
       apiBaseUrlInput.disabled = false;
       modelField.innerHTML = modelFieldHtml(provider, "");
-      apiKeyInput.placeholder = "sk-...";
+    }
+    if (!current.hasApiKey) {
+      apiKeyInput.placeholder = provider === "gemini" ? "AIza..." : "sk-...";
     }
   });
 
@@ -255,7 +257,9 @@ export async function mountSettings(root: HTMLElement) {
 
     try {
       await window.typeless.setSettings({
-        apiKey,
+        // Blank apiKey field means "keep the saved key" — the form no longer
+        // pre-fills it since settings:get redacts the key.
+        ...(apiKey ? { apiKey } : {}),
         apiBaseUrl,
         model,
         language,
@@ -270,12 +274,15 @@ export async function mountSettings(root: HTMLElement) {
       });
       msg.className = "mt-1 h-4 text-xs text-emerald-600";
       msg.textContent = "บันทึกแล้ว";
-    } catch {
+    } catch (err) {
+      console.error(err);
       msg.className = "mt-1 h-4 text-xs text-red-600";
-      msg.textContent = "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง";
+      // IPC rejections arrive as "Error invoking remote method ...: Error: <reason>"
+      const reason = err instanceof Error ? err.message.split(/Error: /).pop() : "";
+      msg.textContent = reason || "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง";
     } finally {
       (saveBtn as HTMLButtonElement).disabled = false;
-      setTimeout(() => (msg.textContent = ""), 1500);
+      setTimeout(() => (msg.textContent = ""), 4000);
     }
   });
 }

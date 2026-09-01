@@ -1,5 +1,6 @@
 import { icons } from "../icons";
 import { BTN_PRIMARY, PAGE_TITLE, EMPTY_STATE } from "../uiClasses";
+import { escapeHtml } from "../escape";
 
 export async function mountDictionary(root: HTMLElement) {
   let words = await window.typeless.listDictionary();
@@ -130,10 +131,4 @@ export async function mountDictionary(root: HTMLElement) {
   }
 
   render();
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
 }

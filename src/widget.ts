@@ -78,8 +78,10 @@ export function mountWidget(root: HTMLElement) {
   }
 
   async function beginRecording() {
-    const settings = await window.typeless.getSettings();
     try {
+      // Inside the try: if this IPC call rejects, we still reach the catch's
+      // setState("idle") instead of wedging the pill.
+      const settings = await window.typeless.getSettings();
       let started;
       try {
         started = await recorder.start(settings.micDeviceId || undefined);

@@ -25,7 +25,11 @@ const VIETNAMESE_LATIN =
 // spaces that sit between two Thai characters, but keep spaces around
 // non-Thai segments (English words, numbers) since Thai writing does put a
 // space around embedded foreign text.
-function normalizeThaiSpacing(text: string): string {
+//
+// Exported and called by the pipeline (electron/main.ts) AFTER stripFillers —
+// the raw spacing is what stripFillers uses to bound filler tokens, so
+// collapsing here before returning would reintroduce the eaten-word bug.
+export function normalizeThaiSpacing(text: string): string {
   return text
     .replace(/([฀-๿])\s+(?=[฀-๿])/gu, '$1')
     .replace(/[ \t]{2,}/g, ' ')
@@ -89,13 +93,12 @@ async function requestTranscription(
 ): Promise<string> {
   if (isGeminiProvider(settings)) {
     try {
-      const text = await geminiTranscribe(
+      return await geminiTranscribe(
         audioBuffer,
         mimeType,
         settings,
         buildGeminiPrompt(promptBias, language),
       );
-      return normalizeThaiSpacing(text);
     } catch (err) {
       throw new TranscriptionError(err instanceof Error ? err.message : String(err));
     }
@@ -116,12 +119,14 @@ async function requestTranscription(
   });
 
   if (!res.ok) {
+    // Response body is server-controlled — cap it so it stays a readable hint
+    // rather than an arbitrary blob in notifications/logs.
     const body = await res.text().catch(() => '');
-    throw new TranscriptionError(`Transcription API error (${res.status}): ${body}`);
+    throw new TranscriptionError(`Transcription API error (${res.status}): ${body.slice(0, 300)}`);
   }
 
   const data = (await res.json()) as { text?: string };
-  return normalizeThaiSpacing(data.text?.trim() ?? '');
+  return data.text?.trim() ?? '';
 }
 
 export async function transcribeAudio(

@@ -36,6 +36,8 @@ const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
   openai: "gpt-4o-mini",
 };
 
+import { escapeHtml } from "../escape";
+
 const TOTAL_STEPS = 4;
 
 const FIELD_LABEL =
@@ -69,10 +71,12 @@ export async function mountOnboarding(root: HTMLElement) {
       : existing.apiBaseUrl.includes("generativelanguage.googleapis.com")
         ? "gemini"
         : "openrouter",
-    apiKey: existing.apiKey,
+    // settings:get redacts the key — track only whether one is already saved.
+    apiKey: "",
     micDeviceId: existing.micDeviceId,
     hotkey: existing.hotkey || "Control+Space",
   };
+  const hasSavedApiKey = existing.hasApiKey;
 
   let micStream: MediaStream | null = null;
   let audioCtx: AudioContext | null = null;
@@ -152,7 +156,7 @@ export async function mountOnboarding(root: HTMLElement) {
         </div>
         <div class="mb-4.5">
           <label class="${FIELD_LABEL}">API Key</label>
-          <input id="ob-apikey" type="password" placeholder="${state.provider === "gemini" ? "AIza..." : "sk-..."}" value="${state.apiKey}" class="${FIELD_INPUT}" />
+          <input id="ob-apikey" type="password" placeholder="${hasSavedApiKey ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน" : state.provider === "gemini" ? "AIza..." : "sk-..."}" value="${escapeHtml(state.apiKey)}" class="${FIELD_INPUT}" />
         </div>
         <div id="ob-error"></div>
         <div class="mt-2 flex items-center gap-4">
@@ -193,12 +197,12 @@ export async function mountOnboarding(root: HTMLElement) {
       <div class="mb-6.5 flex gap-2.5">${keys
         .map(
           (k) =>
-            `<span class="rounded-lg border-[1.5px] border-paper/10 bg-ink-raised px-4.5 py-3 font-mono text-[15px] font-bold shadow-[0_3px_0_rgba(245,239,230,0.1)]">${k}</span>`,
+            `<span class="rounded-lg border-[1.5px] border-paper/10 bg-ink-raised px-4.5 py-3 font-mono text-[15px] font-bold shadow-[0_3px_0_rgba(245,239,230,0.1)]">${escapeHtml(k)}</span>`,
         )
         .join('<span class="self-center text-paper/55">+</span>')}</div>
       <div class="mb-4.5">
         <label class="${FIELD_LABEL}">ปรับ Hotkey (ไม่บังคับ)</label>
-        <input id="ob-hotkey" type="text" value="${state.hotkey}" placeholder="Control+Space" class="${FIELD_INPUT}" />
+        <input id="ob-hotkey" type="text" value="${escapeHtml(state.hotkey)}" placeholder="Control+Space" class="${FIELD_INPUT}" />
       </div>
       <div class="mt-2 flex items-center gap-4">
         <button class="${BTN_GHOST}" id="ob-back">ย้อนกลับ</button>
@@ -226,7 +230,7 @@ export async function mountOnboarding(root: HTMLElement) {
       devices
         .map(
           (d, i) =>
-            `<option value="${d.deviceId}" ${d.deviceId === state.micDeviceId ? "selected" : ""}>${d.label || `Microphone ${i + 1}`}</option>`,
+            `<option value="${escapeHtml(d.deviceId)}" ${d.deviceId === state.micDeviceId ? "selected" : ""}>${escapeHtml(d.label || `Microphone ${i + 1}`)}</option>`,
         )
         .join("");
     startMicPreview(select.value || undefined);
@@ -304,7 +308,7 @@ export async function mountOnboarding(root: HTMLElement) {
         const apiKey = (
           document.getElementById("ob-apikey") as HTMLInputElement
         ).value.trim();
-        if (!apiKey) {
+        if (!apiKey && !hasSavedApiKey) {
           document.getElementById("ob-error")!.innerHTML =
             `<p class="-mt-2 mb-4 font-mono text-xs text-coral">ใส่ API Key ก่อนเพื่อไปต่อ</p>`;
           return;
@@ -326,7 +330,8 @@ export async function mountOnboarding(root: HTMLElement) {
         const preset = PROVIDERS.find((p) => p.key === state.provider)!;
         teardownMic();
         await window.typeless.setSettings({
-          apiKey: state.apiKey,
+          // Blank means "keep the already-saved key" (the form never pre-fills it).
+          ...(state.apiKey ? { apiKey: state.apiKey } : {}),
           apiBaseUrl: preset.baseUrl,
           model: preset.model,
           chatModel: CHAT_MODEL_BY_PROVIDER[state.provider],

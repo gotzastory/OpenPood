@@ -1,32 +1,29 @@
 // Deterministic filler / disfluency stripper — no LLM, no network.
 // Runs after STT so "อืมม" / "เอ่ออ" / "um" never reach the paste target.
-// Thai orthography has no word spaces after normalizeThaiSpacing, so Thai
-// patterns match by elongated filler shape rather than word boundaries.
 //
-// Each repeated consonant/vowel in a filler must NOT be followed by a Thai
-// combining mark — otherwise greedy quantifiers steal the onset of the next
-// syllable (e.g. อืมมมัน → wrongly matching อืมมม and leaving ัานดี).
+// IMPORTANT ORDERING: this must run on the RAW transcript, BEFORE
+// normalizeThaiSpacing collapses the spaces Whisper puts between Thai words.
+// Those spaces are what let the patterns below anchor to whole tokens —
+// matching fillers mid-string (the old approach) destroyed real words that
+// merely start with a filler shape (อ่าน → น, อ่าง → ง, อูมามิ → ามิ).
+// A filler glued directly to the next word (no space) is left alone: missing
+// one is far cheaper than eating a real word.
 
-// Thai vowels / tone / thanthakhat that attach to a preceding consonant.
-const TH_MARK = '[\\u0E31\\u0E34-\\u0E3A\\u0E47-\\u0E4E]';
-
+// Thai fillers as complete tokens: bounded by start/whitespace/punctuation on
+// both sides. Elongations (อืมมม, เอ่ออ, อ่าาา) collapse into the same match.
+// Plain "เออ" is deliberately NOT stripped — it's an agreement word ("yeah"),
+// not hesitation; only the tone-marked เอ่อ/เอ้อ forms are.
 const THAI_FILLERS = new RegExp(
-  [
-    // อืม อืมม อื้มม — each ม must not be an onset (ม + vowel mark)
-    `อื้?(?:ม(?!${TH_MARK}))+`,
-    // เออ เอ่อ เอ่ออ — same for trailing อ
-    `เอ[่้]?(?:อ(?!${TH_MARK}))+`,
-    // อ่า อ่าา / อ๊า
-    `อ[่๊]า+`,
-    // อูม อูมม
-    `อู(?:ม(?!${TH_MARK}))+`,
-  ].join('|'),
+  ['อื้?ม+', 'เอ[่้]อ+', 'อ[่๊]า+', 'อูม+']
+    .map((p) => `(?<=^|[\\s,。.!?])(?:${p})(?=$|[\\s,。.!?])`)
+    .join('|'),
   'gu',
 );
 
 const ENGLISH_FILLERS =
-  // Standalone Latin hesitations only — never touch real words like "summer".
-  /\b(?:um+|uh+|uhm+|err*|ah+|hm+|hmm+)\b/gi;
+  // Standalone Latin hesitations only — \b keeps "summer"/"error" safe, and
+  // the hyphen guards keep compounds like "uh-huh" intact.
+  /(?<!-)\b(?:um+|uh+|uhm+|er+|ah+|hm+)\b(?!-)/gi;
 
 export function stripFillers(text: string): string {
   if (!text.trim()) return text;
@@ -38,8 +35,6 @@ export function stripFillers(text: string): string {
     .replace(/([,，、])\s*\1+/g, '$1')
     .replace(/^[,\s]+|[,\s]+$/g, '')
     .replace(/\s{2,}/g, ' ')
-    // Re-collapse Thai↔Thai spaces opened by a removal between Thai segments.
-    .replace(/([฀-๿])\s+(?=[฀-๿])/gu, '$1')
     .trim();
 
   return out;

@@ -214,9 +214,10 @@ function openHotkeyModal(
     try {
       await onSaved(value);
       close();
-    } catch {
+    } catch (err) {
+      console.error(err);
       saveBtn.disabled = false;
-      saveBtn.textContent = "บันทึก";
+      saveBtn.textContent = "บันทึกไม่สำเร็จ — ลองใหม่";
     }
   });
 }

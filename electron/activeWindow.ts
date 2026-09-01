@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { POWERSHELL_EXE } from './powershell';
 
 export type AppCategory = 'email' | 'chat' | 'code' | 'browser' | 'general';
 
@@ -49,7 +50,7 @@ $procId = 0
 (Get-Process -Id $procId -ErrorAction SilentlyContinue).ProcessName
 `.trim();
     execFile(
-      'powershell.exe',
+      POWERSHELL_EXE,
       ['-NoProfile', '-NonInteractive', '-Command', script],
       (error, stdout) => {
         if (error) resolve('');

@@ -1,5 +1,8 @@
 export interface AppSettings {
   apiKey: string;
+  /** Always true on reads: the main process redacts apiKey to '' and reports
+   * whether one is saved via this flag. Never sent when saving. */
+  hasApiKey: boolean;
   apiBaseUrl: string;
   model: string;
   hotkey: string;
