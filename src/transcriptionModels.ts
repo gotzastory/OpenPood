@@ -17,7 +17,9 @@ export const GEMINI_MODELS: TranscriptionModel[] = [
   { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite" },
 ];
 
-// OpenRouter's /api/v1/models?output_modalities=transcription list, as of the last check.
+// OpenRouter's /api/v1/models?output_modalities=transcription list.
+// Re-checked 2026-09 via web search cross-reference (direct API/page fetch
+// was unreliable in-session); added nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b.
 // First entry is the app default when switching the Settings provider to OpenRouter.
 export const OPENROUTER_MODELS: TranscriptionModel[] = [
   {
@@ -31,17 +33,33 @@ export const OPENROUTER_MODELS: TranscriptionModel[] = [
     name: "OpenAI — GPT-4o Mini Transcribe",
   },
   { id: "openai/gpt-4o-transcribe", name: "OpenAI — GPT-4o Transcribe" },
+  { id: "openai/gpt-transcribe", name: "OpenAI — GPT Transcribe" },
   { id: "deepgram/nova-3", name: "Deepgram — Nova-3" },
   { id: "google/chirp-3", name: "Google — Chirp 3" },
   {
     id: "mistralai/voxtral-mini-transcribe",
     name: "Mistral — Voxtral Mini Transcribe",
   },
+  {
+    id: "mistralai/voxtral-small-24b-2507-stt",
+    name: "Mistral — Voxtral Small 24B 2507 STT",
+  },
+  {
+    id: "mistralai/voxtral-mini-3b-2507",
+    name: "Mistral — Voxtral Mini 3B 2507",
+  },
   { id: "nvidia/parakeet-tdt-0.6b-v3", name: "NVIDIA — Parakeet TDT 0.6B v3" },
+  {
+    id: "nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b",
+    name: "NVIDIA — Nemotron 3.5 ASR Streaming Multilingual 0.6B",
+  },
   { id: "qwen/qwen3-asr-flash-2026-02-10", name: "Qwen — Qwen3 ASR Flash" },
+  { id: "qwen/qwen3-asr-1.7b", name: "Qwen — Qwen3 ASR 1.7B" },
+  { id: "qwen/qwen3-asr-0.6b", name: "Qwen — Qwen3 ASR 0.6B" },
   {
     id: "microsoft/mai-transcribe-1.5",
     name: "Microsoft — MAI-Transcribe 1.5",
   },
   { id: "x-ai/grok-stt-1.0", name: "xAI — Grok STT 1.0" },
+  { id: "fish-audio/transcribe-1", name: "Fish Audio — Transcribe 1" },
 ];
