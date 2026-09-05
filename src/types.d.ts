@@ -25,7 +25,12 @@ export interface TranscribeResult {
   ok: boolean;
   text?: string;
   error?: string;
+  /** false when the foreground window changed mid-request and the text was
+   * left on the clipboard instead of pasted. */
+  pasted?: boolean;
 }
+
+export type WidgetState = "idle" | "recording" | "processing" | "skipped";
 
 export interface HistoryEntry {
   id: string;
@@ -58,6 +63,8 @@ interface TypelessApi {
     mode?: RecordingMode,
   ): Promise<TranscribeResult>;
   onToggleRecording(callback: (mode: RecordingMode) => void): () => void;
+  onCancelRecording(callback: () => void): () => void;
+  setRecordingState(state: WidgetState): void;
   onNavigate(callback: (route: string) => void): () => void;
   onHistoryUpdated(callback: () => void): () => void;
   listHistory(): Promise<HistoryEntry[]>;

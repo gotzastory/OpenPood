@@ -61,7 +61,13 @@ The app has no dock/taskbar presence when both windows are closed — `window-al
 
 ### Text injection without native modules
 
-`electron/pasteText.ts` deliberately avoids `robotjs`/`nut-js` (native modules whose prebuilt binaries are frequently out of sync with the current Electron ABI). Instead it writes the result to the clipboard and shells out to `powershell.exe` running `System.Windows.Forms.SendKeys` to simulate Ctrl+V, then restores the previous clipboard contents after a delay. This is Windows-only by design.
+`electron/pasteText.ts` deliberately avoids `robotjs`/`nut-js` (native modules whose prebuilt binaries are frequently out of sync with the current Electron ABI). Instead it writes the result to the clipboard and asks `electron/winHost.ts` to simulate Ctrl+V, then restores the previous clipboard contents after a delay. On paste failure the text is intentionally left on the clipboard so it isn't lost. This is Windows-only by design.
+
+`electron/winHost.ts` is a single long-lived `powershell.exe` spawned at startup (`warmWinHost()`) that `Add-Type`-compiles the Win32 P/Invoke class once and then serves a line protocol over stdin/stdout: `fg` (foreground window handle + process name) and `paste` (Ctrl+V via `keybd_event` with virtual-key codes — WinForms `SendKeys("^v")` breaks under Thai Kedmanee). Before this, every dictation paid two fresh PowerShell spawns plus C# compiles. Requests are FIFO with a 5 s timeout; a wedged or crashed host is killed and lazily respawned on the next call.
+
+The paste target is captured at hotkey press time (`foregroundAtHotkey` in `electron/main.ts`, since the widget is `focusable: false` the press never moves focus). If the foreground window differs when the transcript is ready, `transcription:run` leaves the text on the clipboard and shows a notification instead of pasting into the wrong app. The same captured process name feeds `categoryForProcess()` in `electron/activeWindow.ts` for AI polish tone, so no extra lookup happens on the hot path.
+
+While recording, `electron/main.ts` registers `Escape` as a global cancel key (the widget reports its state over `recording:state`); it is unregistered as soon as recording stops so other apps keep their Escape. The renderer also skips the API entirely for near-silent or sub-400 ms clips (`isSilentRecording()` in `src/recorder.ts`) because Whisper hallucinates text out of silence — the pill shows "ไม่ได้ยินเสียง" briefly instead.
 
 ### Multi-provider transcription (OpenAI-compatible)
 

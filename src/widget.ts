@@ -1,7 +1,9 @@
-import { MicRecorder, type RecorderState } from "./recorder";
+import { isSilentRecording, MicRecorder, type RecorderState } from "./recorder";
 import type { RecordingMode } from "./types";
 
 const BAR_COUNT = 24;
+// How long the "ไม่ได้ยินเสียง" hint stays up before the pill hides again.
+const SKIPPED_HINT_MS = 900;
 
 const MODE_LABEL: Record<RecordingMode, string> = {
   dictate: "Dictate",
@@ -27,14 +29,17 @@ export function mountWidget(root: HTMLElement) {
     <div
       id="pill-wrap"
       data-state="idle"
-      class="group flex h-full flex-col items-center justify-end gap-2 pb-3.5 opacity-0 translate-y-1.5 pointer-events-none transition-[opacity,transform] duration-150 ease-out data-[state=recording]:opacity-100 data-[state=recording]:translate-y-0 data-[state=processing]:opacity-100 data-[state=processing]:translate-y-0"
+      class="group flex h-full flex-col items-center justify-end gap-2 pb-3.5 opacity-0 translate-y-1.5 pointer-events-none transition-[opacity,transform] duration-150 ease-out data-[state=recording]:opacity-100 data-[state=recording]:translate-y-0 data-[state=processing]:opacity-100 data-[state=processing]:translate-y-0 data-[state=skipped]:opacity-100 data-[state=skipped]:translate-y-0"
     >
-      <div id="mic-label" class="whitespace-nowrap rounded-full border border-white/10 bg-[rgba(24,24,28,0.92)] px-2.5 py-1 text-[11px] text-neutral-200"></div>
+      <div id="mic-label" class="whitespace-nowrap rounded-full border border-white/10 bg-[rgba(24,24,28,0.92)] px-2.5 py-1 text-[11px] text-neutral-200 group-data-[state=skipped]:hidden"></div>
       <div id="pill" class="flex h-11 items-center justify-center rounded-full border border-white/10 bg-[rgba(20,20,24,0.95)] px-[18px] text-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
         <canvas id="wave" width="160" height="28" class="hidden group-data-[state=recording]:block"></canvas>
         <div id="processing-content" class="hidden items-center gap-2 whitespace-nowrap text-xs group-data-[state=processing]:flex">
           <span class="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-white"></span>
           <span>กำลังวิเคราะห์...</span>
+        </div>
+        <div id="skipped-content" class="hidden items-center whitespace-nowrap text-xs text-neutral-400 group-data-[state=skipped]:flex">
+          <span>ไม่ได้ยินเสียง</span>
         </div>
       </div>
     </div>
@@ -51,11 +56,14 @@ export function mountWidget(root: HTMLElement) {
   let analyser: AnalyserNode | null = null;
   let recordStartedAt = 0;
   let maxDurationTimer = 0;
+  let skippedTimer = 0;
   let pendingMode: RecordingMode = "dictate";
 
   function setState(next: RecorderState) {
     state = next;
     pillWrap.dataset.state = next;
+    // Main uses this to grab Escape as a cancel key only while recording.
+    window.typeless.setRecordingState(next);
   }
 
   function drawLiveBars() {
@@ -78,6 +86,7 @@ export function mountWidget(root: HTMLElement) {
   }
 
   async function beginRecording() {
+    clearTimeout(skippedTimer);
     try {
       // Inside the try: if this IPC call rejects, we still reach the catch's
       // setState("idle") instead of wedging the pill.
@@ -120,25 +129,49 @@ export function mountWidget(root: HTMLElement) {
     clearTimeout(maxDurationTimer);
   }
 
+  function showSkippedHint() {
+    setState("skipped");
+    skippedTimer = window.setTimeout(() => {
+      if (state === "skipped") setState("idle");
+    }, SKIPPED_HINT_MS);
+  }
+
   async function finishRecording() {
     if (state !== "recording") return;
     stopWave();
     setState("processing");
     try {
       const settings = await window.typeless.getSettings();
-      if (settings.playSound) beep(440);
       const { buffer, mimeType } = await recorder.stop();
       const durationMs = Date.now() - recordStartedAt;
+      // Nothing said (or an accidental double-tap): skip the API entirely so
+      // Whisper can't hallucinate text out of silence.
+      if (isSilentRecording(recorder.peakLevel, durationMs)) {
+        if (settings.playSound) beep(220);
+        showSkippedHint();
+        return;
+      }
+      if (settings.playSound) beep(440);
       await window.typeless.runTranscription(buffer, mimeType, durationMs, pendingMode);
     } catch (err) {
       console.error(err);
     } finally {
-      setState("idle");
+      // Cast: TS narrowed `state` to "recording" at the top of the function
+      // and can't see that setState() reassigns it. "skipped" must survive so
+      // its hint timer, not this block, hides the pill.
+      if ((state as RecorderState) === "processing") setState("idle");
     }
   }
 
+  function cancelRecording() {
+    if (state !== "recording") return;
+    stopWave();
+    recorder.cancel();
+    setState("idle");
+  }
+
   function toggleFromHotkey(mode: RecordingMode) {
-    if (state === "idle") {
+    if (state === "idle" || state === "skipped") {
       pendingMode = mode;
       beginRecording();
     } else if (state === "recording") {
@@ -147,4 +180,5 @@ export function mountWidget(root: HTMLElement) {
   }
 
   window.typeless.onToggleRecording(toggleFromHotkey);
+  window.typeless.onCancelRecording(cancelRecording);
 }

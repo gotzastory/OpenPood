@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getRendererSettings, getSettings, setSettings, type AppSettings } from './config';
@@ -18,9 +18,16 @@ import { LlmError } from './llm';
 import { polishText } from './polish';
 import { stripFillers } from './stripFillers';
 import { translateText } from './translate';
-import { getActiveAppCategory } from './activeWindow';
+import { categoryForProcess } from './activeWindow';
+import {
+  disposeWinHost,
+  getForegroundWindow,
+  warmWinHost,
+  type ForegroundWindow,
+} from './winHost';
 
 type RecordingMode = 'dictate' | 'translate';
+type WidgetState = 'idle' | 'recording' | 'processing' | 'skipped';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,12 +57,26 @@ let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
+// Foreground window captured at the most recent hotkey press — that is the
+// window the user expects the text to land in. Refreshed on every press so the
+// stop press wins; on max-duration auto-stop the start press remains.
+let foregroundAtHotkey: Promise<ForegroundWindow | null> = Promise.resolve(null);
+
+// Bottom-center of whichever monitor the cursor is on, not just the primary.
 function widgetBounds() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { x, y, width, height } = screen.getDisplayNearestPoint(
+    screen.getCursorScreenPoint(),
+  ).workArea;
   return {
-    x: Math.round((width - WIDGET_WIDTH) / 2),
-    y: height - WIDGET_HEIGHT - 16,
+    x: x + Math.round((width - WIDGET_WIDTH) / 2),
+    y: y + height - WIDGET_HEIGHT - 16,
   };
+}
+
+function moveWidgetToCursorDisplay() {
+  if (!widget) return;
+  const { x, y } = widgetBounds();
+  widget.setPosition(x, y);
 }
 
 function createWidget() {
@@ -149,7 +170,12 @@ function registerHotkeys(settings: AppSettings) {
   for (const [accelerator, mode] of bindings) {
     if (!accelerator) continue;
     const ok = globalShortcut.register(accelerator, () => {
+      moveWidgetToCursorDisplay();
       widget?.webContents.send('hotkey:toggle-recording', mode);
+      // Widget is focusable:false, so the press never moves focus — whatever
+      // is in front right now is the paste target. Not awaited: the host
+      // answers in a few ms and transcription:run picks the promise up later.
+      foregroundAtHotkey = getForegroundWindow().catch(() => null);
     });
     if (!ok) {
       console.error(`Failed to register hotkey (${mode}): ${accelerator}`);
@@ -157,7 +183,22 @@ function registerHotkeys(settings: AppSettings) {
   }
 }
 
+// Escape is grabbed system-wide ONLY while the mic is open (the widget reports
+// its state), so other apps keep their Escape the rest of the time.
+function setEscapeCancel(enabled: boolean) {
+  if (enabled) {
+    if (globalShortcut.isRegistered('Escape')) return;
+    const ok = globalShortcut.register('Escape', () => {
+      widget?.webContents.send('hotkey:cancel-recording');
+    });
+    if (!ok) console.error('Failed to register Escape as cancel key');
+  } else {
+    globalShortcut.unregister('Escape');
+  }
+}
+
 app.whenReady().then(() => {
+  warmWinHost();
   createWidget();
   createTray();
   registerHotkeys(getSettings());
@@ -193,6 +234,12 @@ app.whenReady().then(() => {
     createMainWindow(ALLOWED_ROUTES.has(route) ? route : '/'),
   );
 
+  ipcMain.on('recording:state', (e, state: unknown) => {
+    // Only the widget drives the global Escape grab.
+    if (!widget || e.sender !== widget.webContents) return;
+    setEscapeCancel(state === ('recording' satisfies WidgetState));
+  });
+
   ipcMain.handle(
     'transcription:run',
     async (
@@ -211,6 +258,7 @@ app.whenReady().then(() => {
       }
       const settings = getSettings();
       const mode = payload.mode === 'translate' ? 'translate' : 'dictate';
+      const target = await foregroundAtHotkey;
       try {
         const bias = dictionaryPrompt();
         let text = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
@@ -231,18 +279,49 @@ app.whenReady().then(() => {
           text = await translateText(text, settings);
         } else {
           if (settings.aiPolishEnabled) {
-            const category = await getActiveAppCategory();
-            text = await polishText(text, settings, category);
+            text = await polishText(text, settings, categoryForProcess(target?.processName ?? ''));
           }
           // After polish: AI cleanup used to run after corrections and could
           // undo exact replacements the user configured (e.g. "บอก" → "or").
           text = applyCorrections(text);
         }
 
-        await pasteAtCursor(text);
+        // The request can take seconds; if the user alt-tabbed meanwhile, a
+        // blind Ctrl+V would land in the wrong app. Leave it on the clipboard
+        // instead and say so.
+        const now = await getForegroundWindow().catch(() => null);
+        const hasTarget = !!target && target.hwnd !== '0' && target.hwnd !== '';
+        if (hasTarget && now && now.hwnd !== target.hwnd) {
+          clipboard.writeText(text);
+          if (Notification.isSupported()) {
+            new Notification({
+              title: 'หน้าต่างเปลี่ยนไป',
+              body: 'คัดลอกข้อความไว้ใน clipboard แล้ว กด Ctrl+V เพื่อวาง',
+            }).show();
+          }
+          addHistoryEntry(text, payload.durationMs);
+          mainWindow?.webContents.send('history:updated');
+          return { ok: true as const, text, pasted: false };
+        }
+
+        let pasted = true;
+        try {
+          await pasteAtCursor(text);
+        } catch (err) {
+          // Text is still on the clipboard (pasteAtCursor does not restore on
+          // failure) — tell the user instead of dropping the dictation.
+          console.error('Paste failed:', err);
+          pasted = false;
+          if (Notification.isSupported()) {
+            new Notification({
+              title: 'วางข้อความไม่สำเร็จ',
+              body: 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง',
+            }).show();
+          }
+        }
         addHistoryEntry(text, payload.durationMs);
         mainWindow?.webContents.send('history:updated');
-        return { ok: true as const, text };
+        return { ok: true as const, text, pasted };
       } catch (err) {
         const message =
           err instanceof TranscriptionError || err instanceof LlmError ? err.message : String(err);
@@ -296,4 +375,5 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  disposeWinHost();
 });

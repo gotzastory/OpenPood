@@ -1,6 +1,3 @@
-import { execFile } from 'node:child_process';
-import { POWERSHELL_EXE } from './powershell';
-
 export type AppCategory = 'email' | 'chat' | 'code' | 'browser' | 'general';
 
 // Matched against the foreground process name (lowercased, no .exe) via
@@ -29,41 +26,12 @@ const CATEGORY_BY_PROCESS_HINT: [string, AppCategory][] = [
   ['brave', 'browser'],
 ];
 
-// Reads the process name owning the foreground window via a small inline
-// Win32 P/Invoke script — same PowerShell-shell-out approach as pasteText.ts,
-// avoiding native modules whose prebuilt binaries drift from the Electron ABI.
-function getForegroundProcessName(): Promise<string> {
-  return new Promise((resolve) => {
-    const script = `
-$sig = @"
-using System;
-using System.Runtime.InteropServices;
-public class Win32 {
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-}
-"@
-Add-Type -TypeDefinition $sig
-$hwnd = [Win32]::GetForegroundWindow()
-$procId = 0
-[Win32]::GetWindowThreadProcessId($hwnd, [ref]$procId) | Out-Null
-(Get-Process -Id $procId -ErrorAction SilentlyContinue).ProcessName
-`.trim();
-    execFile(
-      POWERSHELL_EXE,
-      ['-NoProfile', '-NonInteractive', '-Command', script],
-      (error, stdout) => {
-        if (error) resolve('');
-        else resolve(stdout.trim().toLowerCase());
-      },
-    );
-  });
-}
-
-export async function getActiveAppCategory(): Promise<AppCategory> {
-  const processName = await getForegroundProcessName().catch(() => '');
+// The process name itself comes from winHost.ts `getForegroundWindow()`,
+// captured at hotkey press so this never costs a round-trip on the hot path.
+export function categoryForProcess(processName: string): AppCategory {
+  const name = processName.toLowerCase();
   for (const [hint, category] of CATEGORY_BY_PROCESS_HINT) {
-    if (processName.includes(hint)) return category;
+    if (name.includes(hint)) return category;
   }
   return 'general';
 }

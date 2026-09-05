@@ -7,7 +7,12 @@ export interface TranscribeResult {
   ok: boolean;
   text?: string;
   error?: string;
+  /** false when the foreground window changed mid-request and the text was
+   * left on the clipboard instead of pasted. */
+  pasted?: boolean;
 }
+
+export type WidgetState = 'idle' | 'recording' | 'processing' | 'skipped';
 
 export interface HistoryStats {
   sessions: number;
@@ -36,6 +41,15 @@ const api = {
     const listener = (_e: unknown, mode: RecordingMode) => callback(mode ?? 'dictate');
     ipcRenderer.on('hotkey:toggle-recording', listener);
     return () => ipcRenderer.removeListener('hotkey:toggle-recording', listener);
+  },
+  onCancelRecording: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('hotkey:cancel-recording', listener);
+    return () => ipcRenderer.removeListener('hotkey:cancel-recording', listener);
+  },
+  // Lets main register Escape as a cancel key only while actually recording.
+  setRecordingState: (state: WidgetState): void => {
+    ipcRenderer.send('recording:state', state);
   },
   onNavigate: (callback: (route: string) => void) => {
     const listener = (_e: unknown, route: string) => callback(route);
