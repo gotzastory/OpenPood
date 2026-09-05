@@ -177,7 +177,18 @@ npm install
 npm run dist
 ```
 
-ได้ไฟล์ `release/OpenPud Setup 0.1.1.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
+ได้ไฟล์ `release/OpenPud Setup 0.2.0.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
+
+### ปล่อย Release ผ่าน GitHub Actions
+
+Workflow [`.github/workflows/release.yml`](./.github/workflows/release.yml) จะ build ตัวติดตั้งบน `windows-latest` แล้วแนบไฟล์ `.exe` เข้า GitHub Release ให้อัตโนมัติเมื่อ push tag รูปแบบ `v*`:
+
+```bash
+npm version 0.2.1 --no-git-tag-version   # bump เวอร์ชันใน package.json
+git commit -am "chore: release v0.2.1"
+git tag v0.2.1
+git push origin main --tags
+```
 
 ### สถาปัตยกรรมโดยย่อ
 
@@ -200,6 +211,7 @@ Electron แยก 2 โปรเซส คุยกันผ่าน `contextB
 | ข้อความไม่วางลงแอปเป้าหมาย | คลิกโฟกัสช่องพิมพ์ก่อนกดปุ่มลัด — แอปวางด้วย Ctrl+V ผ่านคลิปบอร์ด |
 | SmartScreen บล็อกตัวติดตั้ง | More info → Run anyway (ดูส่วนติดตั้งด้านบน) |
 | `npm run dist` ขึ้น EPERM | ปิด `npm run dev` / ปิด OpenPud ที่เปิดอยู่ แล้วลบโฟลเดอร์ `release/` ก่อน build ใหม่ |
+| EPERM ตอน rename `win-unpacked.tmp` ทั้งที่ไม่มีอะไรรัน | VS Code file watcher ถือ handle ของโฟลเดอร์ใน workspace — build ออกนอก workspace: `npx electron-builder --config.directories.output=%TEMP%\openpud-release` หรือใส่ `release/**` ใน `files.watcherExclude` |
 
 ---
 

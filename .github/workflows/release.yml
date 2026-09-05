@@ -1,0 +1,61 @@
+name: Release
+
+# Builds the Windows NSIS installer and attaches it to a GitHub Release
+# whenever a version tag (v1.2.3) is pushed. Can also be run by hand from
+# the Actions tab to produce a build artifact without publishing.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck + unit tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build installer
+        run: npm run dist
+        env:
+          # electron-builder auto-publishes when it sees GH_TOKEN; we publish
+          # explicitly below so the release notes are under our control.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenPud-Setup-${{ github.ref_name }}
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "OpenPud ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            release/*.exe release/*.exe.blockmap release/latest.yml

@@ -1,7 +1,9 @@
 {
   "name": "OpenPud",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
+  "description": "Voice dictation for Windows: hold a hotkey, speak, and the text is pasted at your cursor.",
+  "author": "Gotzastory",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
