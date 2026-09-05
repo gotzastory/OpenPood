@@ -12,7 +12,7 @@
     "test": "vitest run",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder --publish never"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

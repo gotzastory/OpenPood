@@ -16,9 +16,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -31,11 +31,12 @@ jobs:
           npm run typecheck
           npm test
 
+      # `npm run dist` passes --publish never: electron-builder otherwise
+      # auto-publishes when it detects a git tag and fails without GH_TOKEN.
+      # We publish explicitly below so the release notes stay under our control.
       - name: Build installer
         run: npm run dist
         env:
-          # electron-builder auto-publishes when it sees GH_TOKEN; we publish
-          # explicitly below so the release notes are under our control.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Upload build artifact
