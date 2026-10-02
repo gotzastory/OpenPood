@@ -1,17 +1,3 @@
-import { escapeHtml } from "./escape";
-
-export function renderHotkeyBadges(hotkey: string): string {
-  // Hotkey is free text persisted from settings/onboarding — escape it, or a
-  // crafted value becomes stored XSS on the Home page.
-  return hotkey
-    .split("+")
-    .map(
-      (k) =>
-        `<kbd class="rounded-md border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-semibold text-base-content/75 shadow-[0_1px_0_var(--color-base-300)]">${escapeHtml(k.trim())}</kbd>`,
-    )
-    .join("");
-}
-
 const MODIFIER_KEYS = ["Control", "Alt", "Shift", "Meta"];
 
 export function acceleratorFromEvent(e: KeyboardEvent): string | null {

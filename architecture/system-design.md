@@ -30,7 +30,7 @@ Electron main process
 ```
 
 - All renderer surfaces share `index.html`; `src/main.ts` selects the surface from the URL hash.
-- The dashboard shell and navigation use React. Dashboard pages currently mount through a small compatibility boundary so they can migrate incrementally; onboarding and the widget remain DOM-based.
+- The dashboard shell, navigation, Home, History, and Dictionary use React. Settings currently mounts through a small compatibility boundary; onboarding and the widget remain DOM-based.
 - The widget is transparent, always on top, mouse-transparent, and non-focusable.
 - The dashboard is a single normal window opened from the tray. Reopening it focuses the existing instance and sends a navigation event.
 - `electron/preload.ts` is the only renderer-to-main bridge. Keep its API synchronized with `src/types.d.ts`.
