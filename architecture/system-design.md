@@ -29,7 +29,7 @@ Electron main process
             +--> Long-lived PowerShell host --> Win32 foreground window / Ctrl+V
 ```
 
-- All renderer surfaces share `index.html`; `src/main.ts` selects the surface from the URL hash.
+- All renderer surfaces share `index.html`; `src/app/main.ts` selects the surface from the URL hash.
 - The dashboard shell, navigation, Home, History, and Dictionary use React. Settings currently mounts through a small compatibility boundary; onboarding and the widget remain DOM-based.
 - The widget is transparent, always on top, mouse-transparent, and non-focusable.
 - The dashboard is a single normal window opened from the tray. Reopening it focuses the existing instance and sends a navigation event.
@@ -96,6 +96,7 @@ Global hotkey
 - New windows and external navigation are denied.
 - Dashboard routes are allowlisted before crossing IPC.
 - IPC inputs are treated as untrusted: settings keys/types, collections, routes, audio shape, and audio size are validated in main.
+- IPC handlers also authorize the sender by capability: dashboard-only data APIs reject the widget, transcription rejects the dashboard, and unknown renderer senders are rejected.
 - Server-controlled error text is length-limited before reaching logs or native notifications.
 
 ## Failure behavior

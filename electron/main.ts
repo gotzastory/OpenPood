@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray, type WebContents } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getRendererSettings, getSettings, setSettings, type AppSettings } from './config';
@@ -40,7 +40,7 @@ const WIDGET_HEIGHT = 90;
 // renderer, so the main process must not trust the payload size.
 const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 
-// Routes the dashboard window may be opened at (must match src/shell.tsx).
+// Routes the dashboard window may be opened at (must match src/app/shell.tsx).
 const ALLOWED_ROUTES = new Set(['/', '/history', '/dictionary', '/settings', '/onboarding']);
 
 // Both windows only ever show our own bundle; any other navigation target or
@@ -56,6 +56,24 @@ function hardenWindow(win: BrowserWindow) {
 let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+
+type RendererCapability = 'main' | 'widget' | 'either';
+
+function isTrustedRenderer(sender: WebContents, capability: RendererCapability): boolean {
+  const isMain = sender === mainWindow?.webContents;
+  const isWidget = sender === widget?.webContents;
+  return capability === 'main'
+    ? isMain
+    : capability === 'widget'
+      ? isWidget
+      : isMain || isWidget;
+}
+
+function requireRenderer(event: { sender: WebContents }, capability: RendererCapability): void {
+  if (!isTrustedRenderer(event.sender, capability)) {
+    throw new Error('unauthorized renderer');
+  }
+}
 
 // Foreground window captured at the most recent hotkey press — that is the
 // window the user expects the text to land in. Refreshed on every press so the
@@ -218,9 +236,13 @@ app.whenReady().then(() => {
 
   // The plaintext API key never leaves the main process; the renderer only
   // gets `hasApiKey` so the settings page can show a saved-key placeholder.
-  ipcMain.handle('settings:get', () => getRendererSettings());
+  ipcMain.handle('settings:get', (event) => {
+    requireRenderer(event, 'either');
+    return getRendererSettings();
+  });
 
-  ipcMain.handle('settings:set', (_e, partial: Partial<AppSettings>) => {
+  ipcMain.handle('settings:set', (event, partial: Partial<AppSettings>) => {
+    requireRenderer(event, 'main');
     if (typeof partial !== 'object' || partial === null) return getRendererSettings();
     const updated = setSettings(partial);
     if (partial.hotkey !== undefined || partial.translateHotkey !== undefined) {
@@ -230,8 +252,10 @@ app.whenReady().then(() => {
     return getRendererSettings();
   });
 
-  ipcMain.handle('app:open-main-window', (_e, route: string) =>
-    createMainWindow(ALLOWED_ROUTES.has(route) ? route : '/'),
+  ipcMain.handle('app:open-main-window', (event, route: string) => {
+    requireRenderer(event, 'main');
+    createMainWindow(ALLOWED_ROUTES.has(route) ? route : '/');
+  },
   );
 
   ipcMain.on('recording:state', (e, state: unknown) => {
@@ -243,9 +267,10 @@ app.whenReady().then(() => {
   ipcMain.handle(
     'transcription:run',
     async (
-      _e,
+      event,
       payload: { buffer: ArrayBuffer; mimeType: string; durationMs: number; mode?: RecordingMode },
     ) => {
+      requireRenderer(event, 'widget');
       if (
         typeof payload !== 'object' ||
         payload === null ||
@@ -335,28 +360,45 @@ app.whenReady().then(() => {
     },
   );
 
-  ipcMain.handle('history:list', () => listHistory());
-  ipcMain.handle('history:stats', () => historyStats());
-  ipcMain.handle('history:clear', () => {
+  ipcMain.handle('history:list', (event) => {
+    requireRenderer(event, 'main');
+    return listHistory();
+  });
+  ipcMain.handle('history:stats', (event) => {
+    requireRenderer(event, 'main');
+    return historyStats();
+  });
+  ipcMain.handle('history:clear', (event) => {
+    requireRenderer(event, 'main');
     clearHistory();
     return listHistory();
   });
 
-  ipcMain.handle('dictionary:list', () => listDictionaryWords());
-  ipcMain.handle('dictionary:set', (_e, words: unknown) =>
-    setDictionaryWords(Array.isArray(words) ? words.filter((w): w is string => typeof w === 'string') : []),
-  );
-  ipcMain.handle('corrections:list', () => listCorrections());
-  ipcMain.handle('corrections:set', (_e, rules: unknown) =>
-    setCorrections(
+  ipcMain.handle('dictionary:list', (event) => {
+    requireRenderer(event, 'main');
+    return listDictionaryWords();
+  });
+  ipcMain.handle('dictionary:set', (event, words: unknown) => {
+    requireRenderer(event, 'main');
+    return setDictionaryWords(
+      Array.isArray(words) ? words.filter((w): w is string => typeof w === 'string') : [],
+    );
+  });
+  ipcMain.handle('corrections:list', (event) => {
+    requireRenderer(event, 'main');
+    return listCorrections();
+  });
+  ipcMain.handle('corrections:set', (event, rules: unknown) => {
+    requireRenderer(event, 'main');
+    return setCorrections(
       Array.isArray(rules)
         ? rules.filter(
             (r): r is CorrectionRule =>
               typeof r === 'object' && r !== null && typeof r.from === 'string' && typeof r.to === 'string',
           )
         : [],
-    ),
-  );
+    );
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWidget();

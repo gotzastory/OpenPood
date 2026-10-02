@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { icons } from "../icons";
+import { icons } from "../lib/icons";
 import type { CorrectionRule } from "../types";
-import { PAGE_TITLE } from "../uiClasses";
+import { PAGE_TITLE } from "../lib/uiClasses";
 
 function Icon({ svg }: { svg: string }) {
   return <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DashboardNavItem } from "../components/DashboardNavItem";
-import { icons } from "../icons";
+import { icons } from "../lib/icons";
 import { DictionaryPage } from "./dictionary";
 import { HistoryPage } from "./history";
 import { HomePage } from "./home";

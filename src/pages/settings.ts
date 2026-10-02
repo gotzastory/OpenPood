@@ -3,15 +3,15 @@ import {
   OPENROUTER_MODELS,
   GEMINI_MODELS,
   type TranscriptionModel,
-} from "../transcriptionModels";
+} from "../lib/transcriptionModels";
 import {
   BTN_PRIMARY,
   PAGE_TITLE,
   FIELD_LABEL,
   FIELD_INPUT,
   FIELD_SELECT,
-} from "../uiClasses";
-import { escapeHtml } from "../escape";
+} from "../lib/uiClasses";
+import { escapeHtml } from "../lib/escape";
 
 async function listMicDevices(): Promise<MediaDeviceInfo[]> {
   try {

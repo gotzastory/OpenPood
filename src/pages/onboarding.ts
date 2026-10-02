@@ -36,7 +36,7 @@ const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
   openai: "gpt-4o-mini",
 };
 
-import { escapeHtml } from "../escape";
+import { escapeHtml } from "../lib/escape";
 
 const TOTAL_STEPS = 4;
 

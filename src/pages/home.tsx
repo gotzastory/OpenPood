@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { acceleratorFromEvent } from "../hotkey";
-import { icons } from "../icons";
+import { acceleratorFromEvent } from "../lib/hotkey";
+import { icons } from "../lib/icons";
 import type { AppSettings, HistoryStats } from "../types";
-import { BTN, BTN_PRIMARY } from "../uiClasses";
+import { BTN, BTN_PRIMARY } from "../lib/uiClasses";
 
 interface UseCase {
   name: string;

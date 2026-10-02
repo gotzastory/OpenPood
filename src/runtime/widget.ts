@@ -1,5 +1,5 @@
 import { isSilentRecording, MicRecorder, type RecorderState } from "./recorder";
-import type { RecordingMode } from "./types";
+import type { RecordingMode } from "../types";
 
 const BAR_COUNT = 24;
 // How long the "ไม่ได้ยินเสียง" hint stays up before the pill hides again.

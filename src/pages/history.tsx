@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { icons } from "../icons";
+import { icons } from "../lib/icons";
 import type { HistoryEntry } from "../types";
-import { BTN, EMPTY_STATE, PAGE_TITLE } from "../uiClasses";
+import { BTN, EMPTY_STATE, PAGE_TITLE } from "../lib/uiClasses";
 
 function Icon({ svg }: { svg: string }) {
   return <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
