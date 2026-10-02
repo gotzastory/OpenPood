@@ -130,7 +130,7 @@ export function DashboardPage() {
         </div>
       </aside>
       <main
-        className="dashboard-scrollbar min-w-0 flex-1 overflow-y-auto px-6 py-8 lg:px-10 lg:py-10"
+        className="dashboard-scrollbar min-w-0 flex-1 overflow-y-auto px-6 py-8 outline-none lg:px-10 lg:py-10"
         id="content"
         tabIndex={-1}
       >
