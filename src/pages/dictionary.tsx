@@ -1,11 +1,10 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
 import { icons } from "../lib/icons";
 import type { CorrectionRule } from "../types";
 import { PAGE_TITLE } from "../lib/uiClasses";
-
-function Icon({ svg }: { svg: string }) {
-  return <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
-}
+import { CorrectionRule as CorrectionRuleItem } from "../components/CorrectionRule";
+import { DictionaryWord } from "../components/DictionaryWord";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -143,17 +142,7 @@ export function DictionaryPage() {
               <div className="w-full py-10 text-center text-sm text-base-content/65">ยังไม่มีคำในพจนานุกรม</div>
             ) : (
               words.map((word) => (
-                <span key={word} className="badge badge-outline badge-lg h-auto max-w-full gap-1.5 py-1 pr-1 pl-3 text-[13px]">
-                  <span className="break-words">{word}</span>
-                  <button
-                    type="button"
-                    aria-label={`ลบคำ ${word}`}
-                    className="btn btn-circle btn-ghost btn-sm min-h-8 w-8 shrink-0 [&_svg]:h-3 [&_svg]:w-3"
-                    onClick={() => void removeWord(word)}
-                  >
-                    <Icon svg={icons.x} />
-                  </button>
-                </span>
+                <DictionaryWord key={word} word={word} onRemove={() => void removeWord(word)} />
               ))
             )}
           </div>
@@ -195,21 +184,13 @@ export function DictionaryPage() {
             <li className="py-10 text-center text-sm text-base-content/65">กำลังโหลด...</li>
           ) : corrections.length === 0 ? (
             <li className="py-10 text-center text-sm text-base-content/65">ยังไม่มี correction rule</li>
-          ) : (
+            ) : (
             corrections.map((correction, index) => (
-              <li key={`${correction.from}:${correction.to}:${index}`} className="list-row items-center gap-3 border-b border-base-200 px-3.5 py-2.5 text-[13px] last:border-b-0">
-                <span className="min-w-0 break-words">{correction.from}</span>
-                <span className="text-base-content/25" aria-hidden="true">→</span>
-                <span className="list-col-grow min-w-0 break-words font-medium">{correction.to}</span>
-                <button
-                  type="button"
-                  aria-label={`ลบ correction rule ${correction.from} ไป ${correction.to}`}
-                  className="btn btn-circle btn-ghost btn-sm min-h-8 w-8 [&_svg]:h-3 [&_svg]:w-3"
-                  onClick={() => void removeCorrection(index)}
-                >
-                  <Icon svg={icons.x} />
-                </button>
-              </li>
+              <CorrectionRuleItem
+                key={`${correction.from}:${correction.to}:${index}`}
+                correction={correction}
+                onRemove={() => void removeCorrection(index)}
+              />
             ))
           )}
         </ul>
