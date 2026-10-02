@@ -1,4 +1,20 @@
 @import 'tailwindcss';
+@plugin "daisyui" {
+  themes: light --default;
+  include: rootcolor, properties, button, input, badge, list, alert;
+  logs: false;
+}
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  --color-neutral: #171717;
+  --color-neutral-content: #ffffff;
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --depth: 0;
+  --noise: 0;
+}
 
 @layer components {
   .icon {

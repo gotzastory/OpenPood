@@ -45,6 +45,7 @@ The widget is a transient status indicator, not an interactive control.
 ## Implementation rules
 
 - Use Tailwind CSS v4 utilities in existing template strings.
+- Use daisyUI 5 components and semantic colors for dashboard controls; keep its plugin and light theme scoped to `src/dashboard.css`.
 - Keep route-specific CSS in `src/dashboard.css` and `src/onboarding.css`; shared reset/runtime styling stays in `src/style.css`.
 - Reuse `src/uiClasses.ts` before duplicating a multi-utility class group.
 - Keep the existing DOM/template architecture; do not add React-only UI libraries.

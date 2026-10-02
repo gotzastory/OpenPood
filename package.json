@@ -19,6 +19,7 @@
     "@types/node": "^26.1.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
+    "daisyui": "^5.7.47",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "tailwindcss": "^4.3.3",
