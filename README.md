@@ -4,7 +4,7 @@
 
 โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
 
-สร้างด้วย Electron + TypeScript + Vite + Tailwind CSS v4 + DaisyUI
+สร้างด้วย Electron + React + TypeScript + Vite + Tailwind CSS v4 + DaisyUI
 
 **[ดาวน์โหลดตัวติดตั้งล่าสุด](https://github.com/gotzastory/OpenPud/releases/latest)** · [Releases ทั้งหมด](https://github.com/gotzastory/OpenPud/releases)
 
@@ -200,7 +200,7 @@ git push origin "v$version"
 Electron แยก 2 โปรเซส คุยกันผ่าน `contextBridge` (`electron/preload.ts`) เท่านั้น — `contextIsolation: true`, `nodeIntegration: false`
 
 - **`electron/`** — main process: หน้าต่าง widget + dashboard, global hotkey, tray, ถอดเสียง, วางข้อความ, persistence
-- **`src/`** — renderer: floating pill, อัดเสียง, dashboard (Home / History / Dictionary / Settings), onboarding
+- **`src/`** — renderer: React dashboard shell, floating pill, อัดเสียง, dashboard pages และ onboarding
 
 รายละเอียดเชิงลึกอยู่ที่ [`architecture/system-design.md`](./architecture/system-design.md)
 

@@ -48,7 +48,8 @@ The widget is a transient status indicator, not an interactive control.
 - Use daisyUI 5 components and semantic colors for dashboard controls; keep its plugin and light theme scoped to `src/dashboard.css`.
 - Keep route-specific CSS in `src/dashboard.css` and `src/onboarding.css`; shared reset/runtime styling stays in `src/style.css`.
 - Reuse `src/uiClasses.ts` before duplicating a multi-utility class group.
-- Keep the existing DOM/template architecture; do not add React-only UI libraries.
+- Use React for the dashboard shell and shared components; legacy page mounts, onboarding, and the widget may migrate incrementally.
+- Do not add React UI libraries on top of daisyUI without a product reason.
 - Use CSS for visual states and motion; use JavaScript only when state or behavior requires it.
 - Keep motion brief and purposeful. Respect `prefers-reduced-motion` when adding or changing animation.
 

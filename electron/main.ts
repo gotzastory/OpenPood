@@ -40,7 +40,7 @@ const WIDGET_HEIGHT = 90;
 // renderer, so the main process must not trust the payload size.
 const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 
-// Routes the dashboard window may be opened at (must match src/shell.ts).
+// Routes the dashboard window may be opened at (must match src/shell.tsx).
 const ALLOWED_ROUTES = new Set(['/', '/history', '/dictionary', '/settings', '/onboarding']);
 
 // Both windows only ever show our own bundle; any other navigation target or

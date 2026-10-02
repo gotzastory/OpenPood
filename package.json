@@ -17,6 +17,9 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "daisyui": "^5.7.47",
@@ -30,7 +33,9 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "electron-store": "^11.0.2"
+    "electron-store": "^11.0.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "build": {
     "appId": "com.openpud.app",
