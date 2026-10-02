@@ -3,6 +3,7 @@ import Store from 'electron-store';
 export interface HistoryEntry {
   id: string;
   text: string;
+  model: string;
   timestamp: number;
   durationMs: number;
   wordCount: number;
@@ -19,10 +20,11 @@ const historyStore = new Store<HistorySchema>({
 
 const MAX_ENTRIES = 500;
 
-export function addHistoryEntry(text: string, durationMs: number): HistoryEntry {
+export function addHistoryEntry(text: string, durationMs: number, model: string): HistoryEntry {
   const entry: HistoryEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     text,
+    model,
     timestamp: Date.now(),
     durationMs,
     wordCount: text.trim() ? text.trim().split(/\s+/).length : 0,

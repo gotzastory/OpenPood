@@ -35,6 +35,7 @@ export type WidgetState = "idle" | "recording" | "processing" | "skipped";
 export interface HistoryEntry {
   id: string;
   text: string;
+  model: string;
   timestamp: number;
   durationMs: number;
   wordCount: number;

@@ -114,6 +114,9 @@ export function HistoryPage() {
                 <div className="card-body gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/65">
                     <span>{new Date(entry.timestamp).toLocaleString("th-TH")}</span>
+                    <span className="max-w-full break-all font-mono text-base-content/80">
+                      {entry.model || "ไม่ระบุโมเดล"}
+                    </span>
                     <span>{entry.wordCount} คำ</span>
                     <span>{(entry.durationMs / 1000).toFixed(1)}s</span>
                     <button

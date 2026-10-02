@@ -324,7 +324,7 @@ app.whenReady().then(() => {
               body: 'คัดลอกข้อความไว้ใน clipboard แล้ว กด Ctrl+V เพื่อวาง',
             }).show();
           }
-          addHistoryEntry(text, payload.durationMs);
+          addHistoryEntry(text, payload.durationMs, settings.model);
           mainWindow?.webContents.send('history:updated');
           return { ok: true as const, text, pasted: false };
         }
@@ -344,7 +344,7 @@ app.whenReady().then(() => {
             }).show();
           }
         }
-        addHistoryEntry(text, payload.durationMs);
+        addHistoryEntry(text, payload.durationMs, settings.model);
         mainWindow?.webContents.send('history:updated');
         return { ok: true as const, text, pasted };
       } catch (err) {
