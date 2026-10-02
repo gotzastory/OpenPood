@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "daisyui": {
+      "source": "saadeghi/daisyui",
+      "sourceType": "github",
+      "skillPath": "skills/daisyui/SKILL.md",
+      "computedHash": "51be9420b195cc8935591595c315d5bca38f889f3750942d816134bd70f72a6b"
+    },
+    "electron": {
+      "source": "TerminalSkills/skills",
+      "sourceType": "github",
+      "skillPath": "skills/electron/SKILL.md",
+      "computedHash": "bc0f689de8e55f45701a45e1ca8f108b3c22a0e391a061db465c5f5f7704d664"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "skillHash": "sha256:071e94076f90fdfc2ce776c5ac4e19566a512786eca8861aba969075860bcec6",
+  "scoredAt": "2026-05-13T08:47:30.761Z",
+  "backend": "subagent",
+  "model": "claude-sonnet-4-6",
+  "quality": {
+    "score": 87,
+    "dimensions": {
+      "clarity": "PASS",
+      "completeness": "WEAK",
+      "conciseness": "PASS",
+      "actionability": "WEAK",
+      "crossPlatform": "PASS",
+      "examples": "PASS"
+    },
+    "issues": [
+      {
+        "severity": "MEDIUM",
+        "category": "completeness",
+        "detail": "The instructions do not cover error handling or edge cases such as IPC failures or file system errors."
+      },
+      {
+        "severity": "MEDIUM",
+        "category": "actionability",
+        "detail": "The instructions lack concrete code snippets or step-by-step procedures that can be directly executed."
+      }
+    ]
+  },
+  "security": {
+    "verdict": "SAFE",
+    "issues": []
+  },
+  "impact": {
+    "baselineAvg": 28,
+    "treatmentAvg": 95,
+    "multiplier": 3.39,
+    "scenarios": [
+      {
+        "name": "Secure file-picker IPC bridge",
+        "baseline": 25,
+        "treatment": 95,
+        "rationale": "Baseline enables nodeIntegration and uses the legacy send/reply pattern; treatment uses contextBridge.exposeInMainWorld plus ipcMain.handle/ipcRenderer.invoke with contextIsolation, sandbox, and CSP as the SKILL prescribes."
+      },
+      {
+        "name": "Auto-update with GitHub Releases",
+        "baseline": 30,
+        "treatment": 95,
+        "rationale": "Baseline confuses the built-in autoUpdater with electron-updater and skips publish config; treatment configures electron-builder publish targets, electron-updater main-process flow, and a renderer progress/restart UI as documented."
+      }
+    ]
+  }
+}
