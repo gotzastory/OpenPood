@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @plugin "daisyui" {
   themes: light --default;
@@ -38,7 +39,17 @@
   --noise: 0;
 }
 
+body {
+  font-family: 'Noto Sans Thai', 'Segoe UI', system-ui, sans-serif;
+}
+
 @layer components {
+  .dictionary-add-button {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
   .icon {
     width: 18px;
     height: 18px;

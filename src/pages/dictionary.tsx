@@ -127,7 +127,11 @@ export function DictionaryPage() {
               placeholder="เช่น OpenPud, TypeScript"
               className="input input-sm min-w-0 flex-1"
             />
-            <button type="submit" className="btn btn-neutral btn-sm" disabled={!words}>
+            <button
+              type="submit"
+              className="dictionary-add-button btn btn-neutral btn-sm"
+              disabled={!words}
+            >
               <Icon svg={icons.plus} />
               <span>เพิ่มคำ</span>
             </button>
