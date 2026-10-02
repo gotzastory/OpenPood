@@ -5,6 +5,7 @@ import { mountHistory } from "./pages/history";
 import { mountDictionary } from "./pages/dictionary";
 import { mountSettings } from "./pages/settings";
 import { icons } from "./icons";
+import { DashboardNavItem } from "./components/DashboardNavItem";
 
 type Route = "/" | "/history" | "/dictionary" | "/settings";
 
@@ -21,9 +22,6 @@ const PAGE_MOUNTS: Record<Route, (root: HTMLElement) => Promise<void>> = {
   "/settings": mountSettings,
 };
 
-const NAV_ITEM_CLASS =
-  "flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg border-none bg-transparent px-3 text-left text-sm text-base-content/65 transition-colors [&_svg]:text-base-content/55 hover:bg-base-300/55 hover:text-base-content focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content/55 data-[active=true]:bg-base-100 data-[active=true]:font-semibold data-[active=true]:text-base-content data-[active=true]:shadow-sm data-[active=true]:[&_svg]:text-base-content";
-
 export function routeFromHash(hash: string): Route {
   const route = hash.replace(/^#/, "") || "/";
   if (
@@ -38,33 +36,6 @@ export function routeFromHash(hash: string): Route {
 
 function Icon({ svg }: { svg: string }) {
   return <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
-}
-
-function NavItem({
-  route,
-  label,
-  icon,
-  active,
-}: {
-  route: Route;
-  label: string;
-  icon: string;
-  active: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      className={NAV_ITEM_CLASS}
-      data-active={active}
-      aria-current={active ? "page" : undefined}
-      onClick={() => {
-        location.hash = route;
-      }}
-    >
-      <Icon svg={icon} />
-      <span>{label}</span>
-    </button>
-  );
 }
 
 function LegacyPage({ route, refreshKey }: { route: Route; refreshKey: number }) {
@@ -144,19 +115,25 @@ function Dashboard() {
         </div>
         <nav className="flex flex-col gap-1" aria-label="หน้าหลัก">
           {NAV_ITEMS.map((item) => (
-            <NavItem
+            <DashboardNavItem
               key={item.route}
-              {...item}
+              label={item.label}
+              icon={item.icon}
               active={item.route === navigation.route}
+              onSelect={() => {
+                location.hash = item.route;
+              }}
             />
           ))}
         </nav>
         <div className="mt-auto border-t border-base-300 pt-3">
-          <NavItem
-            route="/settings"
+          <DashboardNavItem
             label="Settings"
             icon={icons.settings}
             active={navigation.route === "/settings"}
+            onSelect={() => {
+              location.hash = "/settings";
+            }}
           />
         </div>
       </aside>
