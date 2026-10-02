@@ -25,33 +25,45 @@ export async function mountDictionary(root: HTMLElement) {
 
   function render() {
     root.innerHTML = `
-      <h1 class="${PAGE_TITLE} mb-2">Dictionary</h1>
-      <p class="mb-5 text-[13px] text-base-content/55">คำในนี้เป็นแค่ใบ้ Whisper ให้โน้มเอียงมาใช้คำเหล่านี้ — ไม่การันตีว่าจะออกตรงทุกครั้ง ถ้ายังผิดซ้ำ ให้ใช้ Correction rules ด้านล่าง (ดู History ว่ามันถอดเป็นคำอะไรจริงๆ แล้วใส่คำนั้นในช่องซ้าย)</p>
+      <div class="mx-auto max-w-[920px]">
+      <header class="mb-6">
+        <h1 class="${PAGE_TITLE}">Dictionary</h1>
+        <p class="mt-1 max-w-2xl text-sm leading-relaxed text-base-content/65">เพิ่มชื่อคน แบรนด์ และศัพท์เฉพาะเพื่อช่วยให้ระบบเลือกคำได้แม่นขึ้น</p>
+      </header>
       <div id="dictionary-error" role="alert" class="alert alert-error alert-soft mb-4 hidden text-sm"></div>
-      <div class="mb-4.5 flex gap-2">
-        <label for="dict-input" class="sr-only">เพิ่มคำในพจนานุกรม</label>
-        <input id="dict-input" type="text" placeholder="พิมพ์คำแล้วกด Enter" class="input input-sm min-w-0 flex-1" />
-        <button id="add-btn" class="btn btn-neutral btn-sm">${icons.plus}<span>เพิ่ม</span></button>
-      </div>
+      <section class="card card-border bg-base-100" aria-labelledby="dictionary-words-title">
+        <div class="card-body gap-4 p-5">
+          <div>
+            <h2 id="dictionary-words-title" class="text-sm font-semibold">คำที่ต้องการให้รู้จัก</h2>
+            <p class="mt-1 text-[13px] leading-relaxed text-base-content/65">ระบบจะใช้รายการนี้เป็นคำใบ้ ไม่ได้รับประกันว่าผลลัพธ์จะตรงทุกครั้ง</p>
+          </div>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <label for="dict-input" class="sr-only">เพิ่มคำในพจนานุกรม</label>
+            <input id="dict-input" type="text" placeholder="เช่น OpenPud, TypeScript" class="input input-sm min-w-0 flex-1" />
+            <button id="add-btn" class="btn btn-neutral btn-sm">${icons.plus}<span>เพิ่มคำ</span></button>
+          </div>
       <div class="flex flex-wrap gap-2" id="dict-chips">
         ${
           words.length === 0
-            ? `<div class="w-full py-10 text-center text-sm text-base-content/40">ยังไม่มีคำในพจนานุกรม</div>`
+            ? `<div class="w-full py-10 text-center text-sm text-base-content/65">ยังไม่มีคำในพจนานุกรม</div>`
             : words
                 .map(
                   (w) =>
-                    `<span class="badge badge-outline badge-lg h-auto gap-1.5 py-1 pl-3 pr-1 text-[13px]">${escapeHtml(w)}<button data-word="${escapeHtml(w)}" aria-label="ลบคำ ${escapeHtml(w)}" class="btn btn-circle btn-ghost btn-xs [&_svg]:h-[11px] [&_svg]:w-[11px]">${icons.x}</button></span>`,
+                    `<span class="badge badge-outline badge-lg h-auto max-w-full gap-1.5 py-1 pl-3 pr-1 text-[13px]"><span class="break-words">${escapeHtml(w)}</span><button data-word="${escapeHtml(w)}" aria-label="ลบคำ ${escapeHtml(w)}" class="btn btn-circle btn-ghost btn-sm min-h-8 w-8 shrink-0 [&_svg]:h-3 [&_svg]:w-3">${icons.x}</button></span>`,
                 )
                 .join("")
         }
       </div>
+        </div>
+      </section>
 
-      <h2 class="mb-2 mt-7 text-[15px] font-bold">Correction rules</h2>
-      <p class="mb-4.5 text-[13px] text-base-content/55">แทนที่ข้อความหลังถอดเสียงแบบตรงตัว (เช่น Whisper ออก "บอก" → เปลี่ยนเป็น "or") — ช่องซ้ายต้องเหมือนที่ขึ้นใน History เป๊ะ ไม่ใช่คำที่คุณตั้งใจพูด</p>
-      <div class="mb-4.5 flex gap-2">
+      <section class="mt-6" aria-labelledby="corrections-title">
+      <h2 id="corrections-title" class="text-sm font-semibold">Correction rules</h2>
+      <p class="mb-4 mt-1 max-w-2xl text-[13px] leading-relaxed text-base-content/65">แทนที่คำผิดหลังถอดเสียงแบบตรงตัว ช่องซ้ายต้องเหมือนข้อความที่เห็นใน History</p>
+      <div class="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
         <label for="corr-from-input" class="sr-only">คำที่มักถูกแปลงผิด</label>
         <input id="corr-from-input" type="text" placeholder="คำที่มักถูกแปลงผิด" class="input input-sm min-w-0 flex-1" />
-        <span class="flex items-center text-base-content/25" aria-hidden="true">→</span>
+        <span class="hidden items-center text-base-content/35 sm:flex" aria-hidden="true">→</span>
         <label for="corr-to-input" class="sr-only">คำที่ต้องการให้ออกจริง</label>
         <input id="corr-to-input" type="text" placeholder="คำที่ต้องการให้ออกจริง" class="input input-sm min-w-0 flex-1" />
         <button id="add-corr-btn" class="btn btn-neutral btn-sm">${icons.plus}<span>เพิ่ม</span></button>
@@ -59,21 +71,23 @@ export async function mountDictionary(root: HTMLElement) {
       <ul class="list rounded-xl border border-base-300 bg-base-100" id="corr-list">
         ${
           corrections.length === 0
-            ? `<li class="py-10 text-center text-sm text-base-content/40">ยังไม่มี correction rule</li>`
+            ? `<li class="py-10 text-center text-sm text-base-content/65">ยังไม่มี correction rule</li>`
             : corrections
                 .map(
                   (c, i) => `
               <li class="list-row items-center gap-3 border-b border-base-200 px-3.5 py-2.5 text-[13px] last:border-b-0">
-                <span class="min-w-0 truncate">${escapeHtml(c.from)}</span>
+                <span class="min-w-0 break-words">${escapeHtml(c.from)}</span>
                 <span class="text-base-content/25" aria-hidden="true">→</span>
-                <span class="list-col-grow min-w-0 truncate font-medium">${escapeHtml(c.to)}</span>
-                <button data-index="${i}" aria-label="ลบ correction rule ${escapeHtml(c.from)} ไป ${escapeHtml(c.to)}" class="btn btn-circle btn-ghost btn-xs [&_svg]:h-[11px] [&_svg]:w-[11px]">${icons.x}</button>
+                <span class="list-col-grow min-w-0 break-words font-medium">${escapeHtml(c.to)}</span>
+                <button data-index="${i}" aria-label="ลบ correction rule ${escapeHtml(c.from)} ไป ${escapeHtml(c.to)}" class="btn btn-circle btn-ghost btn-sm min-h-8 w-8 [&_svg]:h-3 [&_svg]:w-3">${icons.x}</button>
               </li>
             `,
                 )
                 .join("")
         }
       </ul>
+      </section>
+      </div>
     `;
 
     if (loadError) {

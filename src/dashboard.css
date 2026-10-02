@@ -1,17 +1,39 @@
 @import 'tailwindcss';
 @plugin "daisyui" {
   themes: light --default;
-  include: rootcolor, properties, button, input, badge, list, alert;
+  include: rootcolor, properties, button, input, select, toggle, badge, list, alert, card, modal, menu;
   logs: false;
 }
 @plugin "daisyui/theme" {
   name: "light";
   default: true;
-  --color-neutral: #171717;
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #f6f6f3;
+  --color-base-300: #e4e4df;
+  --color-base-content: #20201e;
+  --color-primary: #1f1f1d;
+  --color-primary-content: #ffffff;
+  --color-secondary: #6b6b66;
+  --color-secondary-content: #ffffff;
+  --color-accent: #deded8;
+  --color-accent-content: #20201e;
+  --color-neutral: #1f1f1d;
   --color-neutral-content: #ffffff;
+  --color-info: #2563eb;
+  --color-info-content: #ffffff;
+  --color-success: #15803d;
+  --color-success-content: #ffffff;
+  --color-warning: #a16207;
+  --color-warning-content: #ffffff;
+  --color-error: #b91c1c;
+  --color-error-content: #ffffff;
   --radius-selector: 2rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
   --depth: 0;
   --noise: 0;
 }
@@ -21,5 +43,11 @@
     width: 18px;
     height: 18px;
     flex-shrink: 0;
+  }
+
+  .dashboard-scrollbar {
+    scrollbar-color: color-mix(in oklab, var(--color-base-content) 18%, transparent)
+      transparent;
+    scrollbar-width: thin;
   }
 }

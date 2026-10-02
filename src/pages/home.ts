@@ -69,49 +69,62 @@ export async function mountHome(root: HTMLElement) {
   const stats = await window.typeless.historyStats();
 
   root.innerHTML = `
-    <div class="flex items-start gap-8">
-      <div class="min-w-0 flex-1">
-        <h1 class="mb-6 text-[38px] font-extrabold tracking-tight">พูดไปเลย, ไม่ต้องพิม</h1>
+    <div class="mx-auto max-w-[1120px]">
+      <header class="mb-7">
+        <h1 class="text-[32px] font-bold tracking-[-0.025em]">พูดไปเลย ไม่ต้องพิมพ์</h1>
+        <p class="mt-1.5 max-w-2xl text-sm leading-relaxed text-base-content/65">ใช้ปุ่มลัดจากแอปไหนก็ได้ พูดให้จบ แล้ว OpenPud จะวางข้อความตรงตำแหน่งที่คุณกำลังพิมพ์</p>
+      </header>
 
-        <div class="mb-7 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+      <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <section aria-labelledby="modes-title">
+          <h2 id="modes-title" class="mb-3 text-sm font-semibold">โหมดพร้อมใช้</h2>
+          <div class="list overflow-hidden rounded-xl border border-base-300 bg-base-100">
           ${MODES.map(
             (m) => `
-            <div class="relative flex items-center gap-3.5 border-b border-neutral-100 px-5 py-4 last:border-b-0">
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-neutral-100 text-neutral-600 [&_svg]:h-[18px] [&_svg]:w-[18px]">${m.icon}</div>
-              <div class="min-w-0 flex-1">
-                <h3 class="text-[15px] font-medium">${m.name}</h3>
-                <p class="text-[13px] text-neutral-400">${m.desc}</p>
+            <div class="list-row items-center gap-3 border-b border-base-200 px-4 py-3.5 last:border-b-0">
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/65 [&_svg]:h-[18px] [&_svg]:w-[18px]" aria-hidden="true">${m.icon}</div>
+              <div class="list-col-grow min-w-0">
+                <h3 class="text-sm font-semibold">${m.name}</h3>
+                <p class="mt-0.5 text-[13px] leading-relaxed text-base-content/65">${m.desc}</p>
               </div>
               <div id="hotkey-badges-${m.settingsKey}" class="flex shrink-0 gap-1.5">${renderHotkeyBadges(settings[m.settingsKey])}</div>
-              <button type="button" data-configure-key="${m.settingsKey}" data-configure-name="${m.name}" aria-label="ตั้งค่าคีย์ลัด ${m.name}" title="ตั้งค่าคีย์ลัด" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 [&_svg]:h-4 [&_svg]:w-4">${icons.settings}</button>
+              <button type="button" data-configure-key="${m.settingsKey}" data-configure-name="${m.name}" aria-label="ตั้งค่าคีย์ลัด ${m.name}" title="ตั้งค่าคีย์ลัด" class="btn btn-square btn-ghost btn-sm shrink-0 [&_svg]:h-4 [&_svg]:w-4">${icons.settings}</button>
             </div>
           `,
           ).join("")}
-        </div>
+          </div>
+        </section>
 
-        <h2 class="mb-3.5 text-[15px] font-bold">Popular use cases</h2>
-        <div class="grid grid-cols-3 gap-3.5">
+        <aside class="card card-border bg-base-100" aria-labelledby="stats-title">
+          <div class="card-body gap-4 p-4">
+            <h2 id="stats-title" class="text-sm font-semibold">การใช้งานของคุณ</h2>
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-5">
+              <div><dt class="text-xs text-base-content/65">เวลาที่ใช้พูด</dt><dd class="mt-1 text-xl font-semibold tabular-nums">${stats.totalMinutes}<span class="ml-1 text-xs font-normal text-base-content/65">min</span></dd></div>
+              <div><dt class="text-xs text-base-content/65">จำนวนคำ</dt><dd class="mt-1 text-xl font-semibold tabular-nums">${stats.totalWords}</dd></div>
+              <div><dt class="text-xs text-base-content/65">ความเร็ว</dt><dd class="mt-1 text-xl font-semibold tabular-nums">${stats.wpm}<span class="ml-1 text-xs font-normal text-base-content/65">WPM</span></dd></div>
+              <div><dt class="text-xs text-base-content/65">ครั้งที่ใช้งาน</dt><dd class="mt-1 text-xl font-semibold tabular-nums">${stats.sessions}</dd></div>
+            </dl>
+            <div class="flex items-start gap-2 border-t border-base-200 pt-3 text-xs leading-relaxed text-base-content/65 [&_svg]:mt-0.5 [&_svg]:h-3.5 [&_svg]:w-3.5" aria-label="ข้อมูลความเป็นส่วนตัว">${icons.lock}<span>เสียงถูกส่งไปยัง API ที่คุณเลือกเพื่อถอดข้อความเท่านั้น</span></div>
+          </div>
+        </aside>
+      </div>
+
+      <section class="mt-8" aria-labelledby="use-cases-title">
+        <h2 id="use-cases-title" class="mb-3 text-sm font-semibold">ใช้ได้ทุกที่ที่พิมพ์ข้อความ</h2>
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
           ${USE_CASES.map(
             (u) => `
-            <div class="min-w-0 rounded-xl border border-neutral-200 bg-white p-4">
-              <img src="${u.logo}" alt="" class="mb-2.5 h-8 w-8 object-contain" />
-              <h4 class="mb-1 text-sm font-medium">${u.name}</h4>
-              <p class="text-[12.5px] leading-snug text-neutral-400">${u.desc}</p>
-            </div>
+            <article class="card card-border min-w-0 bg-base-100">
+              <div class="card-body gap-1.5 p-4">
+                <img src="${u.logo}" alt="" width="32" height="32" class="mb-1 h-8 w-8 object-contain" />
+                <h3 class="text-sm font-semibold">${u.name}</h3>
+                <p class="text-[13px] leading-relaxed text-base-content/65">${u.desc}</p>
+              </div>
+            </article>
           `,
           ).join("")}
         </div>
-      </div>
-
-      <div class="flex w-64 shrink-0 flex-col gap-4">
-        <div class="rounded-xl border border-neutral-200 bg-white p-4">
-          <div class="flex items-center gap-2.5 py-1.5 text-[13.5px] text-neutral-600 [&_svg]:text-neutral-400">${icons.clock}<span>เวลาที่ใช้พูด</span><b class="ml-auto text-neutral-900">${stats.totalMinutes} min</b></div>
-          <div class="flex items-center gap-2.5 py-1.5 text-[13.5px] text-neutral-600 [&_svg]:text-neutral-400">${icons.mic}<span>จำนวนคำ</span><b class="ml-auto text-neutral-900">${stats.totalWords}</b></div>
-          <div class="flex items-center gap-2.5 py-1.5 text-[13.5px] text-neutral-600 [&_svg]:text-neutral-400">${icons.zap}<span>ความเร็ว</span><b class="ml-auto text-neutral-900">${stats.wpm} WPM</b></div>
-          <div class="flex items-center gap-2.5 py-1.5 text-[13.5px] text-neutral-600 [&_svg]:text-neutral-400">${icons.folder}<span>ครั้งที่ใช้งาน</span><b class="ml-auto text-neutral-900">${stats.sessions}</b></div>
-          <div class="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-neutral-400 [&_svg]:mt-0.5 [&_svg]:h-3.5 [&_svg]:w-3.5">${icons.lock}<span>เสียงจะถูกส่งไปยัง API แปลงข้อความเท่านั้น ไม่ถูกเก็บไว้ในเครื่องหรือระบบของแอปนี้</span></div>
-        </div>
-      </div>
+      </section>
     </div>
   `;
 
@@ -136,15 +149,14 @@ function openHotkeyModal(
 ) {
   let value = currentHotkey;
 
-  const overlay = document.createElement("div");
-  overlay.className =
-    "fixed inset-0 z-50 flex items-center justify-center bg-black/30";
+  const overlay = document.createElement("dialog");
+  overlay.className = "modal";
   overlay.innerHTML = `
-    <div class="w-[380px] rounded-2xl bg-white p-5 shadow-xl" role="dialog" aria-modal="true" aria-label="ตั้งค่าคีย์ลัด ${modeName}">
-      <h3 class="mb-1 text-[15px] font-bold">คีย์ลัด ${modeName}</h3>
-      <p class="mb-4 text-[13px] text-neutral-400">กดปุ่มที่ต้องการตั้งเป็นคีย์ลัดสำหรับเริ่ม/หยุดอัดเสียง</p>
-      <div id="modal-hotkey-badges" class="mb-4 flex min-h-[46px] flex-wrap items-center gap-1.5 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-3">${renderHotkeyBadges(value)}</div>
-      <div class="flex justify-end gap-2">
+    <div class="modal-box w-[min(380px,calc(100vw-2rem))] p-5" aria-labelledby="hotkey-modal-title" aria-describedby="hotkey-modal-help">
+      <h3 id="hotkey-modal-title" class="text-base font-semibold">คีย์ลัด ${modeName}</h3>
+      <p id="hotkey-modal-help" class="mt-1 text-[13px] leading-relaxed text-base-content/65">กด “เปลี่ยน” แล้วกดคีย์ลัดชุดใหม่ จากนั้นบันทึก</p>
+      <div id="modal-hotkey-badges" class="mt-4 flex min-h-12 flex-wrap items-center gap-1.5 rounded-lg border border-base-300 bg-base-200 px-3 py-3">${renderHotkeyBadges(value)}</div>
+      <div class="modal-action mt-5">
         <button id="modal-cancel-btn" type="button" class="${BTN}">ยกเลิก</button>
         <button id="modal-record-btn" type="button" class="${BTN}">เปลี่ยน</button>
         <button id="modal-save-btn" type="button" class="${BTN_PRIMARY}">บันทึก</button>
@@ -152,6 +164,7 @@ function openHotkeyModal(
     </div>
   `;
   document.body.appendChild(overlay);
+  overlay.showModal();
 
   const badgesEl = overlay.querySelector("#modal-hotkey-badges")!;
   const recordBtn = overlay.querySelector(
@@ -163,10 +176,11 @@ function openHotkeyModal(
   const cancelBtn = overlay.querySelector(
     "#modal-cancel-btn",
   ) as HTMLButtonElement;
+  recordBtn.focus();
 
   function close() {
     document.removeEventListener("keydown", onModalKeydown, true);
-    overlay.remove();
+    if (overlay.open) overlay.close();
   }
 
   function onModalKeydown(e: KeyboardEvent) {
@@ -174,16 +188,14 @@ function openHotkeyModal(
   }
   document.addEventListener("keydown", onModalKeydown, true);
 
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) close();
-  });
+  overlay.addEventListener("close", () => overlay.remove(), { once: true });
   cancelBtn.addEventListener("click", close);
 
   recordBtn.addEventListener("click", () => {
     document.removeEventListener("keydown", onModalKeydown, true);
     recordBtn.disabled = true;
     recordBtn.textContent = "รอ...";
-    badgesEl.innerHTML = `<span class="text-xs text-neutral-400">กดปุ่มที่ต้องการ (Esc ยกเลิก)</span>`;
+    badgesEl.innerHTML = `<span class="text-xs text-base-content/65">กดปุ่มที่ต้องการ (Esc ยกเลิก)</span>`;
 
     const onRecordKeydown = (e: KeyboardEvent) => {
       e.preventDefault();

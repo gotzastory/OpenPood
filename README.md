@@ -1,10 +1,10 @@
 # OpenPud
 
-<img width="1047" height="648" alt="image" src="https://github.com/user-attachments/assets/5ba7cc44-ff90-4f9b-b04e-37198390a177" />
+![alt text](image.png)
 
 โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
 
-สร้างด้วย Electron + TypeScript + Vite + Tailwind CSS v4
+สร้างด้วย Electron + TypeScript + Vite + Tailwind CSS v4 + DaisyUI
 
 **[ดาวน์โหลดตัวติดตั้งล่าสุด](https://github.com/gotzastory/OpenPud/releases/latest)** · [Releases ทั้งหมด](https://github.com/gotzastory/OpenPud/releases)
 
@@ -106,10 +106,12 @@
 
 | หน้าที่ | โมเดล | ทำไม |
 |---|---|---|
-| **ถอดเสียง (STT)** | [`openai/whisper-large-v3-turbo`](https://openrouter.ai/openai/whisper-large-v3-turbo) | แม่นกว่า `whisper-1` โดยเฉพาะไทย + คำอังกฤษปน และเร็ว/ถูกกว่า Large V3 เต็ม |
-| **Chat (polish / translate)** | [`google/gemini-3.5-flash-lite`](https://openrouter.ai/google/gemini-3.5-flash-lite) | เร็ว ถูก เหมาะงานสั้นๆ อย่างเก็บประโยค / แปล |
+| **ถอดเสียง (STT)** | [`google/gemini-3.5-transcribe`](https://openrouter.ai/google/gemini-3.5-transcribe) | ตัวที่แนะนำที่สุด ณ ตอนนี้สำหรับ OpenPud |
+| **Chat (polish / translate)** | [`openai/gpt-6-luna`](https://openrouter.ai/openai/gpt-6-luna) | เร็ว ถูก เหมาะงานสั้นๆ อย่างเก็บประโยค / แปล |
 
 ค่า default ของแอปตั้งแบบนี้ไว้แล้ว — เปิดครั้งแรกแค่ใส่ API key ก็ใช้ได้
+
+ใน Settings สามารถเลือก OpenRouter transcription model อื่นจาก [catalog ปัจจุบัน](https://openrouter.ai/models?output_modalities=transcription) ได้ด้วย รวมถึง `google/gemini-3.5-transcribe`, `fish-audio/transcribe-1-pro`, `assemblyai/universal-3-5-pro`, `meta/muse-voice-transcribe-1.0` และ `microsoft/mai-transcribe-2`
 
 ถ้าติดตั้งเวอร์ชันเก่าแล้วยังเป็น `whisper-1` / `gpt-4o-mini` ให้ไปหน้า **Settings** แล้วเลือก:
 
@@ -177,17 +179,20 @@ npm install
 npm run dist
 ```
 
-ได้ไฟล์ `release/OpenPud Setup 0.2.0.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
+ได้ไฟล์ `release/OpenPud Setup <version>.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
 
 ### ปล่อย Release ผ่าน GitHub Actions
 
 Workflow [`.github/workflows/release.yml`](./.github/workflows/release.yml) จะ build ตัวติดตั้งบน `windows-latest` แล้วแนบไฟล์ `.exe` เข้า GitHub Release ให้อัตโนมัติเมื่อ push tag รูปแบบ `v*`:
 
-```bash
-npm version 0.2.1 --no-git-tag-version   # bump เวอร์ชันใน package.json
-git commit -am "chore: release v0.2.1"
-git tag v0.2.1
-git push origin main --tags
+```powershell
+npm.cmd version patch --no-git-tag-version # เปลี่ยน patch เป็น minor/major ตาม release
+$version = (Get-Content package.json | ConvertFrom-Json).version
+git add package.json package-lock.json
+git commit -m "chore: release v$version"
+git tag "v$version"
+git push origin main
+git push origin "v$version"
 ```
 
 ### สถาปัตยกรรมโดยย่อ
@@ -197,7 +202,7 @@ Electron แยก 2 โปรเซส คุยกันผ่าน `contextB
 - **`electron/`** — main process: หน้าต่าง widget + dashboard, global hotkey, tray, ถอดเสียง, วางข้อความ, persistence
 - **`src/`** — renderer: floating pill, อัดเสียง, dashboard (Home / History / Dictionary / Settings), onboarding
 
-รายละเอียดเชิงลึกอยู่ที่ [`CLAUDE.md`](./CLAUDE.md)
+รายละเอียดเชิงลึกอยู่ที่ [`architecture/system-design.md`](./architecture/system-design.md)
 
 ---
 

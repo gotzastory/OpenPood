@@ -13,7 +13,7 @@ const NAV_ITEMS: { route: Route; label: string; icon: string }[] = [
 ];
 
 const NAV_ITEM_CLASS =
-  "flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2.5 text-left text-sm text-neutral-600 transition-colors [&_svg]:text-neutral-400 hover:bg-neutral-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15 data-[active=true]:bg-white data-[active=true]:font-semibold data-[active=true]:text-neutral-900 data-[active=true]:shadow-sm data-[active=true]:[&_svg]:text-neutral-900";
+  "flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg border-none bg-transparent px-3 text-left text-sm text-base-content/65 transition-colors [&_svg]:text-base-content/55 hover:bg-base-300/55 hover:text-base-content focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content/55 data-[active=true]:bg-base-100 data-[active=true]:font-semibold data-[active=true]:text-base-content data-[active=true]:shadow-sm data-[active=true]:[&_svg]:text-base-content";
 
 function currentRoute(): Route {
   const hash = location.hash.replace(/^#/, "") || "/";
@@ -24,15 +24,15 @@ function currentRoute(): Route {
 
 export function mountShell(root: HTMLElement) {
   root.innerHTML = `
-    <div class="flex h-screen bg-neutral-50 text-neutral-900">
-      <div class="flex w-56 shrink-0 flex-col border-r border-neutral-200 bg-neutral-100 p-3.5">
-        <div class="mb-6 flex items-center gap-2 px-1.5 text-[15.5px] font-bold [&_svg]:h-[22px] [&_svg]:w-[22px]">${icons.logo}<span>OpenPud</span></div>
-        <nav class="flex flex-col gap-0.5" id="nav"></nav>
-        <div class="mt-auto px-0.5 py-1">
-          <button id="nav-settings" class="${NAV_ITEM_CLASS} w-[34px] justify-center px-2" title="Settings" aria-label="Settings">${icons.settings}</button>
+    <div class="flex h-screen bg-base-200 text-base-content">
+      <aside class="flex w-52 shrink-0 flex-col border-r border-base-300 bg-base-200 p-3" aria-label="เมนูหลัก">
+        <div class="mb-5 flex items-center gap-2 px-2 py-2 text-[15px] font-bold [&_svg]:h-[22px] [&_svg]:w-[22px]" aria-label="OpenPud">${icons.logo}<span>OpenPud</span></div>
+        <nav class="flex flex-col gap-1" id="nav" aria-label="หน้าหลัก"></nav>
+        <div class="mt-auto border-t border-base-300 pt-3">
+          <button id="nav-settings" class="${NAV_ITEM_CLASS}" title="Settings" aria-label="Settings">${icons.settings}<span>Settings</span></button>
         </div>
-      </div>
-      <div class="flex-1 overflow-y-auto px-11 py-10" id="content"></div>
+      </aside>
+      <main class="dashboard-scrollbar min-w-0 flex-1 overflow-y-auto px-6 py-8 lg:px-10 lg:py-10" id="content" tabindex="-1"></main>
     </div>
   `;
 
@@ -43,7 +43,7 @@ export function mountShell(root: HTMLElement) {
   function renderNav(active: Route) {
     nav.innerHTML = NAV_ITEMS.map(
       (item) => `
-      <button class="${NAV_ITEM_CLASS}" data-route="${item.route}" data-active="${item.route === active}">
+      <button class="${NAV_ITEM_CLASS}" data-route="${item.route}" data-active="${item.route === active}" ${item.route === active ? 'aria-current="page"' : ""}>
         ${item.icon}<span>${item.label}</span>
       </button>
     `,
@@ -56,26 +56,42 @@ export function mountShell(root: HTMLElement) {
         });
       });
     navSettings.dataset.active = String(active === "/settings");
+    if (active === "/settings") navSettings.setAttribute("aria-current", "page");
+    else navSettings.removeAttribute("aria-current");
   }
 
   async function renderPage(route: Route) {
     renderNav(route);
     content.scrollTop = 0;
-    if (route === "/") return mountHome(content);
-    if (route === "/history") return mountHistory(content);
-    if (route === "/dictionary") return mountDictionary(content);
-    if (route === "/settings") return mountSettings(content);
+    if (route === "/") await mountHome(content);
+    if (route === "/history") await mountHistory(content);
+    if (route === "/dictionary") await mountDictionary(content);
+    if (route === "/settings") await mountSettings(content);
+    content.focus({ preventScroll: true });
+  }
+
+  function showRoute(route: Route) {
+    void renderPage(route).catch((err) => {
+      console.error(err);
+      content.innerHTML = `
+        <div role="alert" class="alert alert-error alert-soft mx-auto max-w-xl text-sm">
+          เปิดหน้านี้ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
+        </div>
+      `;
+      content.focus({ preventScroll: true });
+    });
   }
 
   navSettings.addEventListener("click", () => {
     location.hash = "/settings";
   });
 
-  window.addEventListener("hashchange", () => renderPage(currentRoute()));
+  window.addEventListener("hashchange", () => showRoute(currentRoute()));
   window.typeless.onNavigate((route) => {
-    location.hash = route;
-    renderPage(currentRoute());
+    const nextHash = `#${route}`;
+    if (location.hash === nextHash) showRoute(currentRoute());
+    else location.hash = route;
   });
 
-  renderPage(currentRoute());
+  showRoute(currentRoute());
 }

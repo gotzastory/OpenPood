@@ -7,7 +7,7 @@ export function renderHotkeyBadges(hotkey: string): string {
     .split("+")
     .map(
       (k) =>
-        `<span class="rounded-[7px] border-[1.5px] border-neutral-300 bg-neutral-50 px-2.5 py-[5px] text-xs font-semibold text-neutral-700">${escapeHtml(k.trim())}</span>`,
+        `<kbd class="rounded-md border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-semibold text-base-content/75 shadow-[0_1px_0_var(--color-base-300)]">${escapeHtml(k.trim())}</kbd>`,
     )
     .join("");
 }

@@ -2,7 +2,7 @@
 // so the UI never relies on emoji glyphs, which render inconsistently across fonts/platforms.
 
 function icon(paths: string, viewBox = "0 0 24 24"): string {
-  return `<svg class="icon" viewBox="${viewBox}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+  return `<svg class="icon" aria-hidden="true" viewBox="${viewBox}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
 }
 
 export const icons = {

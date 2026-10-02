@@ -98,8 +98,15 @@ export async function mountSettings(root: HTMLElement) {
   let provider = detectProvider(current.apiBaseUrl);
 
   root.innerHTML = `
-    <h1 class="${PAGE_TITLE} mb-5">Settings</h1>
-    <div class="max-w-[440px]">
+    <div class="mx-auto max-w-[920px]">
+      <header class="mb-6">
+        <h1 class="${PAGE_TITLE}">Settings</h1>
+        <p class="mt-1 text-sm text-base-content/65">ตั้งค่าการถอดเสียง ผลลัพธ์ และอุปกรณ์ของ OpenPud</p>
+      </header>
+      <div class="grid items-start gap-5 lg:grid-cols-2">
+      <section class="card card-border bg-base-100" aria-labelledby="provider-title">
+      <div class="card-body gap-0 p-5">
+      <h2 id="provider-title" class="mb-4 text-sm font-semibold">ผู้ให้บริการและโมเดล</h2>
       <label class="${FIELD_LABEL}">
         ผู้ให้บริการ
         <select id="provider-preset" class="${FIELD_SELECT}">
@@ -126,9 +133,16 @@ export async function mountSettings(root: HTMLElement) {
           <option value="en" ${current.language === "en" ? "selected" : ""}>อังกฤษเท่านั้น</option>
         </select>
       </label>
-      <p class="-mt-3 mb-4 text-xs leading-relaxed text-neutral-400">
+      <p class="-mt-3 mb-4 text-xs leading-relaxed text-base-content/65">
         โหมดแนะนำล็อกการรู้จำเป็นภาษาไทย (ไม่ปล่อย Whisper เดาเป็นญี่ปุ่น/เวียดนาม/เกาหลีเอง) แต่ยังใบ้ให้รองรับคำอังกฤษที่พูดแทรก — ถ้าพูดอังกฤษล้วนให้เลือก "อังกฤษเท่านั้น"
       </p>
+      </div>
+      </section>
+
+      <div class="flex flex-col gap-5">
+      <section class="card card-border bg-base-100" aria-labelledby="output-title">
+      <div class="card-body gap-0 p-5">
+      <h2 id="output-title" class="mb-4 text-sm font-semibold">ผลลัพธ์และการแปล</h2>
       <label class="${FIELD_LABEL}">
         แปลเป็นภาษา (โหมด Translate)
         <select id="translateTargetLang" class="${FIELD_SELECT}">
@@ -140,18 +154,24 @@ export async function mountSettings(root: HTMLElement) {
             .join("")}
         </select>
       </label>
-      <label class="mb-1.5 flex flex-row items-center gap-2 text-[13px] text-neutral-600">
-        <input id="stripFillersEnabled" type="checkbox" class="w-auto" ${current.stripFillersEnabled ? "checked" : ""} />
-        ตัดคำติดปากอัตโนมัติ (อืมม, เอ่ออ, um, uh) — ไม่ใช้ AI
+      <label class="mb-2 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
+        <span>ตัดคำติดปากอัตโนมัติ <small class="block text-xs text-base-content/65">อืมม, เอ่ออ, um, uh — ไม่ใช้ AI</small></span>
+        <input id="stripFillersEnabled" type="checkbox" class="toggle toggle-sm" ${current.stripFillersEnabled ? "checked" : ""} />
       </label>
-      <label class="mb-1.5 flex flex-row items-center gap-2 text-[13px] text-neutral-600">
-        <input id="aiPolishEnabled" type="checkbox" class="w-auto" ${current.aiPolishEnabled ? "checked" : ""} />
-        ปรับข้อความด้วย AI หลัง Dictate (ใส่วรรคตอน ปรับโทนตามแอปปลายทาง)
+      <label class="mb-4 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
+        <span>ปรับข้อความด้วย AI <small class="block text-xs text-base-content/65">ใส่วรรคตอนและปรับโทนตามแอปปลายทาง</small></span>
+        <input id="aiPolishEnabled" type="checkbox" class="toggle toggle-sm" ${current.aiPolishEnabled ? "checked" : ""} />
       </label>
       <label class="${FIELD_LABEL} mb-4">
         Chat model (ใช้กับ AI polish, Translate)
         <input id="chatModel" type="text" value="${escapeHtml(current.chatModel)}" placeholder="google/gemini-3.5-flash-lite" class="${FIELD_INPUT}" />
       </label>
+      </div>
+      </section>
+
+      <section class="card card-border bg-base-100" aria-labelledby="device-title">
+      <div class="card-body gap-0 p-5">
+      <h2 id="device-title" class="mb-4 text-sm font-semibold">อุปกรณ์และระบบ</h2>
       <label class="${FIELD_LABEL}">
         ไมโครโฟน
         <select id="micDeviceId" class="${FIELD_SELECT}">
@@ -170,16 +190,22 @@ export async function mountSettings(root: HTMLElement) {
         ระยะเวลาอัดสูงสุด (วินาที)
         <input id="maxDurationSec" type="number" min="10" max="600" value="${current.maxDurationSec}" class="${FIELD_INPUT}" />
       </label>
-      <label class="mb-4 flex flex-row items-center gap-2 text-[13px] text-neutral-600">
-        <input id="playSound" type="checkbox" class="w-auto" ${current.playSound ? "checked" : ""} />
-        เล่นเสียงเมื่อเริ่ม/หยุดอัด
+      <label class="mb-2 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
+        <span>เล่นเสียงเมื่อเริ่ม/หยุดอัด</span>
+        <input id="playSound" type="checkbox" class="toggle toggle-sm" ${current.playSound ? "checked" : ""} />
       </label>
-      <label class="mb-4 flex flex-row items-center gap-2 text-[13px] text-neutral-600">
-        <input id="launchAtStartup" type="checkbox" class="w-auto" ${current.launchAtStartup ? "checked" : ""} />
-        เปิดแอปอัตโนมัติเมื่อเปิดเครื่อง
+      <label class="mb-4 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
+        <span>เปิดแอปอัตโนมัติเมื่อเปิดเครื่อง</span>
+        <input id="launchAtStartup" type="checkbox" class="toggle toggle-sm" ${current.launchAtStartup ? "checked" : ""} />
       </label>
-      <button id="save-btn" class="${BTN_PRIMARY} px-4.5">บันทึก</button>
-      <p id="save-msg" class="mt-1 h-4 text-xs"></p>
+      </div>
+      </section>
+      </div>
+      </div>
+      <div class="mt-5 flex items-center justify-end gap-3">
+        <p id="save-msg" class="min-h-4 text-xs" role="status" aria-live="polite"></p>
+        <button id="save-btn" class="${BTN_PRIMARY} px-5">บันทึกการตั้งค่า</button>
+      </div>
     </div>
   `;
 
@@ -218,7 +244,7 @@ export async function mountSettings(root: HTMLElement) {
 
   saveBtn.addEventListener("click", async () => {
     (saveBtn as HTMLButtonElement).disabled = true;
-    msg.className = "mt-1 h-4 text-xs text-neutral-400";
+    msg.className = "min-h-4 text-xs text-base-content/65";
     msg.textContent = "กำลังบันทึก…";
     const apiKey = (
       document.getElementById("apiKey") as HTMLInputElement
@@ -272,11 +298,11 @@ export async function mountSettings(root: HTMLElement) {
         playSound,
         launchAtStartup,
       });
-      msg.className = "mt-1 h-4 text-xs text-emerald-600";
+      msg.className = "min-h-4 text-xs text-success";
       msg.textContent = "บันทึกแล้ว";
     } catch (err) {
       console.error(err);
-      msg.className = "mt-1 h-4 text-xs text-red-600";
+      msg.className = "min-h-4 text-xs text-error";
       // IPC rejections arrive as "Error invoking remote method ...: Error: <reason>"
       const reason = err instanceof Error ? err.message.split(/Error: /).pop() : "";
       msg.textContent = reason || "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง";
