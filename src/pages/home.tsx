@@ -99,7 +99,7 @@ export function HomePage() {
           <h2 id="modes-title" className="mb-3 text-sm font-semibold">เริ่มด้วยปุ่มลัดของคุณ</h2>
           <div className="grid gap-4 lg:grid-cols-2">
             {MODES.map((mode) => (
-              <div key={mode.settingsKey} className={`card rounded-xl border ${mode.settingsKey === "hotkey" ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 text-base-content"}`}>
+              <div key={mode.settingsKey} className={`card rounded-xl border ${mode.settingsKey === "hotkey" ? "border-primary bg-primary bg-linear-to-br from-primary from-35% to-neutral text-primary-content" : "border-base-300 bg-base-100 text-base-content"}`}>
                 <div className="card-body gap-0 p-6">
                 <div className="mb-5 flex items-center justify-between">
                 <div className={`flex h-11 w-11 items-center justify-center rounded-lg [&_svg]:h-6 [&_svg]:w-6 ${mode.settingsKey === "hotkey" ? "bg-primary-content/15" : "bg-base-200 text-primary"}`}>
