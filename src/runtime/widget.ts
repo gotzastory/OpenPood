@@ -33,7 +33,7 @@ export function mountWidget(root: HTMLElement) {
     >
       <div id="mic-label" class="max-w-[300px] truncate whitespace-nowrap rounded-full border border-white/10 bg-brand-ink/90 px-2.5 py-1 text-[11px] text-brand-paper empty:hidden group-data-[state=skipped]:hidden"></div>
       <div id="pill" class="flex h-11 items-center justify-center rounded-full border border-white/10 bg-brand-ink/95 px-[18px] text-brand-paper shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
-        <img src="./brand/openpood-symbol.svg" alt="" width="20" height="20" class="mr-3 h-5 w-5 shrink-0" /><canvas id="wave" width="160" height="28" class="hidden group-data-[state=recording]:block"></canvas>
+        <img src="./brand/openpood-symbol.png" alt="" width="20" height="20" class="mr-3 h-5 w-5 shrink-0" /><canvas id="wave" width="160" height="28" class="hidden group-data-[state=recording]:block"></canvas>
         <div role="status" id="processing-content" class="hidden items-center gap-2 whitespace-nowrap text-xs group-data-[state=processing]:flex">
           <span class="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-white"></span>
           <span>กำลังถอดข้อความ...</span>
