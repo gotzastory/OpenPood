@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @plugin "daisyui" {
   themes: light --default;
@@ -10,18 +9,18 @@
   default: true;
   color-scheme: light;
   --color-base-100: #ffffff;
-  --color-base-200: #f6f6f3;
-  --color-base-300: #e4e4df;
-  --color-base-content: #20201e;
-  --color-primary: #1f1f1d;
+  --color-base-200: #eef4ff;
+  --color-base-300: #e2e8f0;
+  --color-base-content: #0b1218;
+  --color-primary: #0055ff;
   --color-primary-content: #ffffff;
-  --color-secondary: #6b6b66;
+  --color-secondary: #64748b;
   --color-secondary-content: #ffffff;
-  --color-accent: #deded8;
-  --color-accent-content: #20201e;
-  --color-neutral: #1f1f1d;
+  --color-accent: #eef4ff;
+  --color-accent-content: #0055ff;
+  --color-neutral: #0b1218;
   --color-neutral-content: #ffffff;
-  --color-info: #2563eb;
+  --color-info: #0055ff;
   --color-info-content: #ffffff;
   --color-success: #15803d;
   --color-success-content: #ffffff;
@@ -39,11 +38,16 @@
   --noise: 0;
 }
 
-body {
-  font-family: 'Noto Sans Thai', 'Segoe UI', system-ui, sans-serif;
-}
-
 @layer components {
+  .dashboard-shell .btn:not(.btn-xs) { min-height: 2.75rem; }
+  .dashboard-shell :is(.input, .select) { min-height: 2.75rem; }
+  .dashboard-shell :is(button, input, select, a):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+  .dashboard-shell .text-base-content\/65 { color: var(--color-secondary); }
+  .dashboard-shell .bg-primary button:focus-visible { outline-color: var(--color-primary-content); }
+
   .dictionary-add-button {
     font-size: 0.8125rem;
     font-weight: 500;

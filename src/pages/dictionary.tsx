@@ -123,12 +123,12 @@ export function DictionaryPage() {
               type="text"
               value={wordInput}
               onChange={(event) => setWordInput(event.target.value)}
-              placeholder="เช่น OpenPud, TypeScript"
+              placeholder="เช่น OpenPood, TypeScript"
               className="input input-sm min-w-0 flex-1"
             />
             <button
               type="submit"
-              className="dictionary-add-button btn btn-neutral btn-sm"
+              className="dictionary-add-button btn btn-primary btn-sm"
               disabled={!words}
             >
               <Icon svg={icons.plus} />
@@ -174,7 +174,7 @@ export function DictionaryPage() {
             placeholder="คำที่ต้องการให้ออกจริง"
             className="input input-sm min-w-0 flex-1"
           />
-          <button type="submit" className="btn btn-neutral btn-sm" disabled={!corrections}>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={!corrections}>
             <Icon svg={icons.plus} />
             <span>เพิ่ม</span>
           </button>

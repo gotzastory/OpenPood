@@ -42,7 +42,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenPud-Setup-${{ github.ref_name }}
+          name: OpenPood-Setup-${{ github.ref_name }}
           path: |
             release/*.exe
             release/*.exe.blockmap
@@ -57,6 +57,6 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "OpenPud ${GITHUB_REF_NAME#v}" \
+            --title "OpenPood ${GITHUB_REF_NAME#v}" \
             --generate-notes \
             release/*.exe release/*.exe.blockmap release/latest.yml

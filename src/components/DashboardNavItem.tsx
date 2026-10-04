@@ -6,7 +6,7 @@ interface DashboardNavItemProps {
 }
 
 const CLASS_NAME =
-  "btn btn-ghost h-auto min-h-10 w-full justify-start gap-2.5 rounded-lg border-none px-3 text-left text-sm font-normal text-base-content/65 shadow-none transition-colors [&_svg]:text-base-content/55 hover:bg-base-300/55 hover:text-base-content focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content/55 data-[active=true]:bg-base-100 data-[active=true]:font-semibold data-[active=true]:text-base-content data-[active=true]:shadow-sm data-[active=true]:[&_svg]:text-base-content";
+  "btn btn-ghost h-auto min-h-11 w-full justify-start gap-3 rounded-lg border-none px-3 text-left text-sm font-normal text-secondary shadow-none transition-colors hover:bg-base-200 hover:text-base-content data-[active=true]:bg-base-200 data-[active=true]:font-semibold data-[active=true]:text-primary";
 
 export function DashboardNavItem({
   label,

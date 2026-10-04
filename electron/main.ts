@@ -32,6 +32,7 @@ type WidgetState = 'idle' | 'recording' | 'processing' | 'skipped';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
+const BRAND_ASSET_DIRECTORY = path.join(__dirname, VITE_DEV_SERVER_URL ? '../public/brand' : '../dist/brand');
 
 const WIDGET_WIDTH = 320;
 const WIDGET_HEIGHT = 90;
@@ -140,7 +141,8 @@ function createMainWindow(route: string) {
     height: 720,
     minWidth: 760,
     minHeight: 520,
-    title: 'OpenPud',
+    title: 'OpenPood',
+    icon: path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -158,11 +160,10 @@ function createMainWindow(route: string) {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAO0lEQVR4nGOQkJBhoATjkviPAxNlAC7NWA0hVTOGIeRoRjGEXM1wQ0YNoKIBFEcjVRISVZIyVTITSRgAW5XnZbzkvwwAAAAASUVORK5CYII=',
-  );
+  const icon = nativeImage.createFromPath(path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'));
+  if (icon.isEmpty()) throw new Error('OpenPood tray icon is missing');
   tray = new Tray(icon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('OpenPud');
+  tray.setToolTip('OpenPood');
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'เปิดแอป', click: () => createMainWindow('/') },
@@ -176,6 +177,8 @@ function createTray() {
 
 function applyLaunchAtStartup(enabled: boolean) {
   if (!app.isPackaged) return; // login item registration is unreliable for `electron .` dev launches
+  // Remove the former Run entry so upgrades do not launch a stale OpenPud.exe.
+  app.setLoginItemSettings({ openAtLogin: false, name: 'OpenPud' });
   app.setLoginItemSettings({ openAtLogin: enabled });
 }
 
@@ -214,6 +217,10 @@ function setEscapeCancel(enabled: boolean) {
     globalShortcut.unregister('Escape');
   }
 }
+
+app.on('second-instance', () => {
+  void app.whenReady().then(() => createMainWindow('/')).catch(() => app.quit());
+});
 
 app.whenReady().then(() => {
   warmWinHost();
@@ -407,7 +414,7 @@ app.whenReady().then(() => {
   // Without this, a throw during startup (e.g. corrupt store) silently skips
   // all IPC handler registration and leaves a zombie app.
   console.error('Startup failed:', err);
-  dialog.showErrorBox('OpenPud เริ่มทำงานไม่สำเร็จ', err instanceof Error ? err.message : String(err));
+  dialog.showErrorBox('OpenPood เริ่มทำงานไม่สำเร็จ', err instanceof Error ? err.message : String(err));
   app.quit();
 });
 

@@ -1,4 +1,4 @@
-# OpenPud — Security & Code Structure Audit
+# OpenPood — Security & Code Structure Audit
 
 > ตรวจเมื่อ 2026-09-02 · ครอบคลุม `electron/` (main process) และ `src/` (renderer) ทั้งหมด ~2,900 บรรทัด
 > ✅ = แก้แล้วในรอบนี้ · ⬜ = backlog

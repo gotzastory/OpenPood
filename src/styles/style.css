@@ -14,3 +14,45 @@ body,
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
+
+@theme {
+  --color-brand-blue: #0055ff;
+  --color-brand-ink: #0b1218;
+  --color-brand-paper: #ffffff;
+  --color-brand-light: #eef4ff;
+  --color-brand-slate: #64748b;
+  --color-brand-border: #e2e8f0;
+}
+
+/* Both variants retain the proportions and Blue mark of the supplied artwork. */
+.brand-logo {
+  display: inline-block;
+  position: relative;
+  width: 180px;
+  aspect-ratio: 3;
+  flex-shrink: 0;
+  background: url('/brand/openpood-logo.png') center / contain no-repeat;
+}
+.brand-logo-light { background: none; }
+.brand-logo-light::before, .brand-logo-light::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.brand-logo-light::before {
+  background: var(--color-brand-paper);
+  mask: url('/brand/openpood-logo.png') center / contain no-repeat;
+}
+.brand-logo-light::after {
+  background: url('/brand/openpood-logo.png') center / contain no-repeat;
+  clip-path: inset(0 72% 0 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

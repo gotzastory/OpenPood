@@ -1,10 +1,10 @@
-# OpenPud System Design
+# OpenPood System Design
 
 This document describes the current Windows implementation. It is not a roadmap.
 
 ## System boundaries
 
-- OpenPud is a local Electron desktop app with no application server or database.
+- OpenPood is a local Electron desktop app with no application server or database.
 - The renderer captures audio and renders UI; it has no Node access.
 - The main process owns settings, external API calls, global shortcuts, notifications, history, and OS integration.
 - External dependencies at runtime are the configured transcription/LLM provider and a local PowerShell process for Windows input.
@@ -85,6 +85,9 @@ Global hotkey
 ## Persistence and secrets
 
 - Settings, history, and dictionary use separate `electron-store` files.
+- Stores use `%APPDATA%/OpenPood`. Before any store initializes, `storage.ts` copies the known legacy OpenPud JSON stores byte-for-byte, validating JSON first, retaining the source, and never overwriting existing destination stores. A completion marker prevents later remigration. Migration failure blocks startup with a generic native error; no secret data is logged.
+- The NSIS GUID remains the original upgrade identity while the application ID, product name, and executable name become OpenPood. Installer upgrade behavior still requires a packaged Windows check.
+- A single-instance lock is acquired before migration/store creation. A repeated launch opens the existing dashboard. Packaged startup registration removes the former OpenPud entry before applying the saved setting.
 - The API key is encrypted with Electron `safeStorage` when available and decrypted only in the main process.
 - Renderer settings redact the key and expose only `hasApiKey`.
 - History is capped at 500 entries. History text, dictionary words, correction rules, and non-secret settings remain local JSON data.

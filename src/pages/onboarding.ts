@@ -41,13 +41,13 @@ import { escapeHtml } from "../lib/escape";
 const TOTAL_STEPS = 4;
 
 const FIELD_LABEL =
-  "block font-mono text-[11px] tracking-wider text-paper/55 uppercase mb-2";
+  "block font-display text-[11px] tracking-normal text-paper/55 mb-2";
 const FIELD_INPUT =
-  "w-full rounded-lg border border-paper/10 bg-ink-raised px-3.5 py-3 font-mono text-sm text-paper outline-none transition focus:border-coral focus:shadow-[0_0_0_3px_rgba(255,78,51,0.16)] placeholder:text-paper/30";
+  "w-full rounded-lg border border-paper/10 bg-ink-raised px-3.5 py-3 font-display text-sm text-paper outline-none transition focus:border-blue focus:shadow-[0_0_0_3px_rgba(0,85,255,0.16)] placeholder:text-paper/55";
 const BTN_PRIMARY =
-  "rounded-full bg-coral px-7.5 py-3.5 font-mono text-[13px] font-bold tracking-wider text-[#1a0d09] uppercase transition hover:shadow-[0_6px_20px_rgba(255,78,51,0.35)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none";
+  "rounded-lg bg-blue px-7 py-3.5 font-display text-[13px] font-bold tracking-normal text-paper transition hover:shadow-[0_6px_20px_rgba(0,85,255,0.35)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none";
 const BTN_GHOST =
-  "px-1 py-3.5 font-mono text-[13px] tracking-wider text-paper/55 uppercase hover:text-paper";
+  "px-1 py-3.5 font-display text-[13px] tracking-normal text-paper/55 hover:text-paper";
 
 interface WizardState {
   step: number;
@@ -93,35 +93,35 @@ export async function mountOnboarding(root: HTMLElement) {
   function heroWaveHtml() {
     const bars = Array.from({ length: 22 }, (_, i) => {
       const h = 14 + Math.round(Math.sin(i * 0.7) * 10 + 24);
-      const delay = (i * 0.06).toFixed(2);
-      return `<span class="w-1 rounded-sm bg-gradient-to-b from-coral to-coral/25 [animation:ob-wave_1.4s_ease-in-out_infinite]" style="--h:${h}px;animation-delay:${delay}s"></span>`;
+      return `<span class="w-1 rounded-full bg-blue" style="height:${h}px"></span>`;
     }).join("");
     return `<div class="mb-10 mt-2 flex h-16 items-end gap-1">${bars}</div>`;
   }
 
   function render() {
     root.innerHTML = `
-      <div class="ob-root relative flex h-full w-full flex-col overflow-hidden bg-ink font-display text-paper">
-        <div class="relative z-10 flex items-center justify-between px-8 py-5 font-mono text-[11px] tracking-wider text-paper/55 uppercase">
-          <div class="flex gap-1.5">
+      <div class="ob-root relative flex h-full w-full flex-col overflow-y-auto bg-ink font-display text-paper">
+        <div class="relative z-10 flex items-center justify-between px-8 py-5 font-display text-[11px] tracking-normal text-paper/55">
+          <span class="brand-logo brand-logo-light" role="img" aria-label="OpenPood"></span>
+          <div class="flex gap-1.5" role="img" aria-label="ขั้นตอนที่ ${state.step + 1} จาก ${TOTAL_STEPS}">
             ${Array.from({ length: TOTAL_STEPS })
               .map(
                 (_, i) =>
-                  `<div class="h-[3px] w-[22px] rounded-sm transition-colors duration-300 ${i < state.step ? "bg-coral" : i === state.step ? "bg-paper" : "bg-paper/10"}"></div>`,
+                  `<div class="h-[3px] w-[22px] rounded-sm transition-colors duration-300 ${i < state.step ? "bg-blue" : i === state.step ? "bg-paper" : "bg-paper/10"}"></div>`,
               )
               .join("")}
           </div>
-          <button class="cursor-pointer border-none bg-none font-mono text-[11px] tracking-wider text-paper/55 uppercase hover:text-paper" id="ob-skip">ข้ามไปก่อน</button>
+          <button class="cursor-pointer border-none bg-none font-display text-[11px] tracking-normal text-paper/55 hover:text-paper" id="ob-skip">ข้ามไปก่อน</button>
         </div>
-        <div class="relative z-10 flex flex-1 items-center justify-center px-12 pb-12">
-          <div class="ob-panel w-full max-w-[620px]" id="ob-panel">${renderStep()}</div>
+        <div class="relative z-10 flex flex-1 items-center justify-center px-8 py-6 lg:px-12 lg:pb-12">
+          <div class="ob-panel w-full max-w-[620px]" id="ob-panel" tabindex="-1">${renderStep()}<p id="ob-save-error" role="alert" class="mt-4 text-sm text-paper"></p></div>
         </div>
       </div>
     `;
 
-    document.getElementById("ob-skip")?.addEventListener("click", async () => {
-      await window.typeless.setSettings({ onboardingCompleted: true });
-      finishOnboarding();
+    document.getElementById("ob-panel")?.focus({ preventScroll: true });
+    document.getElementById("ob-skip")?.addEventListener("click", () => {
+      void saveOnboarding({ onboardingCompleted: true }, "ob-skip");
     });
 
     wireStep();
@@ -131,8 +131,8 @@ export async function mountOnboarding(root: HTMLElement) {
     if (state.step === 0) {
       return `
         ${heroWaveHtml()}
-        <h1 class="mb-4.5 text-[44px] font-semibold leading-[1.08] tracking-tight">พูด แล้วให้ตัวอักษร<br /><em class="italic font-normal text-coral">ตามทัน</em></h1>
-        <p class="mb-9 max-w-[460px] font-mono text-[13.5px] leading-[1.7] text-paper/55">กด hotkey ครั้งเดียว พูดสิ่งที่คิด แล้วมันจะถูกพิมพ์ให้ที่ตำแหน่ง cursor ทันที — ไม่ต้องพิมพ์เองอีกต่อไป ตั้งค่า 3 ขั้นตอนสั้นๆ ก่อนเริ่มใช้งานจริง</p>
+        <h1 class="mb-4.5 text-[36px] lg:text-[44px] font-semibold leading-[1.08] tracking-tight">พูด แล้วให้ตัวอักษร<br /><em class="not-italic font-semibold text-paper">ตามทัน</em></h1>
+        <p class="mb-6 max-w-[540px] font-display text-[13.5px] leading-[1.7] text-paper/55">กด hotkey ครั้งเดียว พูดสิ่งที่คิด แล้วมันจะถูกพิมพ์ให้ที่ตำแหน่ง cursor ทันที — ไม่ต้องพิมพ์เองอีกต่อไป ตั้งค่า 3 ขั้นตอนสั้นๆ ก่อนเริ่มใช้งานจริง</p>
         <div class="mt-2 flex items-center gap-4">
           <button class="${BTN_PRIMARY}" id="ob-next">เริ่มตั้งค่า</button>
         </div>
@@ -141,24 +141,25 @@ export async function mountOnboarding(root: HTMLElement) {
 
     if (state.step === 1) {
       return `
-        <div class="mb-4 font-mono text-[11px] tracking-[0.14em] text-coral uppercase">ขั้นตอนที่ 2 จาก ${TOTAL_STEPS}</div>
-        <h1 class="mb-4.5 text-[44px] font-semibold leading-[1.08] tracking-tight">เสียงของคุณจะถูกส่งไป<br /><em class="italic font-normal text-coral">ที่ไหน</em></h1>
-        <p class="mb-9 max-w-[460px] font-mono text-[13.5px] leading-[1.7] text-paper/55">เลือกผู้ให้บริการแปลงเสียงเป็นข้อความ แล้วใส่ API Key ของคุณ — ข้อมูลถูกเก็บไว้ในเครื่องเท่านั้น</p>
-        <div class="mb-5 grid grid-cols-2 gap-3">
+        <div class="mb-4 font-display text-[11px] tracking-[0.14em] text-blue">ขั้นตอนที่ 2 จาก ${TOTAL_STEPS}</div>
+        <h1 class="mb-4.5 text-[36px] lg:text-[44px] font-semibold leading-[1.08] tracking-tight">เสียงของคุณจะถูกส่งไป<br /><em class="not-italic font-semibold text-paper">ที่ไหน</em></h1>
+        <p class="mb-6 max-w-[540px] font-display text-[13.5px] leading-[1.7] text-paper/55">เลือก API ที่จะรับเสียงเพื่อถอดข้อความ ใช้ API Key ของคุณเอง โดย key ถูกเก็บในเครื่องและไม่แสดงกลับในฟอร์ม</p>
+        <div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           ${PROVIDERS.map(
             (p) => `
-            <div class="ob-provider-card cursor-pointer rounded-[10px] border bg-ink-raised p-4.5 transition hover:-translate-y-0.5 ${state.provider === p.key ? "border-coral shadow-[0_0_0_1px_var(--color-coral)]" : "border-paper/10"}" data-provider="${p.key}">
-              <h4 class="mb-1 text-base font-semibold">${p.name}</h4>
-              <p class="font-mono text-[11px] text-paper/55">${p.sub}</p>
-            </div>
+            <button type="button" aria-pressed="${state.provider === p.key}" class="ob-provider-card text-left cursor-pointer rounded-[10px] border bg-ink-raised p-4.5 transition hover:border-paper/50 ${state.provider === p.key ? "border-blue shadow-[0_0_0_1px_var(--color-blue)]" : "border-paper/10"}" data-provider="${p.key}">
+              <span class="mb-1 block text-sm font-semibold">${p.name}</span>
+              <span class="block break-words text-xs leading-relaxed text-paper/55">${p.sub}</span>
+              ${state.provider === p.key ? '<span class="mt-2 block text-xs text-paper">เลือกแล้ว</span>' : ''}
+            </button>
           `,
           ).join("")}
         </div>
         <div class="mb-4.5">
-          <label class="${FIELD_LABEL}">API Key</label>
+          <label for="ob-apikey" class="${FIELD_LABEL}">API Key</label>
           <input id="ob-apikey" type="password" placeholder="${hasSavedApiKey ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน" : state.provider === "gemini" ? "AIza..." : "sk-..."}" value="${escapeHtml(state.apiKey)}" class="${FIELD_INPUT}" />
         </div>
-        <div id="ob-error"></div>
+        <div id="ob-error" role="alert"></div>
         <div class="mt-2 flex items-center gap-4">
           <button class="${BTN_GHOST}" id="ob-back">ย้อนกลับ</button>
           <button class="${BTN_PRIMARY}" id="ob-next">ถัดไป</button>
@@ -168,15 +169,15 @@ export async function mountOnboarding(root: HTMLElement) {
 
     if (state.step === 2) {
       return `
-        <div class="mb-4 font-mono text-[11px] tracking-[0.14em] text-coral uppercase">ขั้นตอนที่ 3 จาก ${TOTAL_STEPS}</div>
-        <h1 class="mb-4.5 text-[44px] font-semibold leading-[1.08] tracking-tight">ให้เรา<br /><em class="italic font-normal text-coral">ฟังเสียง</em>คุณหน่อย</h1>
-        <p class="mb-9 max-w-[460px] font-mono text-[13.5px] leading-[1.7] text-paper/55">เลือกไมโครโฟน แล้วลองพูดดู — แถบคลื่นเสียงด้านล่างจะขยับตามเสียงจริงของคุณ</p>
+        <div class="mb-4 font-display text-[11px] tracking-[0.14em] text-blue">ขั้นตอนที่ 3 จาก ${TOTAL_STEPS}</div>
+        <h1 class="mb-4.5 text-[36px] lg:text-[44px] font-semibold leading-[1.08] tracking-tight">ให้เรา<br /><em class="not-italic font-semibold text-paper">ฟังเสียง</em>คุณหน่อย</h1>
+        <p class="mb-6 max-w-[540px] font-display text-[13.5px] leading-[1.7] text-paper/55">เลือกไมโครโฟน แล้วลองพูดดู — แถบคลื่นเสียงด้านล่างจะขยับตามเสียงจริงของคุณ</p>
         <div class="mb-4.5">
-          <label class="${FIELD_LABEL}">ไมโครโฟน</label>
+          <label for="ob-mic" class="${FIELD_LABEL}">ไมโครโฟน</label>
           <select id="ob-mic" class="${FIELD_INPUT}"><option value="">กำลังโหลด...</option></select>
         </div>
-        <div id="ob-mic-status" class="mb-5.5 flex items-center gap-2 font-mono text-xs text-paper/55">
-          <span class="dot h-2 w-2 rounded-full bg-neutral-600 transition-colors"></span>
+        <div id="ob-mic-status" class="mb-5.5 flex items-center gap-2 font-display text-xs text-paper/55">
+          <span class="dot h-2 w-2 rounded-full bg-paper/35 transition-colors"></span>
           <span id="ob-mic-status-text">ยังไม่ได้เชื่อมต่อ</span>
         </div>
         <div class="mb-5.5 flex h-[90px] items-center justify-center gap-1.5 rounded-xl border border-paper/10 bg-ink-raised">
@@ -191,17 +192,17 @@ export async function mountOnboarding(root: HTMLElement) {
 
     const keys = state.hotkey.split("+").map((k) => k.trim());
     return `
-      <div class="mb-4 font-mono text-[11px] tracking-[0.14em] text-coral uppercase">ขั้นตอนที่ 4 จาก ${TOTAL_STEPS}</div>
-      <h1 class="mb-4.5 text-[44px] font-semibold leading-[1.08] tracking-tight">จำ shortcut<br />นี้ไว้<em class="italic font-normal text-coral">.</em></h1>
-      <p class="mb-9 max-w-[460px] font-mono text-[13.5px] leading-[1.7] text-paper/55">กดปุ่มนี้ที่ไหนก็ได้ในระบบเพื่อเริ่มพูด กดอีกครั้งเพื่อหยุดและส่งข้อความ — เปลี่ยนได้ทีหลังในหน้า Settings</p>
+      <div class="mb-4 font-display text-[11px] tracking-[0.14em] text-blue">ขั้นตอนที่ 4 จาก ${TOTAL_STEPS}</div>
+      <h1 class="mb-4.5 text-[36px] lg:text-[44px] font-semibold leading-[1.08] tracking-tight">จำ shortcut<br />นี้ไว้<em class="not-italic font-semibold text-paper">.</em></h1>
+      <p class="mb-6 max-w-[540px] font-display text-[13.5px] leading-[1.7] text-paper/55">กดปุ่มนี้ที่ไหนก็ได้ในระบบเพื่อเริ่มพูด กดอีกครั้งเพื่อหยุดและส่งข้อความ — เปลี่ยนได้ทีหลังในหน้า Settings</p>
       <div class="mb-6.5 flex gap-2.5">${keys
         .map(
           (k) =>
-            `<span class="rounded-lg border-[1.5px] border-paper/10 bg-ink-raised px-4.5 py-3 font-mono text-[15px] font-bold shadow-[0_3px_0_rgba(245,239,230,0.1)]">${escapeHtml(k)}</span>`,
+            `<span class="rounded-lg border-[1.5px] border-paper/10 bg-ink-raised px-4.5 py-3 font-display text-[15px] font-bold shadow-[0_3px_0_rgba(245,239,230,0.1)]">${escapeHtml(k)}</span>`,
         )
         .join('<span class="self-center text-paper/55">+</span>')}</div>
       <div class="mb-4.5">
-        <label class="${FIELD_LABEL}">ปรับ Hotkey (ไม่บังคับ)</label>
+        <label for="ob-hotkey" class="${FIELD_LABEL}">ปรับ Hotkey (ไม่บังคับ)</label>
         <input id="ob-hotkey" type="text" value="${escapeHtml(state.hotkey)}" placeholder="Control+Space" class="${FIELD_INPUT}" />
       </div>
       <div class="mt-2 flex items-center gap-4">
@@ -222,7 +223,7 @@ export async function mountOnboarding(root: HTMLElement) {
     } catch {
       // permission denied — device list will just lack labels
     }
-    const devices = (await navigator.mediaDevices.enumerateDevices()).filter(
+    const devices = (await navigator.mediaDevices.enumerateDevices().catch(() => [])).filter(
       (d) => d.kind === "audioinput",
     );
     select.innerHTML =
@@ -263,10 +264,10 @@ export async function mountOnboarding(root: HTMLElement) {
         analyser.fftSize = 128;
         source.connect(analyser);
         statusDot?.classList.add(
-          "bg-coral",
-          "shadow-[0_0_0_4px_rgba(255,78,51,0.16)]",
+          "bg-blue",
+          "shadow-[0_0_0_4px_rgba(0,85,255,0.16)]",
         );
-        statusDot?.classList.remove("bg-neutral-600");
+        statusDot?.classList.remove("bg-paper/35");
         if (statusText) statusText.textContent = "กำลังฟัง — ลองพูดดู";
 
         const data = new Uint8Array(analyser.frequencyBinCount);
@@ -278,7 +279,7 @@ export async function mountOnboarding(root: HTMLElement) {
           const barCount = 40;
           const barWidth = 4;
           const gap = (w - barCount * barWidth) / (barCount - 1);
-          ctx.fillStyle = "#ff4e33";
+          ctx.fillStyle = getComputedStyle(root.firstElementChild!).getPropertyValue("--color-blue").trim();
           for (let i = 0; i < barCount; i++) {
             const v = data[Math.floor((i / barCount) * data.length)] / 255;
             const barH = Math.max(3, v * h);
@@ -310,7 +311,7 @@ export async function mountOnboarding(root: HTMLElement) {
         ).value.trim();
         if (!apiKey && !hasSavedApiKey) {
           document.getElementById("ob-error")!.innerHTML =
-            `<p class="-mt-2 mb-4 font-mono text-xs text-coral">ใส่ API Key ก่อนเพื่อไปต่อ</p>`;
+            `<p class="-mt-2 mb-4 font-display text-xs text-blue">ใส่ API Key ก่อนเพื่อไปต่อ</p>`;
           return;
         }
         state.apiKey = apiKey;
@@ -329,7 +330,7 @@ export async function mountOnboarding(root: HTMLElement) {
         state.hotkey = hotkeyInput.value.trim() || "Control+Space";
         const preset = PROVIDERS.find((p) => p.key === state.provider)!;
         teardownMic();
-        await window.typeless.setSettings({
+        await saveOnboarding({
           // Blank means "keep the already-saved key" (the form never pre-fills it).
           ...(state.apiKey ? { apiKey: state.apiKey } : {}),
           apiBaseUrl: preset.baseUrl,
@@ -338,8 +339,7 @@ export async function mountOnboarding(root: HTMLElement) {
           micDeviceId: state.micDeviceId,
           hotkey: state.hotkey,
           onboardingCompleted: true,
-        });
-        finishOnboarding();
+        }, "ob-finish");
       });
 
     root.querySelectorAll<HTMLElement>(".ob-provider-card").forEach((card) => {
@@ -353,7 +353,23 @@ export async function mountOnboarding(root: HTMLElement) {
       });
     });
 
-    if (state.step === 2) populateMicSelect();
+    if (state.step === 2) void populateMicSelect();
+  }
+
+  async function saveOnboarding(settings: Parameters<typeof window.typeless.setSettings>[0], buttonId: string) {
+    const button = document.getElementById(buttonId) as HTMLButtonElement | null;
+    const error = document.getElementById("ob-save-error");
+    if (button) button.disabled = true;
+    if (error) error.textContent = "";
+    try {
+      await window.typeless.setSettings(settings);
+      teardownMic();
+      await finishOnboarding();
+    } catch {
+      if (error) error.textContent = "บันทึกไม่สำเร็จ ตรวจสอบ API และปุ่มลัด แล้วลองอีกครั้ง";
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   render();

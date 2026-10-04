@@ -31,14 +31,14 @@ export function mountWidget(root: HTMLElement) {
       data-state="idle"
       class="group flex h-full flex-col items-center justify-end gap-2 pb-3.5 opacity-0 translate-y-1.5 pointer-events-none transition-[opacity,transform] duration-150 ease-out data-[state=recording]:opacity-100 data-[state=recording]:translate-y-0 data-[state=processing]:opacity-100 data-[state=processing]:translate-y-0 data-[state=skipped]:opacity-100 data-[state=skipped]:translate-y-0"
     >
-      <div id="mic-label" class="whitespace-nowrap rounded-full border border-white/10 bg-[rgba(24,24,28,0.92)] px-2.5 py-1 text-[11px] text-neutral-200 group-data-[state=skipped]:hidden"></div>
-      <div id="pill" class="flex h-11 items-center justify-center rounded-full border border-white/10 bg-[rgba(20,20,24,0.95)] px-[18px] text-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
-        <canvas id="wave" width="160" height="28" class="hidden group-data-[state=recording]:block"></canvas>
-        <div id="processing-content" class="hidden items-center gap-2 whitespace-nowrap text-xs group-data-[state=processing]:flex">
+      <div id="mic-label" class="max-w-[300px] truncate whitespace-nowrap rounded-full border border-white/10 bg-brand-ink/90 px-2.5 py-1 text-[11px] text-brand-paper empty:hidden group-data-[state=skipped]:hidden"></div>
+      <div id="pill" class="flex h-11 items-center justify-center rounded-full border border-white/10 bg-brand-ink/95 px-[18px] text-brand-paper shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+        <img src="./brand/openpood-symbol.svg" alt="" width="20" height="20" class="mr-3 h-5 w-5 shrink-0" /><canvas id="wave" width="160" height="28" class="hidden group-data-[state=recording]:block"></canvas>
+        <div role="status" id="processing-content" class="hidden items-center gap-2 whitespace-nowrap text-xs group-data-[state=processing]:flex">
           <span class="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-white"></span>
-          <span>กำลังวิเคราะห์...</span>
+          <span>กำลังถอดข้อความ...</span>
         </div>
-        <div id="skipped-content" class="hidden items-center whitespace-nowrap text-xs text-neutral-400 group-data-[state=skipped]:flex">
+        <div id="skipped-content" class="hidden items-center whitespace-nowrap text-xs text-brand-paper/75 group-data-[state=skipped]:flex">
           <span>ไม่ได้ยินเสียง</span>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function mountWidget(root: HTMLElement) {
       recordStartedAt = Date.now();
       micLabel.textContent =
         pendingMode === "dictate"
-          ? `Using ${started.deviceLabel}`
+          ? `Dictate · ${started.deviceLabel}`
           : `${MODE_LABEL[pendingMode]} · ${started.deviceLabel}`;
       setState("recording");
       drawLiveBars();

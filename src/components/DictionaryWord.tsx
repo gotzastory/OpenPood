@@ -3,7 +3,7 @@ import { Icon } from "./Icon";
 
 export function DictionaryWord({ word, onRemove }: { word: string; onRemove: () => void }) {
   return (
-    <span className="badge badge-outline badge-lg h-auto max-w-full gap-1.5 py-1 pr-1 pl-3 text-[13px]">
+    <span className="badge badge-lg h-auto max-w-full gap-1.5 border-base-300 bg-base-200 py-1 pr-1 pl-3 text-[13px]">
       <span className="break-words">{word}</span>
       <button
         type="button"

@@ -1,4 +1,5 @@
 import Store from 'electron-store';
+import { STORE_DIRECTORY } from './storage';
 
 export interface HistoryEntry {
   id: string;
@@ -14,6 +15,7 @@ interface HistorySchema {
 }
 
 const historyStore = new Store<HistorySchema>({
+  cwd: STORE_DIRECTORY,
   name: 'history',
   defaults: { entries: [] },
 });

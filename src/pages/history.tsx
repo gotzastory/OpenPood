@@ -101,7 +101,7 @@ export function HistoryPage() {
           โหลดประวัติไม่สำเร็จ กรุณาลองเปิดหน้านี้ใหม่อีกครั้ง
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <div className="overflow-hidden rounded-xl border border-base-300 bg-base-100">
           {entries === null ? (
             <div className={EMPTY_STATE}>กำลังโหลดประวัติ...</div>
           ) : entries.length === 0 ? (

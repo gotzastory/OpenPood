@@ -29,7 +29,7 @@ const MODES: {
 }[] = [
   {
     name: "Dictate",
-    desc: "ความคิดที่ยุ่งเหยิง → งานเขียนที่ชัดเจน",
+    desc: "พูดไทยหรืออังกฤษ แล้ววางข้อความตรง cursor",
     icon: icons.mic,
     settingsKey: "hotkey",
   },
@@ -88,46 +88,44 @@ export function HomePage() {
   return (
     <div className="mx-auto max-w-[1120px]">
       <header className="mb-7">
-        <h1 className="text-[32px] font-bold tracking-[-0.025em]">พูดไปเลย ไม่ต้องพิมพ์</h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-base-content/65">
-          ใช้ปุ่มลัดจากแอปไหนก็ได้ พูดให้จบ แล้ว OpenPud จะวางข้อความตรงตำแหน่งที่คุณกำลังพิมพ์
+        <h1 className="text-[36px] font-semibold tracking-tight">พูดไปเลย ไม่ต้องพิมพ์</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-secondary">
+          กดปุ่มลัดเพื่อเริ่มพูด กดอีกครั้งเพื่อจบ แล้ว OpenPood จะวางข้อความให้ตรง cursor
         </p>
       </header>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="space-y-7">
         <section aria-labelledby="modes-title">
-          <h2 id="modes-title" className="mb-3 text-sm font-semibold">โหมดพร้อมใช้</h2>
-          <div className="list overflow-hidden rounded-xl border border-base-300 bg-base-100">
+          <h2 id="modes-title" className="mb-3 text-sm font-semibold">เริ่มด้วยปุ่มลัดของคุณ</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
             {MODES.map((mode) => (
-              <div key={mode.settingsKey} className="list-row items-center gap-3 border-b border-base-200 px-4 py-3.5 last:border-b-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/65 [&_svg]:h-[18px] [&_svg]:w-[18px]">
+              <div key={mode.settingsKey} className={`card rounded-xl border ${mode.settingsKey === "hotkey" ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 text-base-content"}`}>
+                <div className="card-body gap-0 p-6">
+                <div className="mb-5 flex items-center justify-between">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-lg [&_svg]:h-6 [&_svg]:w-6 ${mode.settingsKey === "hotkey" ? "bg-primary-content/15" : "bg-base-200 text-primary"}`}>
                   <Icon svg={mode.icon} />
                 </div>
-                <div className="list-col-grow min-w-0">
-                  <h3 className="text-sm font-semibold">{mode.name}</h3>
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-base-content/65">{mode.desc}</p>
+                <button type="button" onClick={() => setEditingMode(mode)}
+                  className={`btn btn-ghost btn-sm ${mode.settingsKey === "hotkey" ? "text-primary-content hover:bg-primary-content/15" : "text-secondary"}`}
+                  aria-label={`ตั้งค่าคีย์ลัด ${mode.name}`}>
+                  <Icon svg={icons.settings} /><span>เปลี่ยนปุ่มลัด</span>
+                </button>
                 </div>
-                <div className="flex shrink-0 gap-1.5">
+                <h3 className="text-2xl font-semibold">{mode.name}</h3>
+                <p className={`mt-2 min-h-10 text-sm leading-relaxed ${mode.settingsKey === "hotkey" ? "text-primary-content" : "text-secondary"}`}>{mode.desc}</p>
+                <div className={`mt-6 flex flex-wrap gap-2 ${mode.settingsKey === "hotkey" ? "[&_kbd]:border-primary-content/30 [&_kbd]:bg-primary-content/15 [&_kbd]:text-primary-content [&_kbd]:shadow-none" : ""}`}>
                   <HotkeyBadges hotkey={settings[mode.settingsKey]} />
                 </div>
-                <button
-                  type="button"
-                  aria-label={`ตั้งค่าคีย์ลัด ${mode.name}`}
-                  title="ตั้งค่าคีย์ลัด"
-                  className="btn btn-square btn-ghost btn-sm shrink-0 [&_svg]:h-4 [&_svg]:w-4"
-                  onClick={() => setEditingMode(mode)}
-                >
-                  <Icon svg={icons.settings} />
-                </button>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        <aside className="card card-border bg-base-100" aria-labelledby="stats-title">
-          <div className="card-body gap-4 p-4">
+        <aside className="border-y border-base-300 py-5" aria-labelledby="stats-title">
+          <div className="space-y-4">
             <h2 id="stats-title" className="text-sm font-semibold">การใช้งานของคุณ</h2>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-5">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-4">
               <div><dt className="text-xs text-base-content/65">เวลาที่ใช้พูด</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.totalMinutes}<span className="ml-1 text-xs font-normal text-base-content/65">min</span></dd></div>
               <div><dt className="text-xs text-base-content/65">จำนวนคำ</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.totalWords}</dd></div>
               <div><dt className="text-xs text-base-content/65">ความเร็ว</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.wpm}<span className="ml-1 text-xs font-normal text-base-content/65">WPM</span></dd></div>
@@ -135,7 +133,7 @@ export function HomePage() {
             </dl>
             <div className="flex items-start gap-2 border-t border-base-200 pt-3 text-xs leading-relaxed text-base-content/65 [&_svg]:mt-0.5 [&_svg]:h-3.5 [&_svg]:w-3.5" aria-label="ข้อมูลความเป็นส่วนตัว">
               <Icon svg={icons.lock} />
-              <span>เสียงถูกส่งไปยัง API ที่คุณเลือกเพื่อถอดข้อความเท่านั้น</span>
+              <span>เสียงส่งไปยังผู้ให้บริการที่คุณเลือก และข้อความอาจส่งเพื่อปรับหรือแปลตามการตั้งค่า ประวัติเก็บในเครื่อง</span>
             </div>
           </div>
         </aside>
@@ -143,11 +141,11 @@ export function HomePage() {
 
       <section className="mt-8" aria-labelledby="use-cases-title">
         <h2 id="use-cases-title" className="mb-3 text-sm font-semibold">ใช้ได้ทุกที่ที่พิมพ์ข้อความ</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-5 xl:grid-cols-3">
           {USE_CASES.map((useCase) => (
-            <article key={useCase.name} className="card card-border min-w-0 bg-base-100">
-              <div className="card-body gap-1.5 p-4">
-                <img src={useCase.logo} alt="" width="32" height="32" className="mb-1 h-8 w-8 object-contain" />
+            <article key={useCase.name} className="flex min-w-0 items-start gap-3">
+                <img src={useCase.logo} alt="" width="24" height="24" loading="lazy" className="mt-0.5 h-6 w-6 shrink-0 object-contain" />
+              <div>
                 <h3 className="text-sm font-semibold">{useCase.name}</h3>
                 <p className="text-[13px] leading-relaxed text-base-content/65">{useCase.desc}</p>
               </div>

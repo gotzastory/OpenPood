@@ -1,6 +1,8 @@
 # OpenPood
 
-![OpenPood logo](logo.png)
+ชื่อเดิม OpenPud: อัปเกรดเป็น OpenPood โดยย้าย settings, API key ที่เข้ารหัส, history และ dictionary ไปยัง `%APPDATA%/OpenPood` อัตโนมัติ ข้อมูลเดิมยังอยู่ที่ `%APPDATA%/OpenPud` และข้อมูล OpenPood ที่มีอยู่จะไม่ถูกเขียนทับ
+
+![OpenPood logo](public/brand/openpood-logo.png)
 
 โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
 
@@ -29,7 +31,7 @@
 
 ดาวน์โหลดตัวติดตั้งจาก [GitHub Releases](https://github.com/gotzastory/OpenPud/releases/latest) — **ไม่ต้องมี Node.js**
 
-1. เปิดหน้า Releases แล้วดาวน์โหลด `OpenPud Setup x.x.x.exe`
+1. เปิดหน้า Releases แล้วดาวน์โหลด `OpenPood Setup x.x.x.exe`
 2. ดับเบิลคลิกเพื่อติดตั้ง (NSIS, ไม่ต้องสิทธิ์ admin)
 3. เปิดแอปครั้งแรก → onboarding wizard จะพาตั้งค่า API key / ไมค์ / ปุ่มลัด
 
@@ -38,7 +40,7 @@
 1. กด **More info**
 2. กด **Run anyway**
 
-แบบ portable (ไม่ติดตั้ง): หลัง build เอง ใช้ `release/win-unpacked/OpenPud.exe`
+แบบ portable (ไม่ติดตั้ง): หลัง build เอง ใช้ `release/win-unpacked/OpenPood.exe`
 
 ---
 
@@ -179,7 +181,7 @@ npm install
 npm run dist
 ```
 
-ได้ไฟล์ `release/OpenPud Setup <version>.exe` และแบบ portable ที่ `release/win-unpacked/OpenPud.exe`
+ได้ไฟล์ `release/OpenPood Setup <version>.exe` และแบบ portable ที่ `release/win-unpacked/OpenPood.exe`
 
 ### ปล่อย Release ผ่าน GitHub Actions
 

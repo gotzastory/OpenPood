@@ -101,12 +101,12 @@ export async function mountSettings(root: HTMLElement) {
     <div class="mx-auto max-w-[920px]">
       <header class="mb-6">
         <h1 class="${PAGE_TITLE}">Settings</h1>
-        <p class="mt-1 text-sm text-base-content/65">ตั้งค่าการถอดเสียง ผลลัพธ์ และอุปกรณ์ของ OpenPud</p>
+        <p class="mt-1 text-sm text-base-content/65">ตั้งค่าการถอดเสียง ผลลัพธ์ และอุปกรณ์ของ OpenPood</p>
       </header>
       <div class="grid items-start gap-5 lg:grid-cols-2">
       <section class="card card-border bg-base-100" aria-labelledby="provider-title">
-      <div class="card-body gap-0 p-5">
-      <h2 id="provider-title" class="mb-4 text-sm font-semibold">ผู้ให้บริการและโมเดล</h2>
+      <div class="card-body gap-0 p-6">
+      <h2 id="provider-title" class="mb-5 text-base font-semibold">ผู้ให้บริการและโมเดล</h2>
       <label class="${FIELD_LABEL}">
         ผู้ให้บริการ
         <select id="provider-preset" class="${FIELD_SELECT}">
@@ -141,8 +141,8 @@ export async function mountSettings(root: HTMLElement) {
 
       <div class="flex flex-col gap-5">
       <section class="card card-border bg-base-100" aria-labelledby="output-title">
-      <div class="card-body gap-0 p-5">
-      <h2 id="output-title" class="mb-4 text-sm font-semibold">ผลลัพธ์และการแปล</h2>
+      <div class="card-body gap-0 p-6">
+      <h2 id="output-title" class="mb-5 text-base font-semibold">ผลลัพธ์และการแปล</h2>
       <label class="${FIELD_LABEL}">
         แปลเป็นภาษา (โหมด Translate)
         <select id="translateTargetLang" class="${FIELD_SELECT}">
@@ -156,11 +156,11 @@ export async function mountSettings(root: HTMLElement) {
       </label>
       <label class="mb-2 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
         <span>ตัดคำติดปากอัตโนมัติ <small class="block text-xs text-base-content/65">อืมม, เอ่ออ, um, uh — ไม่ใช้ AI</small></span>
-        <input id="stripFillersEnabled" type="checkbox" class="toggle toggle-sm" ${current.stripFillersEnabled ? "checked" : ""} />
+        <input id="stripFillersEnabled" type="checkbox" class="toggle toggle-primary toggle-sm" ${current.stripFillersEnabled ? "checked" : ""} />
       </label>
       <label class="mb-4 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
         <span>ปรับข้อความด้วย AI <small class="block text-xs text-base-content/65">ใส่วรรคตอนและปรับโทนตามแอปปลายทาง</small></span>
-        <input id="aiPolishEnabled" type="checkbox" class="toggle toggle-sm" ${current.aiPolishEnabled ? "checked" : ""} />
+        <input id="aiPolishEnabled" type="checkbox" class="toggle toggle-primary toggle-sm" ${current.aiPolishEnabled ? "checked" : ""} />
       </label>
       <label class="${FIELD_LABEL} mb-4">
         Chat model (ใช้กับ AI polish, Translate)
@@ -170,8 +170,8 @@ export async function mountSettings(root: HTMLElement) {
       </section>
 
       <section class="card card-border bg-base-100" aria-labelledby="device-title">
-      <div class="card-body gap-0 p-5">
-      <h2 id="device-title" class="mb-4 text-sm font-semibold">อุปกรณ์และระบบ</h2>
+      <div class="card-body gap-0 p-6">
+      <h2 id="device-title" class="mb-5 text-base font-semibold">อุปกรณ์และระบบ</h2>
       <label class="${FIELD_LABEL}">
         ไมโครโฟน
         <select id="micDeviceId" class="${FIELD_SELECT}">
@@ -192,11 +192,11 @@ export async function mountSettings(root: HTMLElement) {
       </label>
       <label class="mb-2 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
         <span>เล่นเสียงเมื่อเริ่ม/หยุดอัด</span>
-        <input id="playSound" type="checkbox" class="toggle toggle-sm" ${current.playSound ? "checked" : ""} />
+        <input id="playSound" type="checkbox" class="toggle toggle-primary toggle-sm" ${current.playSound ? "checked" : ""} />
       </label>
       <label class="mb-4 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
         <span>เปิดแอปอัตโนมัติเมื่อเปิดเครื่อง</span>
-        <input id="launchAtStartup" type="checkbox" class="toggle toggle-sm" ${current.launchAtStartup ? "checked" : ""} />
+        <input id="launchAtStartup" type="checkbox" class="toggle toggle-primary toggle-sm" ${current.launchAtStartup ? "checked" : ""} />
       </label>
       </div>
       </section>

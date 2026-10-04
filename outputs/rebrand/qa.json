@@ -1,0 +1,90 @@
+{
+  "checks": [
+    {
+      "name": "home",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "hotkey-modal",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "history",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "dictionary",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "settings",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "history-empty",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "home-error",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "home-small",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "onboarding-welcome-small",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "onboarding-welcome",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "onboarding-provider",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "onboarding-microphone",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "onboarding-hotkey",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "onboarding-save-error",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "widget-processing",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "widget-skipped",
+      "overflow": false,
+      "title": "OpenPood"
+    },
+    {
+      "name": "widget-recording",
+      "overflow": false,
+      "title": "OpenPood"
+    }
+  ],
+  "rendererErrors": []
+}

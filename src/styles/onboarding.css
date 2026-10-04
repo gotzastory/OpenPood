@@ -1,58 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import 'tailwindcss';
 
 @theme {
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --color-ink: #141311;
-  --color-ink-raised: #1c1a17;
-  --color-paper: #f5efe6;
-  --color-coral: #ff4e33;
+  --font-display: 'Segoe UI', system-ui, sans-serif;
+  --color-ink: #0b1218;
+  --color-ink-raised: #0b1218;
+  --color-paper: #ffffff;
+  --color-blue: #0055ff;
 }
 
-/* subtle grain overlay for texture, avoids flat-solid AI look */
-.ob-root::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+.ob-root {
+  color-scheme: dark;
 }
-
-.ob-root::after {
-  content: '';
-  position: absolute;
-  top: -30%;
-  right: -10%;
-  width: 60%;
-  height: 60%;
-  background: radial-gradient(circle, rgba(255, 78, 51, 0.16) 0%, transparent 70%);
-  pointer-events: none;
+.ob-root :is(input, select, .ob-provider-card) {
+  background: color-mix(in srgb, var(--color-paper) 5%, var(--color-ink));
+}
+.ob-root :is(button, input, select):focus-visible {
+  outline: 2px solid var(--color-paper);
+  outline-offset: 4px;
+}
+.ob-root .text-paper\/55 {
+  color: color-mix(in srgb, var(--color-paper) 72%, var(--color-ink));
+}
+.ob-root canvas { max-width: 100%; }
+.ob-root .text-blue { color: var(--color-paper); }
+.ob-root button { min-height: 44px; }
+.ob-root select { color-scheme: dark; }
+.ob-root select option { background: var(--color-ink); color: var(--color-paper); }
+.ob-root .ob-provider-card[aria-pressed="true"] {
+  border-color: var(--color-blue);
+  background: color-mix(in srgb, var(--color-blue) 15%, var(--color-ink));
 }
 
 .ob-panel {
-  animation: ob-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  outline: none;
+  animation: ob-in 240ms ease-out both;
 }
 
 @keyframes ob-in {
   from {
     opacity: 0;
-    transform: translateX(24px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
-@keyframes ob-wave {
-  0%,
-  100% {
-    height: 10px;
-  }
-  50% {
-    height: var(--h, 40px);
-  }
+@media (prefers-reduced-motion: reduce) {
+  .ob-panel { animation: none; }
 }

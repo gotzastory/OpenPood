@@ -30,7 +30,7 @@ const HOST_SCRIPT = `
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
-public static class OpenPudNative {
+public static class OpenPoodNative {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
   [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
@@ -57,15 +57,15 @@ while ($true) {
   try {
     switch ($cmd) {
       'fg' {
-        $hwnd = [OpenPudNative]::GetForegroundWindow()
+        $hwnd = [OpenPoodNative]::GetForegroundWindow()
         $procId = [uint32]0
-        [OpenPudNative]::GetWindowThreadProcessId($hwnd, [ref]$procId) | Out-Null
+        [OpenPoodNative]::GetWindowThreadProcessId($hwnd, [ref]$procId) | Out-Null
         $name = ''
         try { $name = [System.Diagnostics.Process]::GetProcessById([int]$procId).ProcessName } catch {}
         $out.WriteLine("$id ok $([int64]$hwnd) $name")
       }
       'paste' {
-        [OpenPudNative]::CtrlV()
+        [OpenPoodNative]::CtrlV()
         $out.WriteLine("$id ok")
       }
       default { $out.WriteLine("$id err unknown command") }

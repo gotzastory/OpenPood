@@ -1,5 +1,6 @@
 import Store from 'electron-store';
 import { safeStorage } from 'electron';
+import { STORE_DIRECTORY } from './storage';
 
 export interface AppSettings {
   apiKey: string;
@@ -51,7 +52,7 @@ export type RendererSettings = Omit<AppSettings, 'apiKey'> & {
   hasApiKey: boolean;
 };
 
-const rawStore = new Store<StoredSettings>({ defaults });
+const rawStore = new Store<StoredSettings>({ defaults, cwd: STORE_DIRECTORY });
 
 // Runtime allowlist for `settings:set` — IPC payloads come from the renderer
 // and must not be able to write arbitrary keys (incl. dotted paths) into the

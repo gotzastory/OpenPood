@@ -13,8 +13,8 @@ export function HistoryEntryCard({
   onCopy: () => void;
 }) {
   return (
-    <article className="card card-border bg-base-100">
-      <div className="card-body gap-2 p-4">
+    <article className="border-b border-base-300 last:border-b-0">
+      <div className="space-y-3 p-5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/65">
           <span>{new Date(entry.timestamp).toLocaleString("th-TH")}</span>
           <span className="max-w-full break-all font-mono text-base-content/80">

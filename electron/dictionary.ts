@@ -1,4 +1,5 @@
 import Store from 'electron-store';
+import { STORE_DIRECTORY } from './storage';
 
 export interface CorrectionRule {
   from: string;
@@ -11,6 +12,7 @@ interface DictionarySchema {
 }
 
 const dictionaryStore = new Store<DictionarySchema>({
+  cwd: STORE_DIRECTORY,
   name: 'dictionary',
   defaults: { words: [], corrections: [] },
 });

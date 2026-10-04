@@ -1,5 +1,5 @@
 {
-  "name": "OpenPud",
+  "name": "openpood",
   "private": true,
   "version": "0.4.0",
   "description": "Voice dictation for Windows: hold a hotkey, speak, and the text is pasted at your cursor.",
@@ -38,8 +38,8 @@
     "react-dom": "^19.3.0"
   },
   "build": {
-    "appId": "com.openpud.app",
-    "productName": "OpenPud",
+    "appId": "com.openpood.app",
+    "productName": "OpenPood",
     "directories": {
       "output": "release"
     },
@@ -48,7 +48,11 @@
       "dist-electron/**"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/brand/openpood.ico"
+    },
+    "nsis": {
+      "guid": "3d3b2486-1b4f-5e19-895e-ab7f29245ba3"
     }
   }
 }

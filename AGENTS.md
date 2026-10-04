@@ -4,7 +4,7 @@ Guidance for Codex when working in this repository.
 
 ## Product
 
-**OpenPud** is a Windows voice-dictation app: press a global hotkey, speak, then paste the transcript into the app that originally had focus. Stack: Electron, TypeScript, Vite, Tailwind CSS v4.
+**OpenPood** is a Windows voice-dictation app: press a global hotkey, speak, then paste the transcript into the app that originally had focus. Stack: Electron, TypeScript, Vite, Tailwind CSS v4.
 
 ## Commands
 
@@ -17,7 +17,7 @@ npm.cmd run dist
 
 - `build` runs both TypeScript targets before Vite.
 - No lint setup. Renderer and Electron use separate `tsconfig.json` files.
-- Before restarting dev, stop only OpenPud-related Electron/Vite processes; never kill every `node.exe` process.
+- Before restarting dev, stop only OpenPood-related Electron/Vite processes; never kill every `node.exe` process.
 
 ## Architecture
 

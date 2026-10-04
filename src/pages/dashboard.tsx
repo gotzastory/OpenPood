@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { DashboardNavItem } from "../components/DashboardNavItem";
-import { Icon } from "../components/Icon";
 import { LegacySettings } from "../components/LegacySettings";
 import { icons } from "../lib/icons";
 import { DictionaryPage } from "./dictionary";
@@ -54,17 +53,14 @@ export function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-base-200 text-base-content">
+    <div className="dashboard-shell flex h-screen bg-base-200 text-base-content">
       <aside
-        className="flex w-52 shrink-0 flex-col border-r border-base-300 bg-base-200 p-3"
+        className="flex w-48 shrink-0 flex-col border-r border-base-300 bg-base-100 p-4 lg:w-56"
         aria-label="เมนูหลัก"
       >
-        <div
-          className="mb-5 flex items-center gap-2 px-2 py-2 text-[15px] font-bold [&_svg]:h-[22px] [&_svg]:w-[22px]"
-          aria-label="OpenPud"
-        >
-          <Icon svg={icons.logo} />
-          <span>OpenPud</span>
+        <div className="mb-8 px-1 pt-1">
+          <span className="brand-logo max-w-full" role="img" aria-label="OpenPood" />
+          <p className="mt-1 px-1 text-xs text-secondary">พูดให้เป็นข้อความ</p>
         </div>
         <nav className="flex flex-col gap-1" aria-label="หน้าหลัก">
           {NAV_ITEMS.map((item) => (
@@ -79,7 +75,7 @@ export function DashboardPage() {
             />
           ))}
         </nav>
-        <div className="mt-auto border-t border-base-300 pt-3">
+        <div className="mt-auto border-t border-base-300 pt-4">
           <DashboardNavItem
             label="Settings"
             icon={icons.settings}
