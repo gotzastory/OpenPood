@@ -1,6 +1,6 @@
-# OpenPud
+# OpenPood
 
-![alt text](image-1.png)
+![OpenPood logo](logo.png)
 
 โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
 
@@ -106,7 +106,7 @@
 
 | หน้าที่ | โมเดล | ทำไม |
 |---|---|---|
-| **ถอดเสียง (STT)** | [`google/gemini-3.5-transcribe`](https://openrouter.ai/google/gemini-3.5-transcribe) | ตัวที่แนะนำที่สุด ณ ตอนนี้สำหรับ OpenPud |
+| **ถอดเสียง (STT)** | [`google/gemini-3.5-transcribe`](https://openrouter.ai/google/gemini-3.5-transcribe) | ตัวที่แนะนำที่สุด ณ ตอนนี้สำหรับ OpenPood |
 | **Chat (polish / translate)** | [`openai/gpt-6-luna`](https://openrouter.ai/openai/gpt-6-luna) | เร็ว ถูก เหมาะงานสั้นๆ อย่างเก็บประโยค / แปล |
 
 ค่า default ของแอปตั้งแบบนี้ไว้แล้ว — เปิดครั้งแรกแค่ใส่ API key ก็ใช้ได้
@@ -212,10 +212,10 @@ Electron แยก 2 โปรเซส คุยกันผ่าน `contextB
 |---|---|
 | กดปุ่มลัดแล้วไม่มีอะไรเกิดขึ้น | ดูว่าแอปยังรันอยู่ที่ tray หรือไม่ / ปุ่มลัดชนกับโปรแกรมอื่นหรือยัง / ลองเปลี่ยนปุ่มลัดใน Settings |
 | ถอดเสียงไม่สำเร็จ | ตรวจ API key, เครือข่าย, และยอดเครดิตของ provider — แอปจะแจ้งด้วย Windows Notification |
-| ไม่ได้ยินเสียง / waveform ไม่ขยับ | อนุญาตไมค์ให้ OpenPud ใน Windows Settings → Privacy → Microphone แล้วเลือกไมค์ในแอป |
+| ไม่ได้ยินเสียง / waveform ไม่ขยับ | อนุญาตไมค์ให้ OpenPood ใน Windows Settings → Privacy → Microphone แล้วเลือกไมค์ในแอป |
 | ข้อความไม่วางลงแอปเป้าหมาย | คลิกโฟกัสช่องพิมพ์ก่อนกดปุ่มลัด — แอปวางด้วย Ctrl+V ผ่านคลิปบอร์ด |
 | SmartScreen บล็อกตัวติดตั้ง | More info → Run anyway (ดูส่วนติดตั้งด้านบน) |
-| `npm run dist` ขึ้น EPERM | ปิด `npm run dev` / ปิด OpenPud ที่เปิดอยู่ แล้วลบโฟลเดอร์ `release/` ก่อน build ใหม่ |
+| `npm run dist` ขึ้น EPERM | ปิด `npm run dev` / ปิด OpenPood ที่เปิดอยู่ แล้วลบโฟลเดอร์ `release/` ก่อน build ใหม่ |
 | EPERM ตอน rename `win-unpacked.tmp` ทั้งที่ไม่มีอะไรรัน | VS Code file watcher ถือ handle ของโฟลเดอร์ใน workspace — build ออกนอก workspace: `npx electron-builder --config.directories.output=%TEMP%\openpud-release` หรือใส่ `release/**` ใน `files.watcherExclude` |
 
 ---
