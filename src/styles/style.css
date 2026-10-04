@@ -1,3 +1,9 @@
+@import '@fontsource/kanit/400.css';
+@import '@fontsource/kanit/500.css';
+@import '@fontsource/kanit/600.css';
+@import '@fontsource/kanit/700.css';
+@import '@fontsource/kanit/800.css';
+@import '@fontsource/kanit/900.css';
 @import 'tailwindcss';
 
 html,
@@ -12,7 +18,7 @@ body,
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Kanit', system-ui, sans-serif;
 }
 
 @theme {
