@@ -55,8 +55,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          notes_file="release-notes/${GITHUB_REF_NAME}.md"
+          notes_args=(--generate-notes)
+          if [ -f "$notes_file" ]; then
+            notes_args=(--notes-file "$notes_file")
+          fi
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "OpenPood ${GITHUB_REF_NAME#v}" \
-            --generate-notes \
+            "${notes_args[@]}" \
             release/*.exe release/*.exe.blockmap release/latest.yml
