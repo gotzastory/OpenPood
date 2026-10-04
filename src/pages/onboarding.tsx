@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createRoot } from "react-dom/client";
+import { ELEVENLABS_API_BASE, ELEVENLABS_DEFAULT_MODEL, isElevenLabsProvider } from "../lib/elevenlabs";
 
 interface ProviderPreset {
-  key: "openai" | "openrouter" | "gemini";
+  key: "openai" | "openrouter" | "gemini" | "elevenlabs";
   name: string;
   sub: string;
   baseUrl: string;
@@ -31,9 +32,17 @@ const PROVIDERS: ProviderPreset[] = [
     baseUrl: "https://api.openai.com/v1",
     model: "whisper-1",
   },
+  {
+    key: "elevenlabs",
+    name: "ElevenLabs",
+    sub: "Scribe v2 · ถอดเสียงเท่านั้น",
+    baseUrl: ELEVENLABS_API_BASE,
+    model: ELEVENLABS_DEFAULT_MODEL,
+  },
 ];
 
 const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
+  elevenlabs: "",
   openrouter: "google/gemini-3.5-flash-lite",
   gemini: "gemini-3.5-flash-lite",
   openai: "gpt-4o-mini",
@@ -58,6 +67,7 @@ interface OnboardingState {
 }
 
 function providerFromUrl(baseUrl: string): ProviderPreset["key"] {
+  if (isElevenLabsProvider({ apiBaseUrl: baseUrl })) return "elevenlabs";
   if (baseUrl.includes("openai.com")) return "openai";
   if (baseUrl.includes("generativelanguage.googleapis.com")) return "gemini";
   return "openrouter";
@@ -365,6 +375,7 @@ export function OnboardingPage() {
                   apiBaseUrl: provider.baseUrl,
                   model: provider.model,
                   chatModel: CHAT_MODEL_BY_PROVIDER[state.provider],
+                  ...(state.provider === "elevenlabs" ? { aiPolishEnabled: false } : {}),
                   micDeviceId: state.micDeviceId,
                   hotkey: state.hotkey.trim() || "Control+Space",
                 }, false)
@@ -444,7 +455,7 @@ function ProviderStep({
         เลือก API สำหรับถอดเสียง ใช้ API Key ของคุณเอง โดย key
         จะถูกเก็บในเครื่องและไม่แสดงกลับในฟอร์ม
       </p>
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {PROVIDERS.map((item) => (
           <button
             type="button"
@@ -479,6 +490,7 @@ function ProviderStep({
             ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน"
             : state.provider === "gemini"
               ? "AIza..."
+              : state.provider === "elevenlabs" ? "ElevenLabs API key"
               : "sk-..."
         }
       />

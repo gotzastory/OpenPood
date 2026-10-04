@@ -1,5 +1,6 @@
 import type { AppSettings } from './config';
 import { geminiChatComplete, isGeminiProvider } from './gemini';
+import { isElevenLabsProvider, ELEVENLABS_STT_ONLY_MESSAGE } from '../src/lib/elevenlabs';
 
 export class LlmError extends Error {}
 
@@ -11,6 +12,9 @@ export async function chatComplete(
   systemPrompt: string,
   userText: string,
 ): Promise<string> {
+  if (isElevenLabsProvider(settings)) {
+    throw new LlmError(ELEVENLABS_STT_ONLY_MESSAGE);
+  }
   if (!settings.apiKey) {
     throw new LlmError('ยังไม่ได้ตั้งค่า API key ในหน้า Settings');
   }

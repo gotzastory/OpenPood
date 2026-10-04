@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { AppSettings } from "../types";
+import { ELEVENLABS_API_BASE, ELEVENLABS_STT_ONLY_MESSAGE, isElevenLabsProvider } from "../lib/elevenlabs";
 import {
   GEMINI_MODELS,
+  ELEVENLABS_MODELS,
   OPENAI_MODELS,
   OPENROUTER_MODELS,
   type TranscriptionModel,
@@ -14,7 +16,7 @@ import {
   PAGE_TITLE,
 } from "../lib/uiClasses";
 
-type ProviderKey = "openai" | "openrouter" | "gemini" | "custom";
+type ProviderKey = "openai" | "openrouter" | "gemini" | "elevenlabs" | "custom";
 
 type SettingsForm = Pick<
   AppSettings,
@@ -50,6 +52,11 @@ const PROVIDER_PRESETS: Record<
     models: GEMINI_MODELS,
     chatModel: "gemini-3.5-flash-lite",
   },
+  elevenlabs: {
+    baseUrl: ELEVENLABS_API_BASE,
+    models: ELEVENLABS_MODELS,
+    chatModel: "",
+  },
 };
 
 const TRANSLATE_LANGUAGES: Record<string, string> = {
@@ -65,6 +72,7 @@ const TRANSLATE_LANGUAGES: Record<string, string> = {
 };
 
 function detectProvider(baseUrl: string): ProviderKey {
+  if (isElevenLabsProvider({ apiBaseUrl: baseUrl })) return "elevenlabs";
   if (baseUrl === PROVIDER_PRESETS.openai.baseUrl) return "openai";
   if (baseUrl === PROVIDER_PRESETS.openrouter.baseUrl) return "openrouter";
   if (baseUrl === PROVIDER_PRESETS.gemini.baseUrl) return "gemini";
@@ -153,6 +161,7 @@ export function SettingsPage() {
             apiBaseUrl: preset.baseUrl,
             model: preset.models[0].id,
             chatModel: preset.chatModel,
+            aiPolishEnabled: nextProvider === "elevenlabs" ? false : current.aiPolishEnabled,
           }
         : current,
     );
@@ -170,7 +179,7 @@ export function SettingsPage() {
         language: form.language,
         translateTargetLang: form.translateTargetLang,
         stripFillersEnabled: form.stripFillersEnabled,
-        aiPolishEnabled: form.aiPolishEnabled,
+        aiPolishEnabled: isElevenLabsProvider(form) ? false : form.aiPolishEnabled,
         chatModel: form.chatModel.trim(),
         micDeviceId: form.micDeviceId,
         maxDurationSec: Number(form.maxDurationSec) || 120,
@@ -214,6 +223,7 @@ export function SettingsPage() {
   }
 
   const models = provider === "custom" ? [] : PROVIDER_PRESETS[provider].models;
+  const sttOnly = isElevenLabsProvider(form);
   const statusClass =
     message.kind === "success"
       ? "text-success"
@@ -251,6 +261,7 @@ export function SettingsPage() {
                 <option value="openai">OpenAI (api.openai.com)</option>
                 <option value="openrouter">OpenRouter (openrouter.ai)</option>
                 <option value="gemini">Gemini (Google AI Studio)</option>
+                <option value="elevenlabs">ElevenLabs (Speech to Text)</option>
                 <option value="custom">กำหนดเอง</option>
               </select>
             </label>
@@ -266,6 +277,7 @@ export function SettingsPage() {
                     ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน"
                     : provider === "gemini"
                       ? "AIza..."
+                      : sttOnly ? "ElevenLabs API key"
                       : "sk-..."
                 }
               />
@@ -320,6 +332,12 @@ export function SettingsPage() {
               โหมดแนะนำช่วยรองรับคำพูดหลายภาษา หากพูดภาษาเดียวเป็นหลัก
               ให้เลือกภาษานั้นเพื่อช่วยความแม่นยำ
             </p>
+            {sttOnly && (
+              <p className="mt-3 text-xs leading-relaxed text-base-content/65">
+                {ELEVENLABS_STT_ONLY_MESSAGE} · Dictionary ใช้กฎแก้คำในเครื่อง;
+                ยังไม่ส่งคำศัพท์เป็น keyterms
+              </p>
+            )}
           </div>
         </section>
 
@@ -337,6 +355,7 @@ export function SettingsPage() {
                 <select
                   className={FIELD_SELECT}
                   value={form.translateTargetLang}
+                  disabled={sttOnly}
                   onChange={(event) =>
                     update("translateTargetLang", event.target.value)
                   }
@@ -357,7 +376,8 @@ export function SettingsPage() {
               <Toggle
                 label="ปรับข้อความด้วย AI"
                 hint="ใส่วรรคตอนและปรับโทนตามแอปปลายทาง"
-                checked={form.aiPolishEnabled}
+                checked={!sttOnly && form.aiPolishEnabled}
+                disabled={sttOnly}
                 onChange={(value) => update("aiPolishEnabled", value)}
               />
               <label className={`${FIELD_LABEL} mb-0`}>
@@ -366,6 +386,7 @@ export function SettingsPage() {
                   className={FIELD_INPUT}
                   type="text"
                   value={form.chatModel}
+                  disabled={sttOnly}
                   onChange={(event) => update("chatModel", event.target.value)}
                   placeholder="google/gemini-3.5-flash-lite"
                 />
@@ -451,11 +472,13 @@ function Toggle({
   label,
   hint,
   checked,
+  disabled = false,
   onChange,
 }: {
   label: string;
   hint?: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (value: boolean) => void;
 }) {
   return (
@@ -470,6 +493,7 @@ function Toggle({
         type="checkbox"
         className="toggle toggle-primary toggle-sm"
         checked={checked}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
       />
     </label>

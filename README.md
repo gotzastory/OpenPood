@@ -2,9 +2,9 @@
 
 ชื่อเดิม OpenPud: อัปเกรดเป็น OpenPood โดยย้าย settings, API key ที่เข้ารหัส, history และ dictionary ไปยัง `%APPDATA%/OpenPood` อัตโนมัติ ข้อมูลเดิมยังอยู่ที่ `%APPDATA%/OpenPud` และข้อมูล OpenPood ที่มีอยู่จะไม่ถูกเขียนทับ
 
-![OpenPood logo](public/brand/openpood-logo.png)
+![OpenPood logo](/logo.png)
 
-โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง
+โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ (คล้าย Typeless) สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง 
 
 สร้างด้วย Electron + React + TypeScript + Vite + Tailwind CSS v4 + DaisyUI
 

@@ -1,5 +1,7 @@
 import type { AppSettings } from './config';
 import { geminiTranscribe, isGeminiProvider } from './gemini';
+import { elevenLabsTranscribe } from './elevenlabs';
+import { isElevenLabsProvider } from '../src/lib/elevenlabs';
 
 export class TranscriptionError extends Error {}
 
@@ -91,6 +93,13 @@ async function requestTranscription(
   promptBias: string,
   language: string,
 ): Promise<string> {
+  if (isElevenLabsProvider(settings)) {
+    try {
+      return await elevenLabsTranscribe(audioBuffer, mimeType, settings, language);
+    } catch (err) {
+      throw new TranscriptionError(err instanceof Error ? err.message : 'ElevenLabs STT failed');
+    }
+  }
   if (isGeminiProvider(settings)) {
     try {
       return await geminiTranscribe(

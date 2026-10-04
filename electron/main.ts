@@ -15,6 +15,7 @@ import {
   type CorrectionRule,
 } from './dictionary';
 import { LlmError } from './llm';
+import { isElevenLabsProvider, ELEVENLABS_STT_ONLY_MESSAGE } from '../src/lib/elevenlabs';
 import { polishText } from './polish';
 import { stripFillers } from './stripFillers';
 import { translateText } from './translate';
@@ -295,6 +296,9 @@ app.whenReady().then(() => {
       const mode = payload.mode === 'translate' ? 'translate' : 'dictate';
       const target = await foregroundAtHotkey;
       try {
+        if (mode === 'translate' && isElevenLabsProvider(settings)) {
+          throw new LlmError(ELEVENLABS_STT_ONLY_MESSAGE);
+        }
         const bias = dictionaryPrompt();
         let text = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
 
@@ -313,7 +317,7 @@ app.whenReady().then(() => {
           text = applyCorrections(text);
           text = await translateText(text, settings);
         } else {
-          if (settings.aiPolishEnabled) {
+          if (settings.aiPolishEnabled && !isElevenLabsProvider(settings)) {
             text = await polishText(text, settings, categoryForProcess(target?.processName ?? ''));
           }
           // After polish: AI cleanup used to run after corrections and could

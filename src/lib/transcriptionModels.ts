@@ -1,3 +1,10 @@
+import { ELEVENLABS_DEFAULT_MODEL } from './elevenlabs';
+
+export const ELEVENLABS_MODELS: TranscriptionModel[] = [
+  { id: ELEVENLABS_DEFAULT_MODEL, name: 'Scribe v2' },
+  { id: 'scribe_v1', name: 'Scribe v1' },
+];
+
 export interface TranscriptionModel {
   id: string;
   name: string;
