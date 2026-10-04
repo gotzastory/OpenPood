@@ -10,26 +10,43 @@ OpenPud is a focused Windows utility, not a generic SaaS dashboard. Its three su
 - Do not use emoji. Use monochrome SVG UI icons from `src/icons.ts`; keep official brand artwork in `public/icons/`.
 - Avoid adding new colors, typefaces, motion, or component patterns without a product reason.
 
+## Brand tokens
+
+- Blue `#0055FF`: logo mark, primary brand accent, selected states, and primary button backgrounds.
+- Ink `#0B1218`: main text, high-emphasis labels, and dark UI surfaces.
+- White `#FFFFFF`: wordmark, foreground on Blue/Ink buttons, and clean content surfaces.
+- Light Blue `#EEF4FF`: app background, soft panels, and low-emphasis brand surfaces.
+- Highlight Slate `#64748B`: secondary text, helper text, muted labels, and inactive metadata.
+- Border `#E2E8F0`: dividers, input borders, table lines, and quiet card outlines.
+- Do not introduce off-palette blues, grays, or near-blacks unless a state cannot meet contrast with the core tokens.
+
+## Typography
+
+- App UI font: use the existing system sans-serif stack unless a product redesign explicitly changes it.
+- Brand/wordmark direction: rounded geometric sans-serif, bold weight, soft terminals.
+- Wordmark starting point: Nunito Sans ExtraBold `800`; adjust tracking and spacing to match the logo reference.
+- Keep Thai text legible first; do not force the wordmark font onto body copy or dense dashboard controls.
+
 ## Dashboard
 
 The dashboard is a quiet Windows utility surface for history, dictionary, settings, and usage.
 
-- Font: Segoe UI with system sans-serif fallback.
-- Palette: Tailwind neutral whites, grays, and near-black; color is reserved for status and destructive feedback.
-- Structure: neutral sidebar, white content surfaces, subtle borders, restrained `shadow-sm` only where hierarchy needs it.
+- Font: system sans-serif stack for utility UI; reserve Nunito Sans ExtraBold `800` for brand/wordmark work only.
+- Palette: use Light Blue `#EEF4FF` for the app background, White `#FFFFFF` for content surfaces, Ink `#0B1218` for primary text, Highlight Slate `#64748B` for secondary text, Border `#E2E8F0` for lines, and Blue `#0055FF` for primary action/brand states.
+- Structure: Light Blue page background, White content surfaces, subtle Border lines, restrained `shadow-sm` only where hierarchy needs it.
 - Shape: `rounded-lg` controls and `rounded-xl` cards; do not flatten the interface or make every surface equally rounded.
 - Density: compact controls with generous page padding; prefer clear grouping over decorative containers.
 - Reuse `BTN`, `BTN_PRIMARY`, `FIELD_*`, `PAGE_TITLE`, and `EMPTY_STATE` from `src/uiClasses.ts`.
 
 ## Onboarding
 
-Onboarding is a deliberate dark editorial welcome flow, separate from the dashboard theme.
+Onboarding is a deliberate editorial welcome flow, separate from the dashboard theme.
 
-- Display font: Fraunces.
-- Utility/body font: JetBrains Mono.
-- Tokens: ink `#141311`, raised ink `#1c1a17`, paper `#f5efe6`, coral `#ff4e33`.
-- Coral is the single primary accent for progress, selection, and primary action.
-- Preserve the subtle grain, restrained coral glow, and one panel entrance animation.
+- Display/brand direction: rounded geometric sans-serif; use Nunito Sans ExtraBold `800` as the first wordmark candidate.
+- Utility/body font: system sans-serif stack unless the onboarding redesign explicitly needs a separate display face.
+- Tokens: Ink `#0B1218`, Blue `#0055FF`, White `#FFFFFF`, Light Blue `#EEF4FF`, Highlight Slate `#64748B`, Border `#E2E8F0`.
+- Blue is the single primary accent for progress, selection, and primary action.
+- Preserve the restrained entrance animation and focused four-step pacing.
 - Keep the four-step flow full-bleed and sidebar-free.
 - Do not restyle onboarding to match the dashboard without an explicit redesign request.
 
