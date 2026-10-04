@@ -47,6 +47,21 @@
   }
 }
 
+.ob-waveform {
+  --ob-wave-duration: 0.8s;
+  --ob-wave-stagger: -35ms;
+}
+
+.ob-waveform-bar {
+  transform-origin: bottom;
+  animation: ob-wave var(--ob-wave-duration) ease-in-out infinite;
+}
+
+@keyframes ob-wave {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ob-panel { animation: none; }
+  .ob-panel, .ob-waveform-bar { animation: none; }
 }

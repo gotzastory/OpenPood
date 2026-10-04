@@ -65,13 +65,14 @@ function providerFromUrl(baseUrl: string): ProviderPreset["key"] {
 
 function Waveform() {
   return (
-    <div className="mb-10 mt-2 flex h-16 items-end gap-1" aria-hidden="true">
+    <div className="ob-waveform mb-10 mt-2 flex h-16 items-end gap-1" aria-hidden="true">
       {Array.from({ length: 22 }, (_, index) => (
         <span
           key={index}
-          className="w-1 rounded-full bg-blue"
+          className="ob-waveform-bar w-1 rounded-full bg-blue"
           style={{
             height: `${14 + Math.round(Math.sin(index * 0.7) * 10 + 24)}px`,
+            animationDelay: `calc(${index} * var(--ob-wave-stagger))`,
           }}
         />
       ))}
