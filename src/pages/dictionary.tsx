@@ -96,7 +96,7 @@ export function DictionaryPage() {
   return (
     <div className="mx-auto max-w-[920px]">
       <header className="mb-6">
-        <h1 className={PAGE_TITLE}>Dictionary</h1>
+        <h1 className={PAGE_TITLE}>คำศัพท์</h1>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-base-content/65">
           เพิ่มชื่อคน แบรนด์ และศัพท์เฉพาะเพื่อช่วยให้ระบบเลือกคำได้แม่นขึ้น
         </p>

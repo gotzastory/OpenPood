@@ -76,7 +76,7 @@ export function HistoryPage() {
     <div className="mx-auto max-w-[920px]">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className={PAGE_TITLE}>History</h1>
+          <h1 className={PAGE_TITLE}>ประวัติการถอดเสียง</h1>
           <p className="mt-1 text-sm text-base-content/65">
             ย้อนดูและคัดลอกข้อความที่ถอดเสียงไว้ในเครื่องนี้
           </p>

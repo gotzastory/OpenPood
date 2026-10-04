@@ -9,9 +9,9 @@ import { SettingsPage } from "./settings";
 type Route = "/" | "/history" | "/dictionary" | "/settings";
 
 const NAV_ITEMS: { route: Route; label: string; icon: string }[] = [
-  { route: "/", label: "Home", icon: icons.home },
-  { route: "/history", label: "History", icon: icons.history },
-  { route: "/dictionary", label: "Dictionary", icon: icons.book },
+  { route: "/", label: "หน้าหลัก", icon: icons.home },
+  { route: "/history", label: "ประวัติการถอดเสียง", icon: icons.history },
+  { route: "/dictionary", label: "คำศัพท์", icon: icons.book },
 ];
 
 export function routeFromHash(hash: string): Route {
@@ -77,7 +77,7 @@ export function DashboardPage() {
         </nav>
         <div className="mt-auto border-t border-base-300 pt-4">
           <DashboardNavItem
-            label="Settings"
+            label="การตั้งค่า"
             icon={icons.settings}
             active={navigation.route === "/settings"}
             onSelect={() => {

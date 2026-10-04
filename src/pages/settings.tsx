@@ -224,7 +224,7 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-[920px]">
       <header className="mb-6">
-        <h1 className={PAGE_TITLE}>Settings</h1>
+        <h1 className={PAGE_TITLE}>การตั้งค่า</h1>
         <p className="mt-1 text-sm text-base-content/65">
           ตั้งค่าการถอดเสียง ผลลัพธ์ และอุปกรณ์ของ OpenPood
         </p>
