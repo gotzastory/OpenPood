@@ -1,3 +1,5 @@
+import type { UpdateStatus } from './lib/updateTypes';
+
 export interface AppSettings {
   apiKey: string;
   /** Always true on reads: the main process redacts apiKey to '' and reports
@@ -54,6 +56,11 @@ export interface CorrectionRule {
 }
 
 interface TypelessApi {
+  getUpdateStatus(): Promise<UpdateStatus>;
+  checkForUpdates(): Promise<UpdateStatus>;
+  downloadUpdate(): Promise<UpdateStatus>;
+  installUpdate(): Promise<UpdateStatus>;
+  onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   getSettings(): Promise<AppSettings>;
   setSettings(partial: Partial<AppSettings>): Promise<AppSettings>;
   openMainWindow(route?: string): Promise<void>;

@@ -104,6 +104,16 @@ Global hotkey
 - IPC handlers also authorize the sender by capability: dashboard-only data APIs reject the widget, transcription rejects the dashboard, and unknown renderer senders are rejected.
 - Server-controlled error text is length-limited before reaching logs or native notifications.
 
+## Desktop updates
+
+- `electron/updater.ts` owns `electron-updater` in main. Installed Windows builds check the public GitHub Releases feed configured by `build.publish` after startup and every six hours; development builds disable updates.
+- Updates never download or install without an explicit dashboard action. Closing the dashboard or quitting via tray does not install a downloaded update.
+- Settings displays current/new versions, plain-text release notes, download progress, retry, and Restart & Update. A native notification opens Settings when a new version is found.
+- Update IPC is dashboard-only. Main rejects installation while a hotkey start is pending, the widget is recording/processing, or transcription/paste is active. Hotkeys are suspended during installation and restored if installation fails.
+- Stable updates exclude prereleases and downgrades. Downloads use the updater's checksum validation; publisher signature verification additionally requires signed Windows builds. The current release pipeline has no signing certificate configured.
+- CI builds the installer, blockmap and `latest.yml`, validates the version, uploads them to a draft release, then publishes it. Local packaging retains `--publish never`.
+- OpenPud and OpenPood versions without this updater require one manual installation of v1.0.1 or newer before future in-app updates are available.
+
 ## Failure behavior
 
 - Startup failures show a native error and quit instead of leaving a zombie process.

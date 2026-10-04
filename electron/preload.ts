@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppSettings, RendererSettings } from './config';
 import type { HistoryEntry } from './history';
 import type { CorrectionRule } from './dictionary';
+import type { UpdateStatus } from '../src/lib/updateTypes';
 
 export interface TranscribeResult {
   ok: boolean;
@@ -24,6 +25,15 @@ export interface HistoryStats {
 export type RecordingMode = 'dictate' | 'translate';
 
 const api = {
+  getUpdateStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:get'),
+  checkForUpdates: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:check'),
+  downloadUpdate: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:download'),
+  installUpdate: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:install'),
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const listener = (_event: unknown, status: UpdateStatus) => callback(status);
+    ipcRenderer.on('updates:status', listener);
+    return () => ipcRenderer.removeListener('updates:status', listener);
+  },
   // Settings coming back over IPC are redacted: apiKey is always '' and
   // hasApiKey says whether one is saved (the real key stays in main).
   getSettings: (): Promise<RendererSettings> => ipcRenderer.invoke('settings:get'),

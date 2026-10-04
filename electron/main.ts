@@ -1,6 +1,8 @@
 import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray, type WebContents } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import electronUpdater from 'electron-updater';
+import { UpdateController, UPDATE_SCHEDULE } from './updater';
 import { getRendererSettings, getSettings, setSettings, type AppSettings } from './config';
 import { normalizeThaiSpacing, transcribeAudio, TranscriptionError } from './transcribe';
 import { pasteAtCursor } from './pasteText';
@@ -61,6 +63,12 @@ function hardenWindow(win: BrowserWindow) {
 let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let recordingState: WidgetState = 'idle';
+let hotkeyPending = false;
+let activeTranscriptions = 0;
+let updater: UpdateController;
+let updateStartupTimer: ReturnType<typeof setTimeout> | undefined;
+let updateInterval: ReturnType<typeof setInterval> | undefined;
 
 type RendererCapability = 'main' | 'widget' | 'either';
 
@@ -172,6 +180,7 @@ function createTray() {
     Menu.buildFromTemplate([
       { label: 'เปิดแอป', click: () => createMainWindow('/') },
       { label: 'ตั้งค่า', click: () => createMainWindow('/settings') },
+      { label: 'อัปเดตเวอร์ชัน', click: () => createMainWindow('/settings') },
       { type: 'separator' },
       { label: 'ออกจากโปรแกรม', click: () => app.quit() },
     ]),
@@ -195,6 +204,9 @@ function registerHotkeys(settings: AppSettings) {
   for (const [accelerator, mode] of bindings) {
     if (!accelerator) continue;
     const ok = globalShortcut.register(accelerator, () => {
+      if (updater?.isInstalling()) return;
+      hotkeyPending = true;
+      updater?.refreshBusy();
       moveWidgetToCursorDisplay();
       widget?.webContents.send('hotkey:toggle-recording', mode);
       // Widget is focusable:false, so the press never moves focus — whatever
@@ -232,6 +244,32 @@ app.whenReady().then(() => {
   createTray();
   registerHotkeys(getSettings());
   applyLaunchAtStartup(getSettings().launchAtStartup);
+  let notifiedVersion: string | undefined;
+  updater = new UpdateController(
+    electronUpdater.autoUpdater,
+    app.getVersion(),
+    app.isPackaged && process.platform === 'win32',
+    () => hotkeyPending || recordingState === 'recording' || recordingState === 'processing' || activeTranscriptions > 0,
+    (status) => {
+      mainWindow?.webContents.send('updates:status', status);
+      if (status.phase === 'available' && status.version !== notifiedVersion && Notification.isSupported()) {
+        notifiedVersion = status.version;
+        const notification = new Notification({ title: 'มี OpenPood เวอร์ชันใหม่', body: `เวอร์ชัน ${status.version} พร้อมดาวน์โหลด เปิดการตั้งค่าเพื่ออัปเดต` });
+        notification.on('click', () => createMainWindow('/settings'));
+        notification.show();
+      }
+    },
+    () => globalShortcut.unregisterAll(),
+    () => { registerHotkeys(getSettings()); setEscapeCancel(recordingState === 'recording'); },
+  );
+  if (app.isPackaged && process.platform === 'win32') {
+    updateStartupTimer = setTimeout(() => { void updater.check(); }, UPDATE_SCHEDULE.startupDelayMs);
+    updateInterval = setInterval(() => { void updater.check(); }, UPDATE_SCHEDULE.intervalMs);
+  }
+  ipcMain.handle('updates:get', (event) => { requireRenderer(event, 'main'); return updater.getStatus(); });
+  ipcMain.handle('updates:check', (event) => { requireRenderer(event, 'main'); return updater.check(); });
+  ipcMain.handle('updates:download', (event) => { requireRenderer(event, 'main'); return updater.download(); });
+  ipcMain.handle('updates:install', (event) => { requireRenderer(event, 'main'); return updater.install(); });
 
   // Registered once here, not inside createWidget() — `activate` re-creates
   // the widget and would otherwise stack duplicate listeners.
@@ -272,6 +310,10 @@ app.whenReady().then(() => {
   ipcMain.on('recording:state', (e, state: unknown) => {
     // Only the widget drives the global Escape grab.
     if (!widget || e.sender !== widget.webContents) return;
+    if (state !== 'idle' && state !== 'recording' && state !== 'processing' && state !== 'skipped') return;
+    hotkeyPending = false;
+    recordingState = state;
+    updater.refreshBusy();
     setEscapeCancel(state === ('recording' satisfies WidgetState));
   });
 
@@ -282,6 +324,7 @@ app.whenReady().then(() => {
       payload: { buffer: ArrayBuffer; mimeType: string; durationMs: number; mode?: RecordingMode },
     ) => {
       requireRenderer(event, 'widget');
+      if (updater.isInstalling()) return { ok: false as const, error: 'กำลังติดตั้งอัปเดต' };
       if (
         typeof payload !== 'object' ||
         payload === null ||
@@ -294,8 +337,10 @@ app.whenReady().then(() => {
       }
       const settings = getSettings();
       const mode = payload.mode === 'translate' ? 'translate' : 'dictate';
-      const target = await foregroundAtHotkey;
+      activeTranscriptions++;
+      updater.refreshBusy();
       try {
+        const target = await foregroundAtHotkey;
         if (mode === 'translate' && isElevenLabsProvider(settings)) {
           throw new LlmError(ELEVENLABS_STT_ONLY_MESSAGE);
         }
@@ -370,6 +415,9 @@ app.whenReady().then(() => {
           new Notification({ title: 'ทำงานไม่สำเร็จ', body: message.slice(0, 200) }).show();
         }
         return { ok: false as const, error: message };
+      } finally {
+        activeTranscriptions--;
+        updater.refreshBusy();
       }
     },
   );
@@ -430,6 +478,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
+  clearTimeout(updateStartupTimer);
+  clearInterval(updateInterval);
   globalShortcut.unregisterAll();
   disposeWinHost();
 });

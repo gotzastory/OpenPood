@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { UpdatePanel } from '../components/UpdatePanel';
 import type { AppSettings } from "../types";
 import { ELEVENLABS_API_BASE, ELEVENLABS_STT_ONLY_MESSAGE, isElevenLabsProvider } from "../lib/elevenlabs";
 import {
@@ -446,6 +447,8 @@ export function SettingsPage() {
           </section>
         </div>
       </div>
+
+      <UpdatePanel />
 
       <div className="mt-5 flex items-center justify-end gap-3">
         <p

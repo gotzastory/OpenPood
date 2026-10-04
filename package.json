@@ -1,7 +1,7 @@
 {
   "name": "openpood",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Voice dictation for Windows: hold a hotkey, speak, and the text is pasted at your cursor.",
   "author": "Gotzastory",
   "type": "module",
@@ -35,12 +35,19 @@
   "dependencies": {
     "@fontsource/kanit": "^5.3.0",
     "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "build": {
     "appId": "com.openpood.app",
     "productName": "OpenPood",
+    "publish": {
+      "provider": "github",
+      "owner": "gotzastory",
+      "repo": "OpenPud",
+      "releaseType": "release"
+    },
     "directories": {
       "output": "release"
     },
@@ -53,6 +60,7 @@
       "icon": "public/brand/openpood.ico"
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}",
       "guid": "3d3b2486-1b4f-5e19-895e-ab7f29245ba3"
     }
   }

@@ -39,8 +39,11 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
+      - name: Verify update artifacts
+        run: node scripts/verify-update-artifacts.cjs
+
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: OpenPood-Setup-${{ github.ref_name }}
           path: |
@@ -61,7 +64,9 @@ jobs:
             notes_args=(--notes-file "$notes_file")
           fi
           gh release create "${GITHUB_REF_NAME}" \
+            --draft \
             --repo "${GITHUB_REPOSITORY}" \
             --title "OpenPood ${GITHUB_REF_NAME#v}" \
             "${notes_args[@]}" \
             release/*.exe release/*.exe.blockmap release/latest.yml
+          gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest
