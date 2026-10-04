@@ -33,6 +33,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const BRAND_ASSET_DIRECTORY = path.join(__dirname, VITE_DEV_SERVER_URL ? '../public/brand' : '../dist/brand');
+const APP_ID = 'com.openpood.app';
+
+if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
 const WIDGET_WIDTH = 320;
 const WIDGET_HEIGHT = 90;
@@ -142,7 +145,7 @@ function createMainWindow(route: string) {
     minWidth: 760,
     minHeight: 520,
     title: 'OpenPood',
-    icon: path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'),
+    icon: path.join(BRAND_ASSET_DIRECTORY, 'openpood.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
