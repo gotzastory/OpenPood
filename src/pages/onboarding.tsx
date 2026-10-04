@@ -39,7 +39,7 @@ const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
   openai: "gpt-4o-mini",
 };
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 const BTN_PRIMARY =
   "btn rounded-lg border-0 bg-blue px-7 py-3.5 font-display text-[13px] font-bold tracking-normal text-paper transition hover:shadow-[0_6px_20px_rgba(0,85,255,0.35)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none";
 const BTN_GHOST =
@@ -240,13 +240,22 @@ export function OnboardingPage() {
 
   const finish = async (
     settings: Parameters<typeof window.typeless.setSettings>[0],
+    complete = true,
   ) => {
     setSaving(true);
     setSaveError("");
     try {
-      await window.typeless.setSettings(settings);
-      location.hash = "/";
-      location.reload();
+      const saved = await window.typeless.setSettings(settings);
+      if (complete) {
+        location.hash = "/";
+        location.reload();
+      } else {
+        setHasSavedApiKey(saved.hasApiKey);
+        setState((current) => current
+          ? { ...current, apiKey: "", hotkey: saved.hotkey, step: TOTAL_STEPS - 1 }
+          : current);
+        setSaving(false);
+      }
     } catch (error: unknown) {
       console.error(error);
       setSaveError("บันทึกไม่สำเร็จ ตรวจสอบ API และปุ่มลัด แล้วลองอีกครั้ง");
@@ -284,6 +293,7 @@ export function OnboardingPage() {
 
   return (
     <div className="ob-root relative flex h-full w-full flex-col overflow-y-auto bg-ink font-display text-paper">
+      {/* Navbar */}
       <div className="relative z-10 flex items-center justify-between px-8 py-5 text-[11px] tracking-normal text-paper/55">
         <div className="flex shrink-0 items-center gap-2.5">
           <img
@@ -357,9 +367,16 @@ export function OnboardingPage() {
                   chatModel: CHAT_MODEL_BY_PROVIDER[state.provider],
                   micDeviceId: state.micDeviceId,
                   hotkey: state.hotkey.trim() || "Control+Space",
-                  onboardingCompleted: true,
-                })
+                }, false)
               }
+              saving={saving}
+            />
+          )}
+          {state.step === 4 && (
+            <TestStep
+              hotkey={state.hotkey}
+              onBack={() => update("step", 3)}
+              onFinish={() => void finish({ onboardingCompleted: true })}
               saving={saving}
             />
           )}
@@ -609,6 +626,62 @@ function HotkeyStep({
           disabled={saving}
           onClick={onFinish}
         >
+          {saving ? "กำลังบันทึก…" : "ถัดไป: ทดสอบ"}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function TestStep({
+  hotkey,
+  onBack,
+  onFinish,
+  saving,
+}: {
+  hotkey: string;
+  onBack: () => void;
+  onFinish: () => void;
+  saving: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <>
+      <StepLabel step={TOTAL_STEPS} />
+      <h1 className="mb-4 text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[44px]">
+        ลองพูดดู<br />ว่าทำงานไหม
+      </h1>
+      <p id="ob-test-help" className="mb-6 max-w-[540px] text-[13.5px] leading-[1.7] text-paper/55">
+        คลิกช่องด้านล่าง กด {hotkey} แล้วพูด เช่น “สวัสดี OpenPood”
+        กดอีกครั้งเพื่อหยุด แล้วรอข้อความปรากฏในช่องนี้ โดยยังอยู่ที่หน้าเดิม
+      </p>
+      <label className={FIELD_LABEL} htmlFor="ob-test">
+        ช่องทดสอบข้อความ
+      </label>
+      <input
+        ref={inputRef}
+        id="ob-test"
+        className={FIELD_INPUT}
+        type="text"
+        aria-describedby="ob-test-help ob-test-note"
+        placeholder="ข้อความที่พูดจะถูกวางที่นี่…"
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <p id="ob-test-note" className="mt-3 text-xs leading-relaxed text-paper/55">
+        ถ้าข้อความไม่มา ตรวจสอบ API Key และไมโครโฟนด้วยปุ่มย้อนกลับ
+        การทดสอบใช้ API ที่คุณตั้งค่าไว้
+      </p>
+      <div className="mt-4 flex items-center gap-4">
+        <button type="button" className={BTN_GHOST} disabled={saving} onClick={onBack}>
+          ย้อนกลับ
+        </button>
+        <button type="button" className={BTN_PRIMARY} disabled={saving} onClick={onFinish}>
           {saving ? "กำลังบันทึก…" : "เริ่มใช้งาน"}
         </button>
       </div>

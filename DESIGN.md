@@ -8,7 +8,7 @@ OpenPood is a focused Windows utility, not a generic SaaS dashboard. Its three s
 
 - Redesign Dashboard, Onboarding, and Recording widget as OpenPood.
 - Dashboard: white sidebar with the supplied logo; Light Blue workspace; Dictate/Translate and hotkeys lead Home, usage is secondary; History/Dictionary remain readable lists; Settings has clear groups.
-- Onboarding: Ink background, rounded sans-serif headings, Blue actions, four steps, no sidebar. Remove the former serif, coral, and grain treatment.
+- Onboarding: Ink background, rounded sans-serif headings, Blue actions, five steps including a dictation test after hotkey setup, no sidebar. Remove the former serif, coral, and grain treatment.
 - Widget: translucent Ink pill with neutral waveform; no interactive controls.
 - Logo: preserve the supplied mark and proportions. Ink wordmark on light surfaces, White wordmark on dark surfaces; Blue symbol for tray and application icon.
 - Rename display/package/application identity to OpenPood. Preserve the existing NSIS upgrade identity and migrate local settings, encrypted API key, history, and dictionary before stores initialize. Never delete the legacy source or overwrite existing OpenPood data.
@@ -55,8 +55,8 @@ Onboarding is a deliberate editorial welcome flow, separate from the dashboard t
 - Utility/body font: system sans-serif stack unless the onboarding redesign explicitly needs a separate display face.
 - Tokens: Ink `#0B1218`, Blue `#0055FF`, White `#FFFFFF`, Light Blue `#EEF4FF`, Highlight Slate `#64748B`, Border `#E2E8F0`.
 - Blue is the single primary accent for progress, selection, and primary action.
-- Preserve the restrained entrance animation and focused four-step pacing.
-- Keep the four-step flow full-bleed and sidebar-free.
+- Preserve the restrained entrance animation and focused five-step pacing.
+- Keep the five-step flow full-bleed and sidebar-free.
 - Keep onboarding dark and full-bleed while sharing the new brand palette with the dashboard.
 
 ## Recording widget
