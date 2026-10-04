@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { DashboardNavItem } from "../components/DashboardNavItem";
-import { LegacySettings } from "../components/LegacySettings";
 import { icons } from "../lib/icons";
 import { DictionaryPage } from "./dictionary";
 import { HistoryPage } from "./history";
 import { HomePage } from "./home";
+import { SettingsPage } from "./settings";
 
 type Route = "/" | "/history" | "/dictionary" | "/settings";
 
@@ -98,7 +98,7 @@ export function DashboardPage() {
         ) : navigation.route === "/dictionary" ? (
           <DictionaryPage key={navigation.refreshKey} />
         ) : (
-          <LegacySettings key={navigation.refreshKey} refreshKey={navigation.refreshKey} />
+          <SettingsPage key={navigation.refreshKey} />
         )}
       </main>
     </div>
