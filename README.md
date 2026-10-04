@@ -49,7 +49,7 @@
 | OS | Windows 10 / 11 (x64) |
 | ไมโครโฟน | มีไมค์ (built-in หรือ USB) และอนุญาตสิทธิ์ไมค์ให้แอป |
 | อินเทอร์เน็ต | จำเป็นตอนถอดเสียง / ใช้ AI (เรียก API ของ provider ที่เลือก) |
-| API key | [OpenRouter](https://openrouter.ai/keys) (แนะนำ), [Google AI Studio](https://aistudio.google.com/app/apikey), หรือ [OpenAI](https://platform.openai.com/api-keys) |
+| API key | [OpenRouter](https://openrouter.ai/keys) (แนะนำ), [Google AI Studio](https://aistudio.google.com/app/apikey), [OpenAI](https://platform.openai.com/api-keys), หรือ ElevenLabs (STT เท่านั้น) |
 
 ---
 
@@ -76,6 +76,8 @@
 | **Dictate** | `Ctrl+Space` | อัดเสียง → ถอดเป็นข้อความ → วางที่ cursor |
 | **Translate** | `Ctrl+Alt+T` | พูดภาษาใดก็ได้ → แปลเป็นภาษาเป้าหมายใน Settings แล้ววาง |
 
+**ElevenLabs ใช้ได้เฉพาะ Dictate** — AI polish และ Translate ต้องเลือก provider อื่น เนื่องจากแอปใช้ provider / API key ชุดเดียวสำหรับ STT และ Chat
+
 เปลี่ยนปุ่มลัดได้จากหน้า Home หรือ Settings (กดคีย์จริง — ไม่ต้องจำ syntax ของ Electron)
 
 เคล็ดลับ:
@@ -90,8 +92,8 @@
 
 - **Dictate ด้วยปุ่มลัดทั่วระบบ** — กดจากแอปไหนก็ได้ พูด ปล่อย ข้อความไปวางตรง cursor
 - **Floating pill** — widget โปร่งใส ลอยกลางล่างจอ ไม่แย่ง focus
-- **หลาย provider** — OpenAI, OpenRouter, Gemini (Google AI Studio) หรือ endpoint ที่เข้ากันกับ OpenAI `/audio/transcriptions` (เช่น self-hosted whisper.cpp)
-- **Dictionary** — คำเฉพาะ / ชื่อเฉพาะ / ศัพท์เทคนิค ช่วย bias การถอดเสียง
+- **หลาย provider** — OpenAI, OpenRouter, Gemini (Google AI Studio), ElevenLabs (STT เท่านั้น) หรือ endpoint ที่เข้ากันกับ OpenAI `/audio/transcriptions` (เช่น self-hosted whisper.cpp)
+- **Dictionary** — คำเฉพาะ / ชื่อเฉพาะ / ศัพท์เทคนิค ช่วย bias การถอดเสียง (ยังไม่ส่ง Dictionary words ไป ElevenLabs)
 - **Correction rules** — แทนที่คำที่ถอดผิดซ้ำๆ แบบตรงตัวหลังถอดเสียง
 - **AI polish / Translate** — เก็บประโยค หรือแปลจากเสียง (ใช้ chat model)
 - **History** — ประวัติการถอดเสียงสูงสุด 500 รายการ คัดลอกซ้ำได้
@@ -130,9 +132,23 @@
 | **OpenRouter (แนะนำ)** | `https://openrouter.ai/api/v1` | `openai/whisper-large-v3-turbo` | `google/gemini-3.5-flash-lite` |
 | Gemini (Google AI Studio) | `https://generativelanguage.googleapis.com/v1beta` | `gemini-3.5-flash` | `gemini-3.5-flash-lite` |
 | OpenAI | `https://api.openai.com/v1` | `whisper-1` | `gpt-4o-mini` |
+| ElevenLabs | `https://api.elevenlabs.io/v1` | `scribe_v2` (เลือก `scribe_v1` ได้) | ไม่รองรับในแอป |
 | กำหนดเอง | ใส่เอง | ใส่เอง | ใส่เอง |
 
 OpenRouter / OpenAI ใช้คีย์เดียวเรียกได้ทั้ง `/audio/transcriptions` และ `/chat/completions` — Gemini ใช้ API แบบ native (`generateContent` + audio) จาก [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+### ตั้งค่า ElevenLabs สำหรับ STT
+
+1. สร้าง API key ในบัญชี ElevenLabs โดยให้สิทธิ์ **Speech to Text** — ดู [Authentication](https://elevenlabs.io/docs/api-reference/authentication)
+2. เปิด **Settings → ผู้ให้บริการ → ElevenLabs (Speech to Text)** หรือเลือก ElevenLabs ตอน onboarding
+3. ใส่ API key → เลือก **Scribe v2** (ค่าเริ่มต้น) หรือ **Scribe v1** → เลือกภาษา → **บันทึกการตั้งค่า**
+4. ใช้ `Ctrl+Space` เพื่อ Dictate ตามปกติ
+
+- เรียก [native STT API](https://elevenlabs.io/docs/api-reference/speech-to-text/convert) ที่ `/speech-to-text` ด้วย multipart upload และ `xi-api-key`; ไม่ต้องติดตั้ง ElevenLabs SDK
+- ส่ง language hint เป็น `th` สำหรับ **ไทย + อังกฤษ / ไทยเท่านั้น** และ `en` สำหรับ **อังกฤษเท่านั้น**
+- รับเฉพาะข้อความ: ปิด audio event tags, speaker diarization และ timestamps; ไม่เปิด keyterms หรือฟีเจอร์เสริมที่มีค่าบริการเพิ่ม
+- ตัดคำติดปากและ **Correction rules** ยังทำงานในเครื่อง; AI polish / Chat controls ถูกปิด และ Translate แจ้งให้เลือก provider อื่นก่อนส่งเสียงไป API
+- API key ใช้ระบบจัดเก็บเดิมใน Electron main และไม่ส่ง key ที่บันทึกไว้กลับไปแสดงในฟอร์ม
 
 ---
 
@@ -212,6 +228,9 @@ Electron แยก 2 โปรเซส คุยกันผ่าน `contextB
 |---|---|
 | กดปุ่มลัดแล้วไม่มีอะไรเกิดขึ้น | ดูว่าแอปยังรันอยู่ที่ tray หรือไม่ / ปุ่มลัดชนกับโปรแกรมอื่นหรือยัง / ลองเปลี่ยนปุ่มลัดใน Settings |
 | ถอดเสียงไม่สำเร็จ | ตรวจ API key, เครือข่าย, และยอดเครดิตของ provider — แอปจะแจ้งด้วย Windows Notification |
+| ElevenLabs แจ้ง 401 / 403 | ตรวจ API key และสิทธิ์ Speech to Text |
+| ElevenLabs แจ้ง 429 | ตรวจโควตาหรือรอสักครู่แล้วลองใหม่ |
+| ElevenLabs ใช้ AI polish / Translate ไม่ได้ | รองรับเฉพาะ STT ใน OpenPood — เลือก OpenRouter, OpenAI หรือ Gemini เพื่อใช้ Chat |
 | ไม่ได้ยินเสียง / waveform ไม่ขยับ | อนุญาตไมค์ให้ OpenPood ใน Windows Settings → Privacy → Microphone แล้วเลือกไมค์ในแอป |
 | ข้อความไม่วางลงแอปเป้าหมาย | คลิกโฟกัสช่องพิมพ์ก่อนกดปุ่มลัด — แอปวางด้วย Ctrl+V ผ่านคลิปบอร์ด |
 | SmartScreen บล็อกตัวติดตั้ง | More info → Run anyway (ดูส่วนติดตั้งด้านบน) |
