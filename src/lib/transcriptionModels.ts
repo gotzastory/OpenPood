@@ -36,7 +36,7 @@ export const GEMINI_MODELS: TranscriptionModel[] = [
 ];
 
 // OpenRouter's /models?output_modalities=transcription list.
-// Re-checked against the live catalog on 2026-10-02.
+// Re-checked against OpenRouter's speech-to-text collection on 2026-10-19.
 // First entry is the app default when switching the Settings provider to OpenRouter.
 export const OPENROUTER_MODELS: TranscriptionModel[] = [
   {
@@ -62,6 +62,15 @@ export const OPENROUTER_MODELS: TranscriptionModel[] = [
   {
     id: "assemblyai/universal-3-5-pro",
     name: "AssemblyAI — Universal 3.5 Pro",
+  },
+  {
+    id: "assemblyai/universal-3-6-pro",
+    name: "AssemblyAI — Universal 3.6 Pro",
+  },
+  { id: "elevenlabs/scribe-v2", name: "ElevenLabs — Scribe v2" },
+  {
+    id: "elevenlabs/scribe-v2-medical",
+    name: "ElevenLabs — Scribe v2 Medical",
   },
   {
     id: "meta/muse-voice-transcribe-1.0",
