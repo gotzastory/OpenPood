@@ -41,7 +41,10 @@ OpenPood is a focused Windows utility, not a generic SaaS dashboard. Its three s
 The dashboard is a quiet Windows utility surface for history, dictionary, settings, and usage.
 
 - Font: system sans-serif stack for utility UI; reserve Nunito Sans ExtraBold `800` for brand/wordmark work only.
-- Palette: use Light Blue `#EEF4FF` for the app background, White `#FFFFFF` for content surfaces, Ink `#0B1218` for primary text, Highlight Slate `#64748B` for secondary text, Border `#E2E8F0` for lines, and Blue `#0055FF` for primary action/brand states.
+- Light palette: use Light Blue `#EEF4FF` for the app background, White `#FFFFFF` for content surfaces, Ink `#0B1218` for primary text, Highlight Slate `#64748B` for secondary text, Border `#E2E8F0` for lines, and Blue `#0055FF` for primary action/brand states.
+- Dark palette (`data-theme="dark"`): Ink `#0B1218` for the app background (`base-200`), `#111A24` for content surfaces (`base-100`), `#223041` for lines (`base-300`), `#E6EDF6` for primary text, Slate `#94A3B8` for secondary text, `#1C2A3A` for neutral surfaces, and `#2563EB` for primary/info actions. Status colors: success `#4ADE80`, warning `#FACC15`, error `#F87171`. The sidebar logo uses the White wordmark with the Blue symbol.
+- Theme toggle: the sidebar button (label `ธีมมืด`, sun/moon icon, `aria-pressed`) switches between light and dark. With no saved choice, the OS `prefers-color-scheme` decides; a manual choice is saved in localStorage key `openpood-theme` and applied as `data-theme` on `<html>` on later launches.
+- Onboarding and the recording widget are dark-only and do not follow the dashboard theme toggle.
 - Structure: Light Blue page background, White content surfaces, subtle Border lines, restrained `shadow-sm` only where hierarchy needs it.
 - Shape: `rounded-lg` controls and `rounded-xl` cards; do not flatten the interface or make every surface equally rounded.
 - Density: compact controls with generous page padding; prefer clear grouping over decorative containers.
@@ -71,7 +74,8 @@ The widget is a transient status indicator, not an interactive control.
 ## Implementation rules
 
 - Use Tailwind CSS v4 utilities in existing template strings.
-- Use daisyUI 5 components and semantic colors for dashboard controls; keep its plugin and light theme scoped to `src/styles/dashboard.css`.
+- Use daisyUI 5 components and semantic colors for dashboard controls; keep its plugin and the `light` and `dark` themes scoped to `src/styles/dashboard.css`.
+- New dashboard colors must use daisyUI semantic tokens (`bg-base-100`, `border-base-300`, `text-base-content`, `primary`, etc.) rather than hard-coded hex or light-only palette classes, so both themes work.
 - Keep route-specific CSS in `src/styles/dashboard.css` and `src/styles/onboarding.css`; shared reset/runtime styling stays in `src/styles/style.css`.
 - Reuse `src/lib/uiClasses.ts` before duplicating a multi-utility class group.
 - Use React for the dashboard shell and shared components; legacy page mounts, onboarding, and the widget may migrate incrementally.
@@ -83,5 +87,6 @@ The widget is a transient status indicator, not an interactive control.
 
 - Run `npm.cmd run build` after Tailwind class changes; TypeScript does not validate class syntax.
 - Check dashboard, onboarding, and widget independently because they load different visual entry points.
+- Check the dashboard in both `light` and `dark` themes, including the sidebar toggle and logo, and confirm the saved choice survives a restart.
 - Confirm keyboard focus, disabled states, long Thai/English text, empty states, and error states.
 - Treat build success as code validation, not visual acceptance; inspect the affected window manually.
