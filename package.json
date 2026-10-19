@@ -1,7 +1,7 @@
 {
   "name": "openpood",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Voice dictation for Windows: hold a hotkey, speak, and the text is pasted at your cursor.",
   "author": "Gotzastory",
   "type": "module",
