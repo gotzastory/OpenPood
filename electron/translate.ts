@@ -13,7 +13,7 @@ export const TRANSLATE_LANGUAGES: Record<string, string> = {
   vi: 'Vietnamese',
 };
 
-export async function translateText(text: string, settings: AppSettings): Promise<string> {
+export async function translateText(text: string, settings: AppSettings, signal?: AbortSignal): Promise<string> {
   if (!text.trim()) return text;
   const targetName = TRANSLATE_LANGUAGES[settings.translateTargetLang] ?? settings.translateTargetLang;
   const system = [
@@ -21,6 +21,6 @@ export async function translateText(text: string, settings: AppSettings): Promis
     'รักษาโทนและความหมายเดิมให้มากที่สุด',
     'ตอบเฉพาะคำแปลเท่านั้น ห้ามใส่คำอธิบายหรือข้อความต้นฉบับซ้ำ',
   ].join('\n');
-  const result = await chatComplete(settings, system, text);
+  const result = await chatComplete(settings, system, text, signal);
   return result || text;
 }

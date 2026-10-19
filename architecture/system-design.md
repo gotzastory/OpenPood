@@ -2,6 +2,8 @@
 
 This document describes the current Windows implementation. It is not a roadmap.
 
+See [the current architecture diagram and source map](current-architecture.md) for a visual overview.
+
 ## System boundaries
 
 - OpenPood is a local Electron desktop app with no application server or database.
@@ -30,7 +32,7 @@ Electron main process
 ```
 
 - All renderer surfaces share `index.html`; `src/app/main.ts` selects the surface from the URL hash.
-- The dashboard shell, navigation, Home, History, and Dictionary use React. Settings currently mounts through a small compatibility boundary; onboarding and the widget remain DOM-based.
+- The dashboard shell, navigation, Home, History, Dictionary, Settings, and onboarding use React. The recording widget remains DOM-based; microphone capture is handled by `src/runtime/recorder.ts`.
 - The widget is transparent, always on top, mouse-transparent, and non-focusable.
 - The dashboard is a single normal window opened from the tray. Reopening it focuses the existing instance and sends a navigation event.
 - `electron/preload.ts` is the only renderer-to-main bridge. Keep its API synchronized with `src/types.d.ts`.
@@ -55,24 +57,29 @@ Global hotkey
   -> Thai spacing normalization
   -> dictate: optional AI polish -> correction rules
      translate: correction rules -> translation
-  -> compare current HWND with captured target
-  -> paste, or leave text on clipboard if focus changed
-  -> write history and notify dashboard
+  -> write history asynchronously and notify dashboard
+  -> native HWND and clipboard-sequence check immediately before Ctrl+V
+  -> paste, clipboard fallback, or preserve unsupported clipboard formats
 ```
 
-- Escape is registered globally only while the widget reports `recording`.
+- Escape is registered globally during microphone setup, recording, and processing. Processing cancellation aborts provider work and prevents late delivery; already-injected keystrokes cannot be retracted.
+- Hotkey starts are serialized before microphone acquisition. The foreground target is captured once on the start press; a stop press never changes it. Slow or failed foreground capture becomes an unknown target.
+- Recorder permission/stop operations have deadlines, late permission grants are released after cancellation, and errors/device disconnection stop tracks and close the audio context.
 - If a saved microphone disappears, recording retries with the OS default device.
-- A focus change never triggers a blind paste into the new foreground app.
+- Missing/unknown HWNDs never trigger automatic paste. The native host verifies the captured HWND and transcript clipboard sequence immediately before input injection; changed foreground falls back to clipboard delivery.
 - Paste failure deliberately leaves the transcript on the clipboard and reports the failure.
 - History records successful transcription output even when automatic paste is skipped or fails.
+- Empty, malformed, or oversized provider output is rejected before history/paste. Empty output after local filtering is also rejected.
 
 ## Text injection
 
 - `electron/winHost.ts` owns one hidden PowerShell process with a FIFO line protocol and request timeouts.
-- The host resolves the foreground window and sends physical Ctrl+V key codes through Win32.
+- The host resolves the foreground window and sends physical Ctrl+V key codes through Win32 `SendInput`, checking the submitted input count. This acknowledges injection, not that the destination app consumed the text.
 - This avoids Electron-ABI-sensitive native automation modules and works with Thai Kedmanee layouts.
-- `pasteAtCursor()` temporarily replaces the clipboard, pastes, then restores the previous text only if the transcript is still present.
+- `pasteAtCursor()` snapshots text/HTML/RTF/image data, temporarily replaces the clipboard, then restores the snapshot after a configurable grace period only if its clipboard sequence and text still match. A later user copy is preserved. There is no universal paste-consumption acknowledgement; slow/elevated apps still need Windows testing.
+- File drops, unsupported/custom formats, oversized snapshots, and unavailable clipboard-state lookup preserve the original clipboard and direct the user to copy the transcript from History.
 - A crashed or wedged host is dropped and lazily recreated on the next request.
+- Widget renderer crashes/load failures abort outstanding transcription, release busy/Escape state, and recreate the widget with a fresh sender identity. Recovery is limited to three attempts per 60-second failure window.
 
 ## Provider routing
 
@@ -83,16 +90,19 @@ Global hotkey
 - Dictionary words bias transcription. Correction rules are deterministic local replacements.
 - Dictation polish and translation share the configured chat-completion layer.
 - Custom remote base URLs require HTTPS; plain HTTP is allowed only for loopback services.
+- All providers reject redirects and share safe HTTP/network error mapping without response bodies. STT requests have a 120-second deadline and chat requests a 45-second deadline, including response-body consumption. Optional polish failure falls back to the raw transcript; cancellation does not.
 
 ## Persistence and secrets
 
-- Settings, history, and dictionary use separate `electron-store` files.
+- Settings and dictionary use separate `electron-store` files. History retains the migrated `history.json` format, initializes through `electron-store`, then uses a memory cache and serialized asynchronous atomic file replacement.
 - Stores use `%APPDATA%/OpenPood`. Before any store initializes, `storage.ts` copies the known legacy OpenPud JSON stores byte-for-byte, validating JSON first, retaining the source, and never overwriting existing destination stores. A completion marker prevents later remigration. Migration failure blocks startup with a generic native error; no secret data is logged.
 - The NSIS GUID remains the original upgrade identity while the application ID, product name, and executable name become OpenPood. Installer upgrade behavior still requires a packaged Windows check.
 - A single-instance lock is acquired before migration/store creation. A repeated launch opens the existing dashboard. Packaged startup registration removes the former OpenPud entry before applying the saved setting.
-- The API key is encrypted with Electron `safeStorage` when available and decrypted only in the main process.
+- The API key is encrypted with Electron `safeStorage` and decrypted only in main. Key saves fail when encryption is unavailable; ciphertext is never treated as plaintext. Legacy plaintext-key migration runs only after encryption is ready and removes the old field.
 - Renderer settings redact the key and expose only `hasApiKey`.
-- History is capped at 500 entries. History text, dictionary words, correction rules, and non-secret settings remain local JSON data.
+- History is capped at 500 entries and 4 MB of serialized data, evicting oldest entries without truncating retained transcripts. History UI renders 30 entries per page. A failed history write retains the new transcript temporarily in memory and warns the user; a later successful write retries persistence. Quit waits for pending history writes.
+- Settings are cached in main; a save validates/encrypts the complete patch before one atomic store write. Failed hotkey registration restores the previous hotkeys and reports the conflict.
+- History text, dictionary words, correction rules, and non-secret settings remain local JSON data.
 - Never log API keys, authorization headers, audio payloads, or full provider error bodies.
 
 ## Security boundaries
@@ -102,7 +112,7 @@ Global hotkey
 - Dashboard routes are allowlisted before crossing IPC.
 - IPC inputs are treated as untrusted: settings keys/types, collections, routes, audio shape, and audio size are validated in main.
 - IPC handlers also authorize the sender by capability: dashboard-only data APIs reject the widget, transcription rejects the dashboard, and unknown renderer senders are rejected.
-- Server-controlled error text is length-limited before reaching logs or native notifications.
+- Provider errors use application-controlled messages; response bodies and transport details never reach logs or native notifications. Provider JSON/text sizes are bounded.
 
 ## Desktop updates
 
@@ -118,9 +128,15 @@ Global hotkey
 
 - Startup failures show a native error and quit instead of leaving a zombie process.
 - Transcription/LLM failures return a typed error and show a native notification.
-- Missing or changed focus falls back to clipboard delivery.
+- Changed or unknown foreground HWNDs cannot inject paste. Unsupported clipboard formats preserve the original clipboard and leave transcript recovery to History.
 - Windows-host timeouts reject pending work and force a clean host restart on the next call.
 - Near-silent audio is rejected before network use to prevent hallucinated transcripts and wasted API calls.
+
+## Diagnostics
+
+- Timing/limit policy lives in `src/lib/runtimeConfig.ts`.
+- `OPENPOOD_DIAGNOSTICS=1` enables aggregate CPU/working-set sampling and microphone/STT/polish/translation/history/paste timing. Diagnostics are disabled by default and contain no keys, audio, transcript, clipboard content, URLs, or app/window titles.
+- See [Windows reliability checks](reliability-testing.md) for manual verification and the remaining OS boundaries.
 
 ## Verification boundary
 

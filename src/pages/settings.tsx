@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { UpdatePanel } from '../components/UpdatePanel';
+import { RUNTIME } from '../lib/runtimeConfig';
 import type { AppSettings } from "../types";
 import { ELEVENLABS_API_BASE, ELEVENLABS_STT_ONLY_MESSAGE, isElevenLabsProvider } from "../lib/elevenlabs";
 import {
@@ -81,14 +82,18 @@ function detectProvider(baseUrl: string): ProviderKey {
 }
 
 async function listMicDevices(): Promise<MediaDeviceInfo[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
-    probe.getTracks().forEach((track) => track.stop());
+    const probe = navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      // Also stops a stream granted after timeout or page unmount.
+      stream.getTracks().forEach((track) => track.stop());
+    }).catch(() => undefined);
+    await Promise.race([probe, new Promise<void>((resolve) => { timer = setTimeout(resolve, RUNTIME.micStartTimeoutMs); })]);
     const devices = await navigator.mediaDevices.enumerateDevices();
     return devices.filter((device) => device.kind === "audioinput");
   } catch {
     return [];
-  }
+  } finally { clearTimeout(timer); }
 }
 
 function initialForm(settings: AppSettings): SettingsForm {
@@ -122,17 +127,17 @@ export function SettingsPage() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([window.typeless.getSettings(), listMicDevices()])
-      .then(([settings, devices]) => {
+    void window.typeless.getSettings()
+      .then((settings) => {
         if (!active) return;
         setForm(initialForm(settings));
         setProvider(detectProvider(settings.apiBaseUrl));
-        setMics(devices);
       })
       .catch((error: unknown) => {
         console.error(error);
         if (active) setLoadingError(true);
       });
+    void listMicDevices().then((devices) => { if (active) setMics(devices); });
 
     document.getElementById("content")?.focus({ preventScroll: true });
     return () => {

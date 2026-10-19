@@ -1,14 +1,8 @@
 import Store from 'electron-store';
 import { STORE_DIRECTORY } from './storage';
+import { HistoryRepository, type HistoryEntry } from './historyRepository';
 
-export interface HistoryEntry {
-  id: string;
-  text: string;
-  model: string;
-  timestamp: number;
-  durationMs: number;
-  wordCount: number;
-}
+export type { HistoryEntry } from './historyRepository';
 
 interface HistorySchema {
   entries: HistoryEntry[];
@@ -20,32 +14,24 @@ const historyStore = new Store<HistorySchema>({
   defaults: { entries: [] },
 });
 
-const MAX_ENTRIES = 500;
+const repository = new HistoryRepository(historyStore.path, historyStore.get('entries'));
 
-export function addHistoryEntry(text: string, durationMs: number, model: string): HistoryEntry {
-  const entry: HistoryEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    text,
-    model,
-    timestamp: Date.now(),
-    durationMs,
-    wordCount: text.trim() ? text.trim().split(/\s+/).length : 0,
-  };
-  const entries = [entry, ...historyStore.get('entries')].slice(0, MAX_ENTRIES);
-  historyStore.set('entries', entries);
-  return entry;
+export function addHistoryEntry(text: string, durationMs: number, model: string): Promise<HistoryEntry> {
+  return repository.add(text, durationMs, model);
 }
 
 export function listHistory(): HistoryEntry[] {
-  return historyStore.get('entries');
+  return repository.list();
 }
 
-export function clearHistory(): void {
-  historyStore.set('entries', []);
+export function clearHistory(): Promise<void> {
+  return repository.clear();
 }
+
+export function flushHistory(): Promise<void> { return repository.flush(); }
 
 export function historyStats() {
-  const entries = historyStore.get('entries');
+  const entries = repository.list();
   const totalWords = entries.reduce((sum, e) => sum + e.wordCount, 0);
   const totalMs = entries.reduce((sum, e) => sum + e.durationMs, 0);
   const totalMinutes = totalMs / 60000;

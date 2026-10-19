@@ -24,14 +24,16 @@ export async function polishText(
   text: string,
   settings: AppSettings,
   category: AppCategory,
+  signal?: AbortSignal,
 ): Promise<string> {
   if (!text.trim()) return text;
   try {
-    const result = await chatComplete(settings, polishSystemPrompt(category), text);
+    const result = await chatComplete(settings, polishSystemPrompt(category), text, signal);
     return result || text;
-  } catch (err) {
+  } catch {
+    signal?.throwIfAborted();
     // Never let a broken polish step block dictation — fall back to the raw transcript.
-    console.error('AI polish failed, falling back to raw transcript:', err);
+    console.warn('AI polish failed; using raw transcript.');
     return text;
   }
 }

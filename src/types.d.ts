@@ -32,7 +32,7 @@ export interface TranscribeResult {
   pasted?: boolean;
 }
 
-export type WidgetState = "idle" | "recording" | "processing" | "skipped";
+export type WidgetState = "idle" | "starting" | "recording" | "processing" | "skipped";
 
 export interface HistoryEntry {
   id: string;
@@ -56,6 +56,8 @@ export interface CorrectionRule {
 }
 
 interface TypelessApi {
+  cancelTranscription(): Promise<void>;
+  reportRecordingError(): void;
   getUpdateStatus(): Promise<UpdateStatus>;
   checkForUpdates(): Promise<UpdateStatus>;
   downloadUpdate(): Promise<UpdateStatus>;

@@ -38,7 +38,7 @@ describe('ElevenLabs STT integration', () => {
   });
 
   it('accepts a trailing slash and sends the selected Scribe v1 model', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: '' })));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: 'hello' })));
     vi.stubGlobal('fetch', fetchMock);
     await transcribeAudio(audio, 'audio/wav', { ...settings, apiBaseUrl: `${ELEVENLABS_API_BASE}/`, model: 'scribe_v1' });
     expect(fetchMock.mock.calls[0][1].body.get('model_id')).toBe('scribe_v1');

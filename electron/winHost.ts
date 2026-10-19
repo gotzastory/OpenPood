@@ -7,9 +7,10 @@ import { POWERSHELL_EXE } from './powershell';
 // an Add-Type C# compile (~0.3-0.8 s). Still no native modules — see
 // pasteText.ts for why robotjs/nut-js are avoided.
 //
-// Line protocol (one request in flight at a time, FIFO):
+// Line protocol (the host executes commands sequentially, FIFO):
 //   "<id> fg"    -> "<id> ok <hwnd> <processName>"
-//   "<id> paste" -> "<id> ok"
+//   "<id> paste <hwnd> <sequence>" -> "<id> ok pasted|focus-changed|clipboard-changed"
+//   "<id> clipboard" -> "<id> ok <sequence> <flags>" (files=1, unsupported=2, nonempty=4)
 //   anything     -> "<id> err <message>"
 
 export interface ForegroundWindow {
@@ -22,26 +23,70 @@ export interface ForegroundWindow {
 const REQUEST_TIMEOUT_MS = 5000;
 const READY_TIMEOUT_MS = 15000;
 
-// keybd_event with virtual-key codes rather than WinForms SendKeys("^v"):
+// SendInput with virtual-key codes rather than WinForms SendKeys("^v"):
 // SendKeys maps the letter "v" through the active keyboard layout — with Thai
 // Kedmanee active that is not physical V, so Ctrl+V silently does nothing.
 const HOST_SCRIPT = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -TypeDefinition @"
 using System;
+using System.Text;
 using System.Runtime.InteropServices;
 public static class OpenPoodNative {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-  const byte VK_CONTROL = 0x11;
-  const byte VK_V = 0x56;
+  [DllImport("user32.dll")] public static extern uint GetClipboardSequenceNumber();
+  [DllImport("user32.dll")] public static extern bool IsClipboardFormatAvailable(uint format);
+  [DllImport("user32.dll", SetLastError=true)] static extern bool OpenClipboard(IntPtr owner);
+  [DllImport("user32.dll")] static extern bool CloseClipboard();
+  [DllImport("user32.dll", SetLastError=true)] static extern uint EnumClipboardFormats(uint format);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClipboardFormatName(uint format, StringBuilder name, int size);
+  [DllImport("kernel32.dll")] static extern void SetLastError(uint error);
+  public static int ClipboardFlags() {
+    if (!OpenClipboard(IntPtr.Zero)) throw new InvalidOperationException("clipboard unavailable");
+    try {
+      int flags = 0;
+      uint format = 0;
+      while (true) {
+        SetLastError(0);
+        format = EnumClipboardFormats(format);
+        if (format == 0) {
+          if (Marshal.GetLastWin32Error() != 0) throw new InvalidOperationException("clipboard enumeration failed");
+          return flags;
+        }
+        flags |= 4;
+        if (format == 15) flags |= 1;
+        // Text encodings/locale and raster image formats can be restored via Electron.
+        if (format == 1 || format == 2 || format == 7 || format == 8 || format == 9 || format == 13 || format == 16 || format == 17) continue;
+        var name = new StringBuilder(256);
+        GetClipboardFormatName(format, name, name.Capacity);
+        string value = name.ToString();
+        if (value == "HTML Format" || value == "Rich Text Format" || value == "PNG" || value == "JFIF") continue;
+        flags |= 2;
+      }
+    } finally { CloseClipboard(); }
+  }
+  [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT { public ushort vk; public ushort scan; public uint flags; public uint time; public UIntPtr extra; }
+  [StructLayout(LayoutKind.Sequential)] public struct MOUSEINPUT { public int x; public int y; public uint data; public uint flags; public uint time; public UIntPtr extra; }
+  [StructLayout(LayoutKind.Explicit)] public struct INPUTUNION { [FieldOffset(0)] public KEYBDINPUT keyboard; [FieldOffset(0)] public MOUSEINPUT mouse; }
+  [StructLayout(LayoutKind.Sequential)] public struct INPUT { public uint type; public INPUTUNION data; }
+  [DllImport("user32.dll", SetLastError=true)] public static extern uint SendInput(uint count, INPUT[] inputs, int size);
+  const ushort VK_CONTROL = 0x11;
+  const ushort VK_V = 0x56;
   const uint KEYEVENTF_KEYUP = 0x0002;
   public static void CtrlV() {
-    keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
-    keybd_event(VK_V, 0, 0, UIntPtr.Zero);
-    keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-    keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    INPUT[] inputs = new INPUT[4];
+    ushort[] keys = new ushort[] { VK_CONTROL, VK_V, VK_V, VK_CONTROL };
+    for (int i = 0; i < inputs.Length; i++) {
+      inputs[i].type = 1;
+      inputs[i].data.keyboard.vk = keys[i];
+      inputs[i].data.keyboard.flags = i < 2 ? 0 : KEYEVENTF_KEYUP;
+    }
+    if (SendInput(4, inputs, Marshal.SizeOf(typeof(INPUT))) != 4) {
+      // Best effort release after a partial injection to avoid a stuck Ctrl key.
+      SendInput(2, new INPUT[] { inputs[2], inputs[3] }, Marshal.SizeOf(typeof(INPUT)));
+      throw new InvalidOperationException("input injection blocked");
+    }
   }
 }
 "@
@@ -55,7 +100,8 @@ while ($true) {
   $id = $parts[0]
   $cmd = if ($parts.Length -gt 1) { $parts[1] } else { '' }
   try {
-    switch ($cmd) {
+    $commandParts = $cmd.Split(' ')
+    switch ($commandParts[0]) {
       'fg' {
         $hwnd = [OpenPoodNative]::GetForegroundWindow()
         $procId = [uint32]0
@@ -65,8 +111,22 @@ while ($true) {
         $out.WriteLine("$id ok $([int64]$hwnd) $name")
       }
       'paste' {
+        if ($commandParts.Length -ne 3 -or $commandParts[1] -notmatch '^[1-9][0-9]*$' -or $commandParts[2] -notmatch '^[0-9]+$') { throw 'invalid paste target' }
+        if ([OpenPoodNative]::GetClipboardSequenceNumber() -ne [uint32]$commandParts[2]) {
+          $out.WriteLine("$id ok clipboard-changed")
+          break
+        }
+        if ([OpenPoodNative]::GetForegroundWindow().ToInt64() -ne [int64]$commandParts[1]) {
+          $out.WriteLine("$id ok focus-changed")
+          break
+        }
         [OpenPoodNative]::CtrlV()
-        $out.WriteLine("$id ok")
+        $out.WriteLine("$id ok pasted")
+      }
+      'clipboard' {
+        $sequence = [OpenPoodNative]::GetClipboardSequenceNumber()
+        $flags = [OpenPoodNative]::ClipboardFlags()
+        $out.WriteLine("$id ok $sequence $flags")
       }
       default { $out.WriteLine("$id err unknown command") }
     }
@@ -81,6 +141,7 @@ interface Pending {
   resolve: (payload: string) => void;
   reject: (err: Error) => void;
   timer: NodeJS.Timeout;
+  cleanup: () => void;
 }
 
 let child: ChildProcessWithoutNullStreams | null = null;
@@ -92,6 +153,7 @@ let disposed = false;
 function failAll(err: Error) {
   for (const p of pending.values()) {
     clearTimeout(p.timer);
+    p.cleanup();
     p.reject(err);
   }
   pending.clear();
@@ -119,6 +181,7 @@ function handleLine(line: string) {
   if (!p) return;
   pending.delete(id);
   clearTimeout(p.timer);
+  p.cleanup();
   if (rest === 'ok' || rest.startsWith('ok ')) {
     p.resolve(rest.slice(3));
   } else {
@@ -183,8 +246,8 @@ function ensureHost(): Promise<void> {
       if (child === proc) {
         child = null;
         readyPromise = null;
+        failAll(err);
       }
-      failAll(err);
     };
     proc.on('error', (err) => onGone(err));
     proc.on('exit', (code) => onGone(new Error(`win host exited (${code ?? 'signal'})`)));
@@ -193,23 +256,33 @@ function ensureHost(): Promise<void> {
   return readyPromise;
 }
 
-async function request(cmd: string): Promise<string> {
+async function request(cmd: string, signal?: AbortSignal): Promise<string> {
+  signal?.throwIfAborted();
   await ensureHost();
+  signal?.throwIfAborted();
   const proc = child;
   if (!proc) throw new Error('win host unavailable');
   const id = nextId++;
   return new Promise<string>((resolve, reject) => {
     const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`win host timeout on "${cmd}"`));
+      failAll(new Error('win host timeout'));
       // A wedged host is worse than a cold one — drop it, next call respawns.
       if (child === proc) killChild();
     }, REQUEST_TIMEOUT_MS);
-    pending.set(id, { resolve, reject, timer });
+    const onAbort = () => {
+      if (!pending.has(id)) return;
+      failAll(new Error('win host request cancelled'));
+      if (child === proc) killChild();
+    };
+    const cleanup = () => signal?.removeEventListener('abort', onAbort);
+    pending.set(id, { resolve, reject, timer, cleanup });
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) { onAbort(); return; }
     proc.stdin.write(`${id} ${cmd}\n`, (err) => {
       if (err) {
         pending.delete(id);
         clearTimeout(timer);
+        cleanup();
         reject(err);
       }
     });
@@ -229,8 +302,19 @@ export async function getForegroundWindow(): Promise<ForegroundWindow> {
   return { hwnd, processName };
 }
 
-export async function sendCtrlV(): Promise<void> {
-  await request('paste');
+export async function sendCtrlV(expectedHwnd: string, sequence: string, signal?: AbortSignal): Promise<'pasted' | 'focus-changed' | 'clipboard-changed'> {
+  if (!/^[1-9]\d*$/.test(expectedHwnd) || !/^\d+$/.test(sequence)) throw new Error('invalid paste target');
+  const result = await request(`paste ${expectedHwnd} ${sequence}`, signal);
+  if (result !== 'pasted' && result !== 'focus-changed' && result !== 'clipboard-changed') throw new Error('invalid paste reply');
+  return result;
+}
+
+export async function getClipboardState(signal?: AbortSignal): Promise<{ sequence: string; hasFiles: boolean; hasUnsupported: boolean; hasFormats: boolean }> {
+  const result = await request('clipboard', signal);
+  const match = /^(\d+) ([0-7])$/.exec(result);
+  if (!match) throw new Error('invalid clipboard reply');
+  const flags = Number(match[2]);
+  return { sequence: match[1], hasFiles: (flags & 1) !== 0, hasUnsupported: (flags & 2) !== 0, hasFormats: (flags & 4) !== 0 };
 }
 
 export function disposeWinHost(): void {

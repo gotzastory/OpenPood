@@ -4,6 +4,7 @@ import { icons } from "../lib/icons";
 import type { HistoryEntry } from "../types";
 import { BTN, EMPTY_STATE, PAGE_TITLE } from "../lib/uiClasses";
 import { HistoryEntryCard } from "../components/HistoryEntryCard";
+import { RUNTIME } from '../lib/runtimeConfig';
 
 export function HistoryPage() {
   const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
@@ -11,19 +12,25 @@ export function HistoryPage() {
   const [loadError, setLoadError] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyResetTimer = useRef<number | null>(null);
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil((entries?.length ?? 0) / RUNTIME.historyPageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const visibleEntries = entries?.slice(currentPage * RUNTIME.historyPageSize, (currentPage + 1) * RUNTIME.historyPageSize);
 
   useEffect(() => {
     let active = true;
+    let loadSequence = 0;
 
     const loadHistory = async () => {
+      const sequence = ++loadSequence;
       try {
         const nextEntries = await window.typeless.listHistory();
-        if (!active) return;
+        if (!active || sequence !== loadSequence) return;
         setEntries(nextEntries);
         setLoadError(false);
       } catch (err) {
         console.error(err);
-        if (active) setLoadError(true);
+        if (active && sequence === loadSequence) setLoadError(true);
       }
     };
 
@@ -47,6 +54,7 @@ export function HistoryPage() {
 
     try {
       setEntries(await window.typeless.clearHistory());
+      setPage(0);
       setStatus("ล้างประวัติแล้ว");
     } catch (err) {
       console.error(err);
@@ -107,7 +115,7 @@ export function HistoryPage() {
           ) : entries.length === 0 ? (
             <div className={EMPTY_STATE}>ยังไม่มีประวัติการอัดเสียง</div>
           ) : (
-            entries.map((entry) => (
+            visibleEntries?.map((entry) => (
               <HistoryEntryCard
                 key={entry.id}
                 entry={entry}
@@ -117,6 +125,17 @@ export function HistoryPage() {
             ))
           )}
         </div>
+      )}
+      {!loadError && pageCount > 1 && (
+        <nav aria-label="หน้าประวัติ" className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p aria-live="polite" className="text-sm text-base-content/65">หน้า {currentPage + 1} / {pageCount} · {entries?.length} รายการ</p>
+          <div className="join">
+            <button type="button" className="btn join-item" disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}>ก่อนหน้า</button>
+            <button type="button" className="btn join-item" disabled={currentPage + 1 >= pageCount}
+              onClick={() => setPage(currentPage + 1)}>ถัดไป</button>
+          </div>
+        </nav>
       )}
     </div>
   );

@@ -1,4 +1,6 @@
 import type { AppSettings } from './config';
+import { providerJson, responseText, ProviderRequestError } from './providerRequest';
+import { RUNTIME } from '../src/lib/runtimeConfig';
 
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -23,8 +25,13 @@ function normalizeAudioMime(mimeType: string): string {
 
 function extractText(data: GeminiResponse): string {
   const parts = data.candidates?.[0]?.content?.parts ?? [];
+  if (!Array.isArray(parts)) throw new ProviderRequestError('Gemini ส่งผลลัพธ์ไม่ถูกต้อง');
   return parts
-    .map((p) => p.text ?? '')
+    .map((p) => {
+      if (!p || typeof p !== 'object') throw new ProviderRequestError('Gemini ส่งผลลัพธ์ไม่ถูกต้อง');
+      responseText(p.text ?? '', 'Gemini API');
+      return p.text ?? '';
+    })
     .join('')
     .trim();
 }
@@ -35,6 +42,7 @@ async function generateContent(
   parts: GeminiPart[],
   systemInstruction?: string,
   temperature = 0.2,
+  signal?: AbortSignal,
 ): Promise<string> {
   const url = `${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent`;
   const body: Record<string, unknown> = {
@@ -45,32 +53,28 @@ async function generateContent(
     body.systemInstruction = { parts: [{ text: systemInstruction.trim() }] };
   }
 
-  const res = await fetch(url, {
+  const data = await providerJson(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': settings.apiKey,
     },
     body: JSON.stringify(body),
-  });
-
-  const data = (await res.json().catch(() => ({}))) as GeminiResponse;
-  if (!res.ok) {
-    // Server-controlled body — cap it (it can end up in an OS notification).
-    const msg = (data.error?.message || JSON.stringify(data)).slice(0, 300);
-    throw new Error(`Gemini API error (${res.status}): ${msg}`);
-  }
-
-  return extractText(data);
+  }, 'Gemini API', parts.some((part) => part.inlineData) ? RUNTIME.sttTimeoutMs : RUNTIME.chatTimeoutMs, signal);
+  if (!data || typeof data !== 'object') throw new ProviderRequestError('Gemini ส่งผลลัพธ์ไม่ถูกต้อง');
+  const text = responseText(extractText(data as GeminiResponse), 'Gemini API');
+  if (!text) throw new ProviderRequestError('Gemini ไม่พบข้อความหรือปฏิเสธคำขอ — ลองใหม่อีกครั้ง');
+  return text;
 }
 
 export async function geminiChatComplete(
   settings: AppSettings,
   systemPrompt: string,
   userText: string,
+  signal?: AbortSignal,
 ): Promise<string> {
   const model = settings.chatModel || 'gemini-3.5-flash-lite';
-  return generateContent(settings, model, [{ text: userText }], systemPrompt, 0.3);
+  return generateContent(settings, model, [{ text: userText }], systemPrompt, 0.3, signal);
 }
 
 export async function geminiTranscribe(
@@ -78,9 +82,10 @@ export async function geminiTranscribe(
   mimeType: string,
   settings: AppSettings,
   prompt: string,
+  signal?: AbortSignal,
 ): Promise<string> {
   if (audioBuffer.byteLength > MAX_INLINE_BYTES) {
-    throw new Error(
+    throw new ProviderRequestError(
       'ไฟล์เสียงใหญ่เกินขีดจำกัดของ Gemini inline upload (~18 MB) — ลองอัดสั้นลง',
     );
   }
@@ -100,5 +105,6 @@ export async function geminiTranscribe(
     ],
     undefined,
     0.1,
+    signal,
   );
 }

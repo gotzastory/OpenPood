@@ -49,6 +49,11 @@ export function HomePage() {
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = window.typeless.onHistoryUpdated(() => {
+      void window.typeless.historyStats().then((nextStats) => {
+        if (active) setStats(nextStats);
+      }).catch(() => { if (active) setLoadError(true); });
+    });
     void Promise.all([
       window.typeless.getSettings(),
       window.typeless.historyStats(),
@@ -65,6 +70,7 @@ export function HomePage() {
     document.getElementById("content")?.focus({ preventScroll: true });
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 

@@ -2,6 +2,8 @@ import type { AppSettings } from './config';
 import { geminiTranscribe, isGeminiProvider } from './gemini';
 import { elevenLabsTranscribe } from './elevenlabs';
 import { isElevenLabsProvider } from '../src/lib/elevenlabs';
+import { providerJson, responseText, ProviderRequestError } from './providerRequest';
+import { RUNTIME } from '../src/lib/runtimeConfig';
 
 export class TranscriptionError extends Error {}
 
@@ -92,12 +94,13 @@ async function requestTranscription(
   settings: AppSettings,
   promptBias: string,
   language: string,
+  signal?: AbortSignal,
 ): Promise<string> {
   if (isElevenLabsProvider(settings)) {
     try {
-      return await elevenLabsTranscribe(audioBuffer, mimeType, settings, language);
+      return await elevenLabsTranscribe(audioBuffer, mimeType, settings, language, signal);
     } catch (err) {
-      throw new TranscriptionError(err instanceof Error ? err.message : 'ElevenLabs STT failed');
+      throw new TranscriptionError(err instanceof ProviderRequestError ? err.message : 'ElevenLabs ถอดเสียงไม่สำเร็จ');
     }
   }
   if (isGeminiProvider(settings)) {
@@ -107,9 +110,10 @@ async function requestTranscription(
         mimeType,
         settings,
         buildGeminiPrompt(promptBias, language),
+        signal,
       );
     } catch (err) {
-      throw new TranscriptionError(err instanceof Error ? err.message : String(err));
+      throw new TranscriptionError(err instanceof ProviderRequestError ? err.message : 'Gemini ถอดเสียงไม่สำเร็จ');
     }
   }
 
@@ -121,21 +125,12 @@ async function requestTranscription(
   form.append('language', language);
   form.append('prompt', buildPrompt(promptBias));
 
-  const res = await fetch(`${settings.apiBaseUrl.replace(/\/$/, '')}/audio/transcriptions`, {
+  const data = await providerJson(`${settings.apiBaseUrl.replace(/\/$/, '')}/audio/transcriptions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${settings.apiKey}` },
     body: form,
-  });
-
-  if (!res.ok) {
-    // Response body is server-controlled — cap it so it stays a readable hint
-    // rather than an arbitrary blob in notifications/logs.
-    const body = await res.text().catch(() => '');
-    throw new TranscriptionError(`Transcription API error (${res.status}): ${body.slice(0, 300)}`);
-  }
-
-  const data = (await res.json()) as { text?: string };
-  return data.text?.trim() ?? '';
+  }, 'Transcription API', RUNTIME.sttTimeoutMs, signal);
+  return responseText(data && typeof data === 'object' && 'text' in data ? data.text : undefined, 'Transcription API');
 }
 
 export async function transcribeAudio(
@@ -143,32 +138,40 @@ export async function transcribeAudio(
   mimeType: string,
   settings: AppSettings,
   promptBias = '',
+  signal?: AbortSignal,
 ): Promise<string> {
   if (!settings.apiKey) {
     throw new TranscriptionError('ยังไม่ได้ตั้งค่า API key ในหน้า Settings');
   }
 
-  const language = apiLanguage(settings);
-  let text = await requestTranscription(
-    audioBuffer,
-    mimeType,
-    settings,
-    promptBias,
-    language,
-  );
-
-  // Safety net if a provider ignores `language` or still emits VN/JP/KR.
-  if (looksWrongLanguage(text) && language !== 'en') {
-    console.log('[transcribe] unexpected language detected, retrying with language=th + stronger bias');
-    text = await requestTranscription(
+  try {
+    const language = apiLanguage(settings);
+    let text = await requestTranscription(
       audioBuffer,
       mimeType,
       settings,
-      // Repeat the bias so it sits at the end of the prompt (stronger influence).
-      `${promptBias} ${TH_EN_PROMPT_BIAS}`,
-      'th',
+      promptBias,
+      language,
+      signal,
     );
-  }
 
-  return text;
+    // Safety net if a provider ignores `language` or still emits VN/JP/KR.
+    if (looksWrongLanguage(text) && language !== 'en') {
+      console.log('[transcribe] unexpected language detected, retrying with language=th + stronger bias');
+      text = await requestTranscription(
+        audioBuffer,
+        mimeType,
+        settings,
+        // Repeat the bias so it sits at the end of the prompt (stronger influence).
+        `${promptBias} ${TH_EN_PROMPT_BIAS}`,
+        'th',
+        signal,
+      );
+    }
+
+    if (!text.trim()) throw new TranscriptionError('ไม่พบข้อความจากเสียง — ลองพูดใหม่อีกครั้ง');
+    return text;
+  } catch (err) {
+    throw new TranscriptionError(err instanceof TranscriptionError || err instanceof ProviderRequestError ? err.message : 'ถอดเสียงไม่สำเร็จ');
+  }
 }

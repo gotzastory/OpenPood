@@ -13,7 +13,7 @@ export interface TranscribeResult {
   pasted?: boolean;
 }
 
-export type WidgetState = 'idle' | 'recording' | 'processing' | 'skipped';
+export type WidgetState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
 
 export interface HistoryStats {
   sessions: number;
@@ -25,6 +25,8 @@ export interface HistoryStats {
 export type RecordingMode = 'dictate' | 'translate';
 
 const api = {
+  cancelTranscription: (): Promise<void> => ipcRenderer.invoke('transcription:cancel'),
+  reportRecordingError: (): void => ipcRenderer.send('recording:error'),
   getUpdateStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:get'),
   checkForUpdates: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:check'),
   downloadUpdate: (): Promise<UpdateStatus> => ipcRenderer.invoke('updates:download'),

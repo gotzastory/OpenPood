@@ -1,6 +1,7 @@
 import Store from 'electron-store';
 import { safeStorage } from 'electron';
 import { STORE_DIRECTORY } from './storage';
+import { RUNTIME } from '../src/lib/runtimeConfig';
 
 export interface AppSettings {
   apiKey: string;
@@ -53,6 +54,13 @@ export type RendererSettings = Omit<AppSettings, 'apiKey'> & {
 };
 
 const rawStore = new Store<StoredSettings>({ defaults, cwd: STORE_DIRECTORY });
+let cachedStored = rawStore.store;
+
+function persistSettings(next: StoredSettings): void {
+  try { rawStore.store = next; }
+  catch { throw new Error('บันทึกการตั้งค่าไม่สำเร็จ กรุณาตรวจสอบพื้นที่และสิทธิ์เขียนไฟล์'); }
+  cachedStored = next;
+}
 
 // Runtime allowlist for `settings:set` — IPC payloads come from the renderer
 // and must not be able to write arbitrary keys (incl. dotted paths) into the
@@ -83,13 +91,16 @@ export function validateApiBaseUrl(raw: string): string | null {
 
 function encryptApiKey(apiKey: string): string {
   if (!apiKey) return '';
-  if (!safeStorage.isEncryptionAvailable()) return apiKey;
-  return safeStorage.encryptString(apiKey).toString('base64');
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('ระบบเข้ารหัส API key ยังไม่พร้อม จึงไม่บันทึก key — กรุณาลองใหม่');
+  }
+  try { return safeStorage.encryptString(apiKey).toString('base64'); }
+  catch { throw new Error('เข้ารหัส API key ไม่สำเร็จ จึงไม่บันทึก key — กรุณาลองใหม่'); }
 }
 
 function decryptApiKey(stored: string): string {
   if (!stored) return '';
-  if (!safeStorage.isEncryptionAvailable()) return stored;
+  if (!safeStorage.isEncryptionAvailable()) return '';
   try {
     return safeStorage.decryptString(Buffer.from(stored, 'base64'));
   } catch {
@@ -101,15 +112,23 @@ function decryptApiKey(stored: string): string {
 
 // Migrate installs that still have a plaintext `apiKey` field from before
 // encryption was added.
-const legacyApiKey = (rawStore.store as unknown as { apiKey?: string }).apiKey;
-if (legacyApiKey && !rawStore.get('apiKeyEncrypted')) {
-  rawStore.set('apiKeyEncrypted', encryptApiKey(legacyApiKey));
-  (rawStore as unknown as { delete(key: string): void }).delete('apiKey');
+function migrateLegacyApiKey(): void {
+  const legacyApiKey = (cachedStored as StoredSettings & { apiKey?: string }).apiKey;
+  // safeStorage is only usable after app readiness. Never create plaintext fallback.
+  if (!legacyApiKey || !safeStorage.isEncryptionAvailable()) return;
+  const next = { ...cachedStored } as StoredSettings & { apiKey?: string };
+  if (!next.apiKeyEncrypted) next.apiKeyEncrypted = encryptApiKey(legacyApiKey);
+  delete next.apiKey;
+  persistSettings(next);
 }
 
 export function getSettings(): AppSettings {
-  const { apiKeyEncrypted, ...rest } = rawStore.store;
-  return { ...rest, apiKey: decryptApiKey(apiKeyEncrypted) };
+  migrateLegacyApiKey();
+  const { apiKeyEncrypted, ...rest } = cachedStored;
+  const duration = rest.maxDurationSec;
+  return { ...rest, maxDurationSec: Number.isFinite(duration) && duration > 0
+    ? Math.min(duration, RUNTIME.maxRecordingSec) : defaults.maxDurationSec,
+    apiKey: decryptApiKey(apiKeyEncrypted) };
 }
 
 export function getRendererSettings(): RendererSettings {
@@ -118,6 +137,7 @@ export function getRendererSettings(): RendererSettings {
 }
 
 export function setSettings(partial: Partial<AppSettings>): AppSettings {
+  const next = { ...cachedStored } as StoredSettings & { apiKey?: string };
   const { apiKey, ...rest } = partial;
   for (const [key, value] of Object.entries(rest)) {
     if (!WRITABLE_KEYS.has(key)) continue;
@@ -128,12 +148,20 @@ export function setSettings(partial: Partial<AppSettings>): AppSettings {
       const error = validateApiBaseUrl(value as string);
       if (error) throw new Error(error);
     }
+    if (key === 'maxDurationSec' && (!Number.isFinite(value) || (value as number) < 1 || (value as number) > RUNTIME.maxRecordingSec)) {
+      throw new Error(`เวลาอัดเสียงต้องอยู่ระหว่าง 1–${RUNTIME.maxRecordingSec} วินาที`);
+    }
+    if (typeof value === 'string' && value.length > 2048) throw new Error('ค่าการตั้งค่ายาวเกินขีดจำกัด');
     // Cast is safe: key membership and value type are checked above.
-    rawStore.set(key as keyof StoredSettings, value as StoredSettings[keyof StoredSettings]);
+    Object.assign(next, { [key]: value });
   }
   if (typeof apiKey === 'string') {
-    rawStore.set('apiKeyEncrypted', encryptApiKey(apiKey));
+    if (apiKey.length > 4096) throw new Error('API key ยาวเกินขีดจำกัด');
+    next.apiKeyEncrypted = encryptApiKey(apiKey);
+    delete next.apiKey;
   }
+  // Validate/encrypt everything first, then perform one atomic store write.
+  persistSettings(next);
   return getSettings();
 }
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray, type WebContents } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray, type WebContents } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import electronUpdater from 'electron-updater';
@@ -6,7 +6,9 @@ import { UpdateController, UPDATE_SCHEDULE } from './updater';
 import { getRendererSettings, getSettings, setSettings, type AppSettings } from './config';
 import { normalizeThaiSpacing, transcribeAudio, TranscriptionError } from './transcribe';
 import { pasteAtCursor } from './pasteText';
-import { addHistoryEntry, listHistory, clearHistory, historyStats } from './history';
+import { addHistoryEntry, listHistory, clearHistory, historyStats, flushHistory } from './history';
+import { RUNTIME } from '../src/lib/runtimeConfig';
+import { measureStage, reportDuration, startPerformanceSampling } from './performance';
 import {
   listDictionaryWords,
   setDictionaryWords,
@@ -30,7 +32,7 @@ import {
 } from './winHost';
 
 type RecordingMode = 'dictate' | 'translate';
-type WidgetState = 'idle' | 'recording' | 'processing' | 'skipped';
+type WidgetState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,7 +47,7 @@ const WIDGET_HEIGHT = 90;
 
 // Hard cap on audio handed over IPC — maxDurationSec is enforced only in the
 // renderer, so the main process must not trust the payload size.
-const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
+const MAX_AUDIO_BYTES = RUNTIME.maxAudioBytes;
 
 // Routes the dashboard window may be opened at (must match src/app/shell.tsx).
 const ALLOWED_ROUTES = new Set(['/', '/history', '/dictionary', '/settings', '/onboarding']);
@@ -69,6 +71,66 @@ let activeTranscriptions = 0;
 let updater: UpdateController;
 let updateStartupTimer: ReturnType<typeof setTimeout> | undefined;
 let updateInterval: ReturnType<typeof setInterval> | undefined;
+let widgetReady = false;
+let quitting = false;
+let shutdownComplete = false;
+let shutdownPending = false;
+let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
+let recoveryAttempts = 0;
+let lastRecoveryAt = 0;
+let hotkeyAckTimer: ReturnType<typeof setTimeout> | undefined;
+let hotkeyStartedAt = 0;
+let transcriptionController: AbortController | null = null;
+let transcriptionDone: Promise<void> = Promise.resolve();
+let stopPerformanceSampling: () => void = () => undefined;
+
+function sendToWindow(win: BrowserWindow | null, channel: string, ...args: unknown[]): void {
+  if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
+  try { win.webContents.send(channel, ...args); }
+  catch { console.warn('Renderer message could not be delivered.'); }
+}
+
+function notify(title: string, body: string): void {
+  try {
+    if (Notification.isSupported()) new Notification({ title, body }).show();
+  } catch { console.warn('Native notification unavailable.'); }
+}
+
+function recoverWidget(win: BrowserWindow): void {
+  if (quitting || widget !== win) return;
+  widget = null;
+  widgetReady = false;
+  hotkeyPending = false;
+  recordingState = 'idle';
+  foregroundAtHotkey = Promise.resolve(null);
+  clearTimeout(hotkeyAckTimer);
+  transcriptionController?.abort();
+  setEscapeCancel(false);
+  updater?.refreshBusy();
+  if (!win.isDestroyed()) win.destroy();
+  if (Date.now() - lastRecoveryAt > RUNTIME.widgetRecoveryWindowMs) recoveryAttempts = 0;
+  lastRecoveryAt = Date.now();
+  if (++recoveryAttempts > RUNTIME.widgetRecoveryAttempts) {
+    notify('เปิดไมโครโฟนไม่สำเร็จ', 'หน้าต่างอัดเสียงขัดข้องซ้ำ กรุณาปิดแล้วเปิด OpenPood ใหม่');
+    return;
+  }
+  recoveryTimer = setTimeout(() => {
+    recoveryTimer = undefined;
+    if (quitting || widget) return;
+    try { createWidget(); }
+    catch { notify('เปิดไมโครโฟนไม่สำเร็จ', 'กรุณาปิดแล้วเปิด OpenPood ใหม่'); }
+  }, RUNTIME.widgetRecoveryDelayMs);
+}
+
+async function captureForeground(): Promise<ForegroundWindow | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      getForegroundWindow().catch(() => null),
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), RUNTIME.foregroundCaptureTimeoutMs); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
 
 type RendererCapability = 'main' | 'widget' | 'either';
 
@@ -88,9 +150,8 @@ function requireRenderer(event: { sender: WebContents }, capability: RendererCap
   }
 }
 
-// Foreground window captured at the most recent hotkey press — that is the
-// window the user expects the text to land in. Refreshed on every press so the
-// stop press wins; on max-duration auto-stop the start press remains.
+// Capture once at the start press. Stopping in another window must never retarget
+// the dictation. Slow/unavailable lookups deliberately fall back to clipboard.
 let foregroundAtHotkey: Promise<ForegroundWindow | null> = Promise.resolve(null);
 
 // Bottom-center of whichever monitor the cursor is on, not just the primary.
@@ -134,18 +195,44 @@ function createWidget() {
   widget.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   widget.setIgnoreMouseEvents(true);
   hardenWindow(widget);
+  const win = widget;
+  widgetReady = false;
+  win.webContents.on('render-process-gone', () => recoverWidget(win));
+  win.webContents.on('did-fail-load', (_event, errorCode, _description, _url, isMainFrame) => {
+    if (isMainFrame && errorCode !== -3) recoverWidget(win);
+  });
+  win.webContents.on('did-finish-load', () => {
+    if (widget !== win || widgetReady) return;
+    clearTimeout(hotkeyAckTimer);
+    hotkeyAckTimer = setTimeout(() => { if (!widgetReady) recoverWidget(win); }, RUNTIME.hotkeyAckTimeoutMs);
+  });
+  win.on('closed', () => recoverWidget(win));
 
   if (VITE_DEV_SERVER_URL) {
-    widget.loadURL(VITE_DEV_SERVER_URL);
+    void win.loadURL(VITE_DEV_SERVER_URL).catch(() => recoverWidget(win));
   } else {
-    widget.loadFile(path.join(__dirname, '../dist/index.html'));
+    void win.loadFile(path.join(__dirname, '../dist/index.html')).catch(() => recoverWidget(win));
   }
 }
 
 function createMainWindow(route: string) {
+  const url = VITE_DEV_SERVER_URL
+    ? `${VITE_DEV_SERVER_URL}#${route}`
+    : `file://${path.join(__dirname, '../dist/index.html')}#${route}`;
   if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
     mainWindow.focus();
-    mainWindow.webContents.send('nav:goto', route);
+    // Onboarding mounts a different root and has no dashboard navigation listener.
+    const wasOnboarding = mainWindow.webContents.getURL().split('#')[1] === '/onboarding';
+    if (wasOnboarding !== (route === '/onboarding')) {
+      const win = mainWindow;
+      // A hash-only load is same-document navigation: rerun the surface entrypoint.
+      void win.loadURL(url).then(() => { if (!win.isDestroyed()) win.reload(); })
+        .catch(() => notify('เปิดแอปไม่สำเร็จ', 'กรุณาปิดหน้าต่างแล้วเปิดใหม่จาก tray'));
+    } else {
+      sendToWindow(mainWindow, 'nav:goto', route);
+    }
     return;
   }
   mainWindow = new BrowserWindow({
@@ -162,10 +249,7 @@ function createMainWindow(route: string) {
     },
   });
   hardenWindow(mainWindow);
-  const url = VITE_DEV_SERVER_URL
-    ? `${VITE_DEV_SERVER_URL}#${route}`
-    : `file://${path.join(__dirname, '../dist/index.html')}#${route}`;
-  mainWindow.loadURL(url);
+  void mainWindow.loadURL(url).catch(() => notify('เปิดแอปไม่สำเร็จ', 'กรุณาปิดหน้าต่างแล้วเปิดใหม่จาก tray'));
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -195,7 +279,8 @@ function applyLaunchAtStartup(enabled: boolean) {
   app.setLoginItemSettings({ openAtLogin: enabled });
 }
 
-function registerHotkeys(settings: AppSettings) {
+function registerHotkeys(settings: AppSettings): string[] {
+  const failed: string[] = [];
   globalShortcut.unregisterAll();
   const bindings: [string, RecordingMode][] = [
     [settings.hotkey, 'dictate'],
@@ -203,30 +288,39 @@ function registerHotkeys(settings: AppSettings) {
   ];
   for (const [accelerator, mode] of bindings) {
     if (!accelerator) continue;
-    const ok = globalShortcut.register(accelerator, () => {
-      if (updater?.isInstalling()) return;
+    let ok = false;
+    try { ok = globalShortcut.register(accelerator, () => {
+      if (quitting || updater?.isInstalling() || !widgetReady || hotkeyPending
+        || recordingState === 'starting' || recordingState === 'processing' || activeTranscriptions > 0) return;
+      const starting = recordingState === 'idle' || recordingState === 'skipped';
       hotkeyPending = true;
+      if (starting) {
+        hotkeyStartedAt = performance.now();
+        foregroundAtHotkey = captureForeground();
+        setEscapeCancel(true);
+      }
+      clearTimeout(hotkeyAckTimer);
+      const win = widget;
+      hotkeyAckTimer = setTimeout(() => { if (hotkeyPending && win) recoverWidget(win); }, RUNTIME.hotkeyAckTimeoutMs);
       updater?.refreshBusy();
       moveWidgetToCursorDisplay();
-      widget?.webContents.send('hotkey:toggle-recording', mode);
-      // Widget is focusable:false, so the press never moves focus — whatever
-      // is in front right now is the paste target. Not awaited: the host
-      // answers in a few ms and transcription:run picks the promise up later.
-      foregroundAtHotkey = getForegroundWindow().catch(() => null);
-    });
+      sendToWindow(widget, 'hotkey:toggle-recording', mode);
+    }); } catch { /* Invalid or unavailable accelerator. */ }
     if (!ok) {
-      console.error(`Failed to register hotkey (${mode}): ${accelerator}`);
+      failed.push(mode);
+      console.warn(`Failed to register ${mode} hotkey.`);
     }
   }
+  if (failed.length) notify('ปุ่มลัดใช้งานไม่ได้', 'ปุ่มลัดอาจถูกแอปอื่นใช้อยู่ กรุณาเลือกปุ่มลัดใหม่ใน Settings');
+  return failed;
 }
 
-// Escape is grabbed system-wide ONLY while the mic is open (the widget reports
-// its state), so other apps keep their Escape the rest of the time.
+// Escape cancels setup, recording, and processing; other apps keep it when idle.
 function setEscapeCancel(enabled: boolean) {
   if (enabled) {
     if (globalShortcut.isRegistered('Escape')) return;
     const ok = globalShortcut.register('Escape', () => {
-      widget?.webContents.send('hotkey:cancel-recording');
+      sendToWindow(widget, 'hotkey:cancel-recording');
     });
     if (!ok) console.error('Failed to register Escape as cancel key');
   } else {
@@ -235,10 +329,12 @@ function setEscapeCancel(enabled: boolean) {
 }
 
 app.on('second-instance', () => {
+  if (quitting) return;
   void app.whenReady().then(() => createMainWindow('/')).catch(() => app.quit());
 });
 
 app.whenReady().then(() => {
+  stopPerformanceSampling = startPerformanceSampling();
   warmWinHost();
   createWidget();
   createTray();
@@ -249,9 +345,9 @@ app.whenReady().then(() => {
     electronUpdater.autoUpdater,
     app.getVersion(),
     app.isPackaged && process.platform === 'win32',
-    () => hotkeyPending || recordingState === 'recording' || recordingState === 'processing' || activeTranscriptions > 0,
+    () => hotkeyPending || recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing' || activeTranscriptions > 0,
     (status) => {
-      mainWindow?.webContents.send('updates:status', status);
+      sendToWindow(mainWindow, 'updates:status', status);
       if (status.phase === 'available' && status.version !== notifiedVersion && Notification.isSupported()) {
         notifiedVersion = status.version;
         const notification = new Notification({ title: 'มี OpenPood เวอร์ชันใหม่', body: `เวอร์ชัน ${status.version} พร้อมดาวน์โหลด เปิดการตั้งค่าเพื่ออัปเดต` });
@@ -260,7 +356,11 @@ app.whenReady().then(() => {
       }
     },
     () => globalShortcut.unregisterAll(),
-    () => { registerHotkeys(getSettings()); setEscapeCancel(recordingState === 'recording'); },
+    () => {
+      quitting = false;
+      registerHotkeys(getSettings());
+      setEscapeCancel(recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing');
+    },
   );
   if (app.isPackaged && process.platform === 'win32') {
     updateStartupTimer = setTimeout(() => { void updater.check(); }, UPDATE_SCHEDULE.startupDelayMs);
@@ -293,9 +393,17 @@ app.whenReady().then(() => {
   ipcMain.handle('settings:set', (event, partial: Partial<AppSettings>) => {
     requireRenderer(event, 'main');
     if (typeof partial !== 'object' || partial === null) return getRendererSettings();
+    const previous = getSettings();
     const updated = setSettings(partial);
     if (partial.hotkey !== undefined || partial.translateHotkey !== undefined) {
-      registerHotkeys(updated);
+      const failed = registerHotkeys(updated);
+      if (failed.length) {
+        setSettings({ hotkey: previous.hotkey, translateHotkey: previous.translateHotkey });
+        registerHotkeys(previous);
+        setEscapeCancel(hotkeyPending || recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing');
+        throw new Error('ปุ่มลัดไม่พร้อมใช้งาน คืนค่าปุ่มลัดเดิมแล้ว กรุณาเลือกปุ่มลัดใหม่');
+      }
+      setEscapeCancel(recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing');
     }
     if (partial.launchAtStartup !== undefined) applyLaunchAtStartup(partial.launchAtStartup);
     return getRendererSettings();
@@ -310,11 +418,24 @@ app.whenReady().then(() => {
   ipcMain.on('recording:state', (e, state: unknown) => {
     // Only the widget drives the global Escape grab.
     if (!widget || e.sender !== widget.webContents) return;
-    if (state !== 'idle' && state !== 'recording' && state !== 'processing' && state !== 'skipped') return;
+    if (state !== 'idle' && state !== 'starting' && state !== 'recording' && state !== 'processing' && state !== 'skipped') return;
+    widgetReady = true;
+    clearTimeout(hotkeyAckTimer);
+    if (state === 'recording' && recordingState === 'starting') reportDuration('mic-start', performance.now() - hotkeyStartedAt);
     hotkeyPending = false;
     recordingState = state;
     updater.refreshBusy();
-    setEscapeCancel(state === ('recording' satisfies WidgetState));
+    setEscapeCancel(state === 'starting' || state === 'recording' || state === 'processing');
+  });
+
+  ipcMain.on('recording:error', (event) => {
+    if (!isTrustedRenderer(event.sender, 'widget')) return;
+    notify('อัดเสียงไม่สำเร็จ', 'ตรวจสอบสิทธิ์ไมโครโฟนและอุปกรณ์ แล้วลองใหม่');
+  });
+  ipcMain.handle('transcription:cancel', async (event) => {
+    requireRenderer(event, 'widget');
+    transcriptionController?.abort();
+    await transcriptionDone;
   });
 
   ipcMain.handle(
@@ -325,11 +446,16 @@ app.whenReady().then(() => {
     ) => {
       requireRenderer(event, 'widget');
       if (updater.isInstalling()) return { ok: false as const, error: 'กำลังติดตั้งอัปเดต' };
+      if (quitting || activeTranscriptions > 0) return { ok: false as const, error: 'กำลังทำงาน กรุณารอสักครู่' };
       if (
         typeof payload !== 'object' ||
         payload === null ||
         !(payload.buffer instanceof ArrayBuffer) ||
         typeof payload.mimeType !== 'string' ||
+        !['audio/webm', 'audio/webm;codecs=opus', 'audio/wav'].includes(payload.mimeType) ||
+        !Number.isFinite(payload.durationMs) ||
+        payload.durationMs < RUNTIME.minRecordingMs ||
+        payload.durationMs > RUNTIME.maxRecordingSec * 1000 + RUNTIME.recorderStopTimeoutMs ||
         payload.buffer.byteLength === 0 ||
         payload.buffer.byteLength > MAX_AUDIO_BYTES
       ) {
@@ -337,15 +463,27 @@ app.whenReady().then(() => {
       }
       const settings = getSettings();
       const mode = payload.mode === 'translate' ? 'translate' : 'dictate';
+      const controller = new AbortController();
+      const sourceWidget = widget;
+      transcriptionController = controller;
+      let finishTranscription!: () => void;
+      transcriptionDone = new Promise<void>((resolve) => { finishTranscription = resolve; });
+      const assertCurrent = () => {
+        controller.signal.throwIfAborted();
+        if (quitting || widget !== sourceWidget) throw new Error('recording session ended');
+      };
+      const startedAt = performance.now();
       activeTranscriptions++;
       updater.refreshBusy();
       try {
         const target = await foregroundAtHotkey;
+        assertCurrent();
         if (mode === 'translate' && isElevenLabsProvider(settings)) {
           throw new LlmError(ELEVENLABS_STT_ONLY_MESSAGE);
         }
         const bias = dictionaryPrompt();
-        let text = await transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias);
+        let text = await measureStage('stt', () => transcribeAudio(Buffer.from(payload.buffer), payload.mimeType, settings, bias, controller.signal));
+        assertCurrent();
 
         // Cheap local pass before any LLM step — strips "อืมม" / "เอ่ออ" / "um"
         // without an API round-trip. Runs for both dictate and translate.
@@ -360,63 +498,46 @@ app.whenReady().then(() => {
           // Corrections on the transcript before translate so wrong-script
           // substitutions don't get translated as-is.
           text = applyCorrections(text);
-          text = await translateText(text, settings);
+          text = await measureStage('translate', () => translateText(text, settings, controller.signal));
         } else {
           if (settings.aiPolishEnabled && !isElevenLabsProvider(settings)) {
-            text = await polishText(text, settings, categoryForProcess(target?.processName ?? ''));
+            text = await measureStage('polish', () => polishText(text, settings, categoryForProcess(target?.processName ?? ''), controller.signal));
           }
           // After polish: AI cleanup used to run after corrections and could
           // undo exact replacements the user configured (e.g. "บอก" → "or").
           text = applyCorrections(text);
         }
 
-        // The request can take seconds; if the user alt-tabbed meanwhile, a
-        // blind Ctrl+V would land in the wrong app. Leave it on the clipboard
-        // instead and say so.
-        const now = await getForegroundWindow().catch(() => null);
-        const hasTarget = !!target && target.hwnd !== '0' && target.hwnd !== '';
-        if (hasTarget && now && now.hwnd !== target.hwnd) {
-          clipboard.writeText(text);
-          if (Notification.isSupported()) {
-            new Notification({
-              title: 'หน้าต่างเปลี่ยนไป',
-              body: 'คัดลอกข้อความไว้ใน clipboard แล้ว กด Ctrl+V เพื่อวาง',
-            }).show();
-          }
-          addHistoryEntry(text, payload.durationMs, settings.model);
-          mainWindow?.webContents.send('history:updated');
-          return { ok: true as const, text, pasted: false };
-        }
-
-        let pasted = true;
+        assertCurrent();
+        if (!text.trim() || text.length > RUNTIME.maxTextChars) throw new TranscriptionError('ไม่พบข้อความที่ใช้ได้จากเสียง — ลองใหม่อีกครั้ง');
+        // Save before delivery so even unsupported clipboard formats have a
+        // recovery path. A disk failure keeps a temporary in-memory entry.
         try {
-          await pasteAtCursor(text);
-        } catch (err) {
-          // Text is still on the clipboard (pasteAtCursor does not restore on
-          // failure) — tell the user instead of dropping the dictation.
-          console.error('Paste failed:', err);
-          pasted = false;
-          if (Notification.isSupported()) {
-            new Notification({
-              title: 'วางข้อความไม่สำเร็จ',
-              body: 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง',
-            }).show();
-          }
+          await measureStage('history', () => addHistoryEntry(text, payload.durationMs, settings.model));
+        } catch {
+          notify('บันทึกประวัติไม่สำเร็จ', 'ประวัติครั้งนี้อยู่ชั่วคราวในแอป กรุณาคัดลอกก่อนปิด และตรวจสอบพื้นที่หรือสิทธิ์เขียนไฟล์');
         }
-        addHistoryEntry(text, payload.durationMs, settings.model);
-        mainWindow?.webContents.send('history:updated');
-        return { ok: true as const, text, pasted };
+        sendToWindow(mainWindow, 'history:updated');
+        assertCurrent();
+        const delivery = await measureStage('paste', () => pasteAtCursor(text, target, controller.signal));
+        if (delivery.reason === 'focus-changed') {
+          notify('ยืนยันหน้าต่างปลายทางไม่ได้', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
+        } else if (delivery.reason === 'clipboard-preserved') {
+          notify('เก็บ clipboard เดิมไว้แล้ว', 'clipboard มีไฟล์ รูปแบบพิเศษ หรือถูกเปลี่ยน กรุณาคัดลอกข้อความจาก History');
+        } else if (delivery.reason === 'paste-failed') {
+          notify('วางข้อความไม่สำเร็จ', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
+        }
+        return { ok: true as const, text, pasted: delivery.pasted };
       } catch (err) {
-        const message =
-          err instanceof TranscriptionError || err instanceof LlmError ? err.message : String(err);
-        if (Notification.isSupported()) {
-          // Error text can embed a server-controlled response body — cap it so
-          // an arbitrary endpoint can't fill a native toast with junk.
-          new Notification({ title: 'ทำงานไม่สำเร็จ', body: message.slice(0, 200) }).show();
-        }
+        const message = controller.signal.aborted ? 'ยกเลิกการทำงานแล้ว'
+          : err instanceof TranscriptionError || err instanceof LlmError ? err.message : 'ทำงานไม่สำเร็จ กรุณาลองใหม่';
+        if (!controller.signal.aborted) notify('ทำงานไม่สำเร็จ', message);
         return { ok: false as const, error: message };
       } finally {
         activeTranscriptions--;
+        if (transcriptionController === controller) transcriptionController = null;
+        finishTranscription();
+        reportDuration('dictation-total', performance.now() - startedAt);
         updater.refreshBusy();
       }
     },
@@ -430,9 +551,10 @@ app.whenReady().then(() => {
     requireRenderer(event, 'main');
     return historyStats();
   });
-  ipcMain.handle('history:clear', (event) => {
+  ipcMain.handle('history:clear', async (event) => {
     requireRenderer(event, 'main');
-    clearHistory();
+    await clearHistory();
+    sendToWindow(mainWindow, 'history:updated');
     return listHistory();
   });
 
@@ -463,13 +585,13 @@ app.whenReady().then(() => {
   });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWidget();
+    if (!quitting && !recoveryTimer && BrowserWindow.getAllWindows().length === 0) createWidget();
   });
-}).catch((err) => {
+}).catch(() => {
   // Without this, a throw during startup (e.g. corrupt store) silently skips
   // all IPC handler registration and leaves a zombie app.
-  console.error('Startup failed:', err);
-  dialog.showErrorBox('OpenPood เริ่มทำงานไม่สำเร็จ', err instanceof Error ? err.message : String(err));
+  console.error('OpenPood startup failed.');
+  dialog.showErrorBox('OpenPood เริ่มทำงานไม่สำเร็จ', 'กรุณาตรวจสอบไฟล์ตั้งค่าและสิทธิ์ของแอป แล้วเปิดใหม่');
   app.quit();
 });
 
@@ -478,8 +600,25 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
+  stopPerformanceSampling();
+  clearTimeout(recoveryTimer);
+  clearTimeout(hotkeyAckTimer);
   clearTimeout(updateStartupTimer);
   clearInterval(updateInterval);
   globalShortcut.unregisterAll();
   disposeWinHost();
+});
+
+app.on('before-quit', (event) => {
+  quitting = true;
+  clearTimeout(recoveryTimer);
+  transcriptionController?.abort();
+  if (shutdownComplete || updater?.isInstalling()) return;
+  event.preventDefault();
+  if (shutdownPending) return;
+  shutdownPending = true;
+  void transcriptionDone.then(() => flushHistory()).catch(() => undefined).finally(() => {
+    shutdownComplete = true;
+    app.quit();
+  });
 });

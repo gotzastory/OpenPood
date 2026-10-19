@@ -1,112 +1,187 @@
-export type RecorderState = "idle" | "recording" | "processing" | "skipped";
+import { RUNTIME } from '../lib/runtimeConfig';
 
-// Recordings shorter than this are almost always an accidental double-tap.
-const MIN_DURATION_MS = 400;
-// Peak RMS (0..1 full scale) below which nothing was said. A quiet room over
-// a typical mic sits around 0.002-0.01; speech peaks well above 0.05.
-const SILENCE_RMS_THRESHOLD = 0.015;
-const LEVEL_SAMPLE_MS = 100;
+export type RecorderState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
 
-// Whisper hallucinates on near-silent audio ("ขอบคุณครับ", "Thanks for
-// watching") — skip the API entirely when the clip has no speech in it.
 export function isSilentRecording(peakRms: number, durationMs: number): boolean {
-  return durationMs < MIN_DURATION_MS || peakRms < SILENCE_RMS_THRESHOLD;
+  return durationMs < RUNTIME.minRecordingMs || peakRms < RUNTIME.silenceRms;
+}
+
+function cancelled(): DOMException {
+  return new DOMException('ยกเลิกการอัดเสียงแล้ว', 'AbortError');
 }
 
 export class MicRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: BlobPart[] = [];
+  private chunkBytes = 0;
   private stream: MediaStream | null = null;
   private audioCtx: AudioContext | null = null;
-  private analyser: AnalyserNode | null = null;
   private levelTimer = 0;
   private peakRms = 0;
+  private starting = false;
+  private generation = 0;
+  private cancelStart: (() => void) | null = null;
+  private rejectStop: ((error: Error) => void) | null = null;
+  private readonly onFailure: (error: Error) => void;
 
-  /** Highest RMS level observed since `start()`; reset on each start. */
-  get peakLevel(): number {
-    return this.peakRms;
+  constructor(onFailure: (error: Error) => void = () => undefined) {
+    this.onFailure = onFailure;
   }
 
-  async start(
-    deviceId?: string,
-  ): Promise<{ deviceLabel: string; analyser: AnalyserNode }> {
-    const audioConstraint: boolean | MediaTrackConstraints = deviceId
-      ? { deviceId: { exact: deviceId } }
-      : true;
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: audioConstraint,
-    });
-    this.chunks = [];
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      ? "audio/webm;codecs=opus"
-      : "audio/webm";
-    this.mediaRecorder = new MediaRecorder(this.stream, { mimeType });
-    this.mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) this.chunks.push(e.data);
-    };
-    this.mediaRecorder.start();
+  get peakLevel(): number { return this.peakRms; }
 
-    this.audioCtx = new AudioContext();
-    const source = this.audioCtx.createMediaStreamSource(this.stream);
-    this.analyser = this.audioCtx.createAnalyser();
-    this.analyser.fftSize = 64;
-    source.connect(this.analyser);
-
-    this.peakRms = 0;
-    const samples = new Uint8Array(this.analyser.fftSize);
-    const analyser = this.analyser;
-    // setInterval rather than rAF: timers keep ticking (throttled) even if the
-    // widget window is occluded, and peak tracking only needs coarse samples.
-    this.levelTimer = window.setInterval(() => {
-      analyser.getByteTimeDomainData(samples);
-      let sum = 0;
-      for (let i = 0; i < samples.length; i++) {
-        const v = (samples[i] - 128) / 128;
-        sum += v * v;
+  async start(deviceId?: string): Promise<{ deviceLabel: string; analyser: AnalyserNode }> {
+    if (this.starting || this.mediaRecorder) throw new Error('กำลังอัดเสียงอยู่');
+    this.starting = true;
+    const generation = ++this.generation;
+    try {
+      const stream = await new Promise<MediaStream>((resolve, reject) => {
+        let settled = false;
+        const fail = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(error);
+        };
+        const timer = window.setTimeout(() => fail(new Error('เปิดไมโครโฟนหมดเวลา')), RUNTIME.micStartTimeoutMs);
+        this.cancelStart = () => fail(cancelled());
+        // Permission requests cannot be aborted. Stop any stream granted late.
+        void navigator.mediaDevices.getUserMedia({
+          audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+        }).then((nextStream) => {
+          if (settled || generation !== this.generation) {
+            nextStream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          settled = true;
+          clearTimeout(timer);
+          resolve(nextStream);
+        }, fail);
+      });
+      if (generation !== this.generation) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw cancelled();
       }
-      const rms = Math.sqrt(sum / samples.length);
-      if (rms > this.peakRms) this.peakRms = rms;
-    }, LEVEL_SAMPLE_MS);
-
-    const track = this.stream.getAudioTracks()[0];
-    const deviceLabel = track?.label || "Microphone";
-    return { deviceLabel, analyser: this.analyser };
+      this.stream = stream;
+      this.cancelStart = null;
+      this.chunks = [];
+      this.chunkBytes = 0;
+      this.peakRms = 0;
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      this.mediaRecorder = recorder;
+      recorder.ondataavailable = (event) => {
+        if (generation !== this.generation || !event.data.size) return;
+        this.chunkBytes += event.data.size;
+        if (this.chunkBytes > RUNTIME.maxAudioBytes) {
+          this.fail(new Error('ไฟล์เสียงใหญ่เกินขีดจำกัด กรุณาอัดสั้นลง'));
+          return;
+        }
+        this.chunks.push(event.data);
+      };
+      recorder.onerror = () => this.fail(new Error('อัดเสียงไม่สำเร็จ กรุณาตรวจสอบไมโครโฟน'));
+      recorder.onstop = () => this.fail(new Error('ไมโครโฟนหยุดทำงาน กรุณาลองใหม่'));
+      stream.getTracks().forEach((track) => {
+        track.onended = () => this.fail(new Error('ไมโครโฟนถูกตัดการเชื่อมต่อ กรุณาลองใหม่'));
+      });
+      const audioCtx = new AudioContext();
+      this.audioCtx = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+      await audioCtx.resume();
+      if (generation !== this.generation) throw cancelled();
+      recorder.start(RUNTIME.recorderChunkMs);
+      const samples = new Uint8Array(analyser.fftSize);
+      this.levelTimer = window.setInterval(() => {
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        for (const sample of samples) sum += ((sample - 128) / 128) ** 2;
+        this.peakRms = Math.max(this.peakRms, Math.sqrt(sum / samples.length));
+      }, RUNTIME.levelSampleMs);
+      return { deviceLabel: stream.getAudioTracks()[0]?.label || 'Microphone', analyser };
+    } catch (error) {
+      if (generation === this.generation) this.cancel();
+      throw error;
+    } finally {
+      if (generation === this.generation) {
+        this.starting = false;
+        this.cancelStart = null;
+      }
+    }
   }
 
-  private teardown() {
+  private fail(error: Error): void {
+    this.cancel();
+    this.onFailure(error);
+  }
+
+  private teardown(): void {
     clearInterval(this.levelTimer);
     this.levelTimer = 0;
-    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream?.getTracks().forEach((track) => { track.onended = null; track.stop(); });
     this.stream = null;
-    this.audioCtx?.close();
+    if (this.audioCtx) void this.audioCtx.close().catch(() => undefined);
     this.audioCtx = null;
-    this.analyser = null;
   }
 
   stop(): Promise<{ buffer: ArrayBuffer; mimeType: string }> {
+    const recorder = this.mediaRecorder;
+    if (!recorder || recorder.state !== 'recording' || this.rejectStop) {
+      return Promise.reject(new Error('ยังไม่ได้เริ่มอัดเสียง'));
+    }
     return new Promise((resolve, reject) => {
-      if (!this.mediaRecorder) {
-        reject(new Error("ยังไม่ได้เริ่มอัดเสียง"));
-        return;
-      }
-      const mimeType = this.mediaRecorder.mimeType;
-      this.mediaRecorder.onstop = async () => {
-        const blob = new Blob(this.chunks, { type: mimeType });
-        const buffer = await blob.arrayBuffer();
-        this.teardown();
-        resolve({ buffer, mimeType });
+      let settled = false;
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.rejectStop = null;
+        this.cancel();
+        reject(error);
       };
-      this.mediaRecorder.stop();
+      const timer = window.setTimeout(() => fail(new Error('หยุดอัดเสียงหมดเวลา')), RUNTIME.recorderStopTimeoutMs);
+      this.rejectStop = fail;
+      recorder.onstop = () => {
+        const blob = new Blob(this.chunks, { type: recorder.mimeType });
+        // Release microphone before conversion; keep cancellation available until resolved.
+        this.teardown();
+        void blob.arrayBuffer().then((buffer) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          this.rejectStop = null;
+          this.mediaRecorder = null;
+          this.chunks = [];
+          resolve({ buffer, mimeType: recorder.mimeType });
+        }, () => fail(new Error('อ่านไฟล์เสียงไม่สำเร็จ กรุณาลองใหม่')));
+      };
+      try { recorder.stop(); }
+      catch { fail(new Error('หยุดอัดเสียงไม่สำเร็จ')); }
     });
   }
 
   cancel(): void {
-    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
-      this.mediaRecorder.onstop = null;
-      this.mediaRecorder.stop();
-    }
+    ++this.generation;
+    this.starting = false;
+    this.cancelStart?.();
+    this.cancelStart = null;
+    const rejectStop = this.rejectStop;
+    this.rejectStop = null;
+    rejectStop?.(cancelled());
+    const recorder = this.mediaRecorder;
     this.mediaRecorder = null;
+    if (recorder) {
+      recorder.onstop = null;
+      recorder.onerror = null;
+      recorder.ondataavailable = null;
+      if (recorder.state !== 'inactive') {
+        try { recorder.stop(); } catch { /* Already stopped by the device. */ }
+      }
+    }
     this.chunks = [];
+    this.chunkBytes = 0;
     this.teardown();
   }
 }
