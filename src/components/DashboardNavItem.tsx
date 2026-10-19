@@ -2,6 +2,7 @@ interface DashboardNavItemProps {
   label: string;
   icon: string;
   active: boolean;
+  pressed?: boolean;
   onSelect: () => void;
 }
 
@@ -12,6 +13,7 @@ export function DashboardNavItem({
   label,
   icon,
   active,
+  pressed,
   onSelect,
 }: DashboardNavItemProps) {
   return (
@@ -20,6 +22,7 @@ export function DashboardNavItem({
       className={CLASS_NAME}
       data-active={active}
       aria-current={active ? "page" : undefined}
+      aria-pressed={pressed}
       onClick={onSelect}
     >
       <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: icon }} />

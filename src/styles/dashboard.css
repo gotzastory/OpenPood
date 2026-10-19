@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @plugin "daisyui" {
-  themes: light --default;
-  include: rootcolor, properties, button, input, select, toggle, badge, list, alert, card, modal, menu;
+  themes: light --default, dark --prefersdark;
+  include: rootcolor, properties, button, input, select, toggle, badge, list, alert, card, modal, menu, join;
   logs: false;
 }
 @plugin "daisyui/theme" {
@@ -28,6 +28,39 @@
   --color-warning-content: #ffffff;
   --color-error: #b91c1c;
   --color-error-content: #ffffff;
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+@plugin "daisyui/theme" {
+  name: "dark";
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #111a24;
+  --color-base-200: #0b1218;
+  --color-base-300: #223041;
+  --color-base-content: #e6edf6;
+  --color-primary: #2563eb;
+  --color-primary-content: #ffffff;
+  --color-secondary: #94a3b8;
+  --color-secondary-content: #0b1218;
+  --color-accent: #16243a;
+  --color-accent-content: #7fb0ff;
+  --color-neutral: #1c2a3a;
+  --color-neutral-content: #e6edf6;
+  --color-info: #2563eb;
+  --color-info-content: #ffffff;
+  --color-success: #4ade80;
+  --color-success-content: #0b1218;
+  --color-warning: #facc15;
+  --color-warning-content: #0b1218;
+  --color-error: #f87171;
+  --color-error-content: #0b1218;
   --radius-selector: 2rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
@@ -65,4 +98,20 @@
       transparent;
     scrollbar-width: thin;
   }
+}
+
+:root[data-theme="dark"] .dashboard-shell .brand-logo { background: none; }
+:root[data-theme="dark"] .dashboard-shell .brand-logo::before,
+:root[data-theme="dark"] .dashboard-shell .brand-logo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+:root[data-theme="dark"] .dashboard-shell .brand-logo::before {
+  background: var(--color-brand-paper);
+  mask: url('/brand/openpood-logo.png') center / contain no-repeat;
+}
+:root[data-theme="dark"] .dashboard-shell .brand-logo::after {
+  background: url('/brand/openpood-logo.png') center / contain no-repeat;
+  clip-path: inset(0 72% 0 0);
 }

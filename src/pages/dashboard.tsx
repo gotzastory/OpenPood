@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { DashboardNavItem } from "../components/DashboardNavItem";
 import { icons } from "../lib/icons";
 import { DictionaryPage } from "./dictionary";
@@ -13,6 +13,22 @@ const NAV_ITEMS: { route: Route; label: string; icon: string }[] = [
   { route: "/history", label: "ประวัติการถอดเสียง", icon: icons.history },
   { route: "/dictionary", label: "คำศัพท์", icon: icons.book },
 ];
+
+type Theme = "light" | "dark";
+
+const THEME_STORAGE_KEY = "openpood-theme";
+
+export function resolveInitialTheme(): Theme {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    // Storage can be unavailable; fall back to the OS preference.
+  }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
 
 export function routeFromHash(hash: string): Route {
   const route = hash.replace(/^#/, "") || "/";
@@ -52,6 +68,17 @@ export function DashboardPage() {
     };
   }, []);
 
+  const [theme, setTheme] = useState<Theme>(resolveInitialTheme);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Persistence is best-effort; the theme still applies for this session.
+    }
+  }, [theme]);
+
   return (
     <div className="dashboard-shell flex h-screen bg-base-200 text-base-content">
       <aside
@@ -75,7 +102,16 @@ export function DashboardPage() {
             />
           ))}
         </nav>
-        <div className="mt-auto border-t border-base-300 pt-4">
+        <div className="mt-auto flex flex-col gap-1 border-t border-base-300 pt-4">
+          <DashboardNavItem
+            label="ธีมมืด"
+            icon={theme === "light" ? icons.moon : icons.sun}
+            active={false}
+            pressed={theme === "dark"}
+            onSelect={() => {
+              setTheme((current) => (current === "light" ? "dark" : "light"));
+            }}
+          />
           <DashboardNavItem
             label="การตั้งค่า"
             icon={icons.settings}
