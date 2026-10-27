@@ -23,6 +23,7 @@ npm.cmd run dist
 
 - Read `architecture/system-design.md` before changing process boundaries, windows, IPC, recording/transcription/paste flows, providers, persistence, lifecycle, or security controls.
 - Keep `electron/preload.ts` and `src/types.d.ts` synchronized whenever the bridge changes.
+- A new dashboard route needs `ALLOWED_ROUTES` (`electron/main.ts`), `DASHBOARD_ROUTES` (`src/app/main.ts`), and `src/pages/dashboard.tsx`.
 
 ## Design
 

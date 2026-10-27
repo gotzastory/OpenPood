@@ -7,7 +7,7 @@ OpenPood is a focused Windows utility, not a generic SaaS dashboard. Its three s
 ### Approved rebrand scope
 
 - Redesign Dashboard, Onboarding, and Recording widget as OpenPood.
-- Dashboard: white sidebar with the supplied logo; Light Blue workspace; Dictate/Translate and hotkeys lead Home, usage is secondary; History/Dictionary remain readable lists; Settings has clear groups.
+- Dashboard: white sidebar with the supplied logo; Light Blue workspace; Dictate/Translate and hotkeys lead Home, usage is secondary; History/Dictionary/Apps remain readable lists; Settings has clear groups behind one Save, so instant-save lists get their own page.
 - Onboarding: Ink background, rounded sans-serif headings, Blue actions, five steps including a dictation test after hotkey setup, no sidebar. Remove the former serif, coral, and grain treatment.
 - Widget: translucent Ink pill with neutral waveform; no interactive controls.
 - Logo: preserve the supplied mark and proportions. Ink wordmark on light surfaces, White wordmark on dark surfaces; Blue symbol for tray and application icon.
