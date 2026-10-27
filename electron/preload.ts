@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppSettings, RendererSettings } from './config';
 import type { HistoryEntry } from './history';
 import type { CorrectionRule } from './dictionary';
+import type { UsageResult } from './openrouterUsage';
 import type { UpdateStatus } from '../src/lib/updateTypes';
 
 export interface TranscribeResult {
@@ -75,6 +76,7 @@ const api = {
   },
   listHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('history:list'),
   historyStats: (): Promise<HistoryStats> => ipcRenderer.invoke('history:stats'),
+  getUsage: (): Promise<UsageResult> => ipcRenderer.invoke('usage:get'),
   clearHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('history:clear'),
   listDictionary: (): Promise<string[]> => ipcRenderer.invoke('dictionary:list'),
   setDictionary: (words: string[]): Promise<string[]> => ipcRenderer.invoke('dictionary:set', words),

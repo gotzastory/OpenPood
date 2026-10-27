@@ -50,6 +50,20 @@ export interface HistoryStats {
   wpm: number;
 }
 
+/** Amounts are OpenRouter credits (1 credit = 1 USD). */
+export interface OpenRouterUsage {
+  daily: number;
+  weekly: number;
+  monthly: number;
+  total: number;
+  keyLimitRemaining: number | null;
+  balance: number | null;
+}
+
+export type UsageResult =
+  | { ok: true; usage: OpenRouterUsage }
+  | { ok: false; error: string };
+
 export interface CorrectionRule {
   from: string;
   to: string;
@@ -79,6 +93,7 @@ interface TypelessApi {
   onHistoryUpdated(callback: () => void): () => void;
   listHistory(): Promise<HistoryEntry[]>;
   historyStats(): Promise<HistoryStats>;
+  getUsage(): Promise<UsageResult>;
   clearHistory(): Promise<HistoryEntry[]>;
   listDictionary(): Promise<string[]>;
   setDictionary(words: string[]): Promise<string[]>;

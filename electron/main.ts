@@ -19,6 +19,7 @@ import {
   type CorrectionRule,
 } from './dictionary';
 import { LlmError } from './llm';
+import { getOpenRouterUsage } from './openrouterUsage';
 import { isElevenLabsProvider, ELEVENLABS_STT_ONLY_MESSAGE } from '../src/lib/elevenlabs';
 import { polishText } from './polish';
 import { stripFillers } from './stripFillers';
@@ -550,6 +551,10 @@ app.whenReady().then(() => {
   ipcMain.handle('history:stats', (event) => {
     requireRenderer(event, 'main');
     return historyStats();
+  });
+  ipcMain.handle('usage:get', (event) => {
+    requireRenderer(event, 'main');
+    return getOpenRouterUsage(getSettings());
   });
   ipcMain.handle('history:clear', async (event) => {
     requireRenderer(event, 'main');
