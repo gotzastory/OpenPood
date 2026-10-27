@@ -36,7 +36,7 @@ export const GEMINI_MODELS: TranscriptionModel[] = [
 ];
 
 // OpenRouter's /models?output_modalities=transcription list.
-// Re-checked against OpenRouter's speech-to-text collection on 2026-10-19.
+// Re-checked against OpenRouter's speech-to-text collection on 2026-10-28.
 // First entry is the app default when switching the Settings provider to OpenRouter.
 export const OPENROUTER_MODELS: TranscriptionModel[] = [
   {
@@ -78,6 +78,14 @@ export const OPENROUTER_MODELS: TranscriptionModel[] = [
   },
   { id: "deepgram/nova-3", name: "Deepgram — Nova-3" },
   { id: "google/chirp-3", name: "Google — Chirp 3" },
+  {
+    id: "mistralai/voxtral-small-transcribe-3-0",
+    name: "Mistral — Voxtral Small Transcribe 3",
+  },
+  {
+    id: "mistralai/voxtral-mini-transcribe-3-0",
+    name: "Mistral — Voxtral Mini Transcribe 3",
+  },
   {
     id: "mistralai/voxtral-mini-transcribe",
     name: "Mistral — Voxtral Mini Transcribe",
