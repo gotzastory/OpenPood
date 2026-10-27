@@ -5,6 +5,7 @@ describe("routeFromHash", () => {
   it("accepts dashboard routes and falls back to home", () => {
     expect(routeFromHash("#/history")).toBe("/history");
     expect(routeFromHash("/settings")).toBe("/settings");
+    expect(routeFromHash("/apps")).toBe("/apps");
     expect(routeFromHash("#/not-allowed")).toBe("/");
   });
 });

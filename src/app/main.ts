@@ -4,7 +4,7 @@ import { mountWidget } from "../runtime/widget";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
-const DASHBOARD_ROUTES = ["/", "/history", "/dictionary", "/settings"];
+const DASHBOARD_ROUTES = ["/", "/history", "/dictionary", "/apps", "/settings"];
 const hash = location.hash.replace(/^#/, "");
 
 if (hash === "/onboarding") {

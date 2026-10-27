@@ -2,17 +2,19 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { DashboardNavItem } from "../components/DashboardNavItem";
 import { UsageNavItem } from "../components/UsageNavItem";
 import { icons } from "../lib/icons";
+import { AppsPage } from "./apps";
 import { DictionaryPage } from "./dictionary";
 import { HistoryPage } from "./history";
 import { HomePage } from "./home";
 import { SettingsPage } from "./settings";
 
-type Route = "/" | "/history" | "/dictionary" | "/settings";
+type Route = "/" | "/history" | "/dictionary" | "/apps" | "/settings";
 
 const NAV_ITEMS: { route: Route; label: string; icon: string }[] = [
   { route: "/", label: "หน้าหลัก", icon: icons.home },
   { route: "/history", label: "ประวัติการถอดเสียง", icon: icons.history },
   { route: "/dictionary", label: "คำศัพท์", icon: icons.book },
+  { route: "/apps", label: "แอป", icon: icons.apps },
 ];
 
 type Theme = "light" | "dark";
@@ -36,6 +38,7 @@ export function routeFromHash(hash: string): Route {
   if (
     route === "/history" ||
     route === "/dictionary" ||
+    route === "/apps" ||
     route === "/settings"
   ) {
     return route;
@@ -135,6 +138,8 @@ export function DashboardPage() {
           <HistoryPage key={navigation.refreshKey} />
         ) : navigation.route === "/dictionary" ? (
           <DictionaryPage key={navigation.refreshKey} />
+        ) : navigation.route === "/apps" ? (
+          <AppsPage key={navigation.refreshKey} />
         ) : (
           <SettingsPage key={navigation.refreshKey} />
         )}

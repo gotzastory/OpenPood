@@ -52,7 +52,7 @@ const WIDGET_HEIGHT = 90;
 const MAX_AUDIO_BYTES = RUNTIME.maxAudioBytes;
 
 // Routes the dashboard window may be opened at (must match src/app/shell.tsx).
-const ALLOWED_ROUTES = new Set(['/', '/history', '/dictionary', '/settings', '/onboarding']);
+const ALLOWED_ROUTES = new Set(['/', '/history', '/dictionary', '/apps', '/settings', '/onboarding']);
 
 // Both windows only ever show our own bundle; any other navigation target or
 // popup is hostile (or a bug) and gets dropped.

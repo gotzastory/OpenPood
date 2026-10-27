@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { UpdatePanel } from '../components/UpdatePanel';
-import { AppProfilesSection } from '../components/AppProfilesSection';
 import { RUNTIME } from '../lib/runtimeConfig';
 import type { AppSettings } from "../types";
 import { ELEVENLABS_API_BASE, ELEVENLABS_STT_ONLY_MESSAGE, isElevenLabsProvider } from "../lib/elevenlabs";
@@ -453,8 +452,6 @@ export function SettingsPage() {
           </section>
         </div>
       </div>
-
-      <AppProfilesSection sttOnly={sttOnly} />
 
       <UpdatePanel />
 
