@@ -62,6 +62,8 @@ public static class OpenPoodNative {
         GetClipboardFormatName(format, name, name.Capacity);
         string value = name.ToString();
         if (value == "HTML Format" || value == "Rich Text Format" || value == "PNG" || value == "JFIF") continue;
+        // Provenance-only tags Chromium/Electron add to every copy; losing them on restore is harmless.
+        if (value == "Chromium internal source URL" || value == "Chromium internal source RFH token") continue;
         flags |= 2;
       }
     } finally { CloseClipboard(); }
