@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardNavItem } from "./DashboardNavItem";
 import { icons } from "../lib/icons";
 import { BTN } from "../lib/uiClasses";
@@ -17,13 +17,24 @@ export function UsageNavItem() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
+  const latestRequest = useRef(0);
+
   const load = () => {
+    // A provider switch can overlap a refresh; only the newest response counts.
+    const request = ++latestRequest.current;
     setLoading(true);
     void window.typeless.getUsage()
       .catch((): UsageResult => ({ ok: false, error: "โหลด usage ไม่สำเร็จ" }))
-      .then((next) => { setResult(next); setLoading(false); });
+      .then((next) => {
+        if (request !== latestRequest.current) return;
+        setResult(next);
+        setLoading(false);
+      });
   };
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    return window.typeless.onProviderChanged(load);
+  }, []);
 
   if (!loading && result === null) return null;
 

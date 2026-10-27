@@ -91,6 +91,8 @@ interface TypelessApi {
   setRecordingState(state: WidgetState): void;
   onNavigate(callback: (route: string) => void): () => void;
   onHistoryUpdated(callback: () => void): () => void;
+  /** Fires after a save changes the provider base URL or API key. */
+  onProviderChanged(callback: () => void): () => void;
   listHistory(): Promise<HistoryEntry[]>;
   historyStats(): Promise<HistoryStats>;
   /** null when the provider is not OpenRouter. */

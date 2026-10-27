@@ -74,6 +74,11 @@ const api = {
     ipcRenderer.on('history:updated', listener);
     return () => ipcRenderer.removeListener('history:updated', listener);
   },
+  onProviderChanged: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('provider:changed', listener);
+    return () => ipcRenderer.removeListener('provider:changed', listener);
+  },
   listHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('history:list'),
   historyStats: (): Promise<HistoryStats> => ipcRenderer.invoke('history:stats'),
   getUsage: (): Promise<UsageResult | null> => ipcRenderer.invoke('usage:get'),

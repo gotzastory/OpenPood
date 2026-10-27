@@ -407,6 +407,7 @@ app.whenReady().then(() => {
       setEscapeCancel(recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing');
     }
     if (partial.launchAtStartup !== undefined) applyLaunchAtStartup(partial.launchAtStartup);
+    if (partial.apiBaseUrl !== undefined || partial.apiKey !== undefined) sendToWindow(mainWindow, 'provider:changed');
     return getRendererSettings();
   });
 
