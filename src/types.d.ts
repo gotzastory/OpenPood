@@ -93,7 +93,8 @@ interface TypelessApi {
   onHistoryUpdated(callback: () => void): () => void;
   listHistory(): Promise<HistoryEntry[]>;
   historyStats(): Promise<HistoryStats>;
-  getUsage(): Promise<UsageResult>;
+  /** null when the provider is not OpenRouter. */
+  getUsage(): Promise<UsageResult | null>;
   clearHistory(): Promise<HistoryEntry[]>;
   listDictionary(): Promise<string[]>;
   setDictionary(words: string[]): Promise<string[]>;

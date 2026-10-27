@@ -1,8 +1,14 @@
+import type { ReactNode } from "react";
+
 interface DashboardNavItemProps {
   label: string;
   icon: string;
   active: boolean;
   pressed?: boolean;
+  /** Set for disclosure items; `controls` is the id of the panel they open. */
+  expanded?: boolean;
+  controls?: string;
+  trailing?: ReactNode;
   onSelect: () => void;
 }
 
@@ -14,6 +20,9 @@ export function DashboardNavItem({
   icon,
   active,
   pressed,
+  expanded,
+  controls,
+  trailing,
   onSelect,
 }: DashboardNavItemProps) {
   return (
@@ -23,10 +32,13 @@ export function DashboardNavItem({
       data-active={active}
       aria-current={active ? "page" : undefined}
       aria-pressed={pressed}
+      aria-expanded={expanded}
+      aria-controls={controls}
       onClick={onSelect}
     >
       <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: icon }} />
       <span>{label}</span>
+      {trailing}
     </button>
   );
 }

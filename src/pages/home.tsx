@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "../components/Icon";
 import { icons } from "../lib/icons";
-import type { AppSettings, HistoryStats, UsageResult } from "../types";
-import { BTN } from "../lib/uiClasses";
+import type { AppSettings, HistoryStats } from "../types";
 import { HotkeyBadges, HotkeyModal } from "../components/HotkeyModal";
 
 interface UseCase {
@@ -41,56 +40,6 @@ const MODES: {
     settingsKey: "translateHotkey",
   },
 ];
-
-// Dictation costs fractions of a cent, so small amounts keep more decimals.
-function formatCredits(value: number): string {
-  return `$${value.toFixed(value < 1 ? 4 : 2)}`;
-}
-
-function OpenRouterUsageSection() {
-  const [result, setResult] = useState<UsageResult | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = () => {
-    setLoading(true);
-    void window.typeless.getUsage()
-      .catch((): UsageResult => ({ ok: false, error: "โหลด usage ไม่สำเร็จ" }))
-      .then((next) => { setResult(next); setLoading(false); });
-  };
-  useEffect(load, []);
-
-  const usage = result?.ok ? result.usage : null;
-  const items: [string, number | null][] = usage
-    ? [
-        ["วันนี้", usage.daily],
-        ["7 วันนี้", usage.weekly],
-        ["เดือนนี้", usage.monthly],
-        usage.balance !== null ? ["เครดิตคงเหลือ", usage.balance] : ["ใช้ทั้งหมด (key นี้)", usage.total],
-      ]
-    : [];
-
-  return (
-    <div className="space-y-4 border-t border-base-200 pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="usage-title" className="text-sm font-semibold">เครดิต OpenRouter ที่ใช้ไป</h2>
-        <button type="button" className={`${BTN} btn-ghost`} onClick={load} disabled={loading}>
-          {loading ? "กำลังโหลด..." : "รีเฟรช"}
-        </button>
-      </div>
-      {result && !result.ok && <p role="alert" className="text-xs text-error">{result.error}</p>}
-      {usage && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-4" aria-labelledby="usage-title">
-          {items.map(([label, value]) => (
-            <div key={label}><dt className="text-xs text-base-content/65">{label}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{value === null ? "-" : formatCredits(value)}</dd></div>
-          ))}
-        </dl>
-      )}
-      {usage?.keyLimitRemaining != null && (
-        <p className="text-xs text-base-content/65">วงเงินที่เหลือของ key นี้ {formatCredits(usage.keyLimitRemaining)}</p>
-      )}
-    </div>
-  );
-}
 
 export function HomePage() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -188,7 +137,6 @@ export function HomePage() {
               <div><dt className="text-xs text-base-content/65">ความเร็ว</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.wpm}<span className="ml-1 text-xs font-normal text-base-content/65">WPM</span></dd></div>
               <div><dt className="text-xs text-base-content/65">ครั้งที่ใช้งาน</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.sessions}</dd></div>
             </dl>
-            {settings.apiBaseUrl.replace(/\/$/, "") === "https://openrouter.ai/api/v1" && <OpenRouterUsageSection />}
             <div className="flex items-start gap-2 border-t border-base-200 pt-3 text-xs leading-relaxed text-base-content/65 [&_svg]:mt-0.5 [&_svg]:h-3.5 [&_svg]:w-3.5" aria-label="ข้อมูลความเป็นส่วนตัว">
               <Icon svg={icons.lock} />
               <span>เสียงส่งไปยังผู้ให้บริการที่คุณเลือก และข้อความอาจส่งเพื่อปรับหรือแปลตามการตั้งค่า ประวัติเก็บในเครื่อง</span>

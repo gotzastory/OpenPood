@@ -28,8 +28,9 @@ function num(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-export async function getOpenRouterUsage(settings: AppSettings): Promise<UsageResult> {
-  if (!isOpenRouterProvider(settings)) return { ok: false, error: 'ดู usage ได้เฉพาะผู้ให้บริการ OpenRouter' };
+/** null when the provider is not OpenRouter (nothing to show). */
+export async function getOpenRouterUsage(settings: AppSettings): Promise<UsageResult | null> {
+  if (!isOpenRouterProvider(settings)) return null;
   if (!settings.apiKey) return { ok: false, error: 'ยังไม่ได้ตั้งค่า API key ในหน้า Settings' };
   const init = { headers: { Authorization: `Bearer ${settings.apiKey}` } };
   const label = 'OpenRouter usage API';

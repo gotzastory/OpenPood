@@ -31,13 +31,13 @@ describe('getOpenRouterUsage', () => {
   it('reports a safe error when the key is rejected', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ error: 'test-key' }, 401)));
     const result = await getOpenRouterUsage(settings);
-    expect(result.ok).toBe(false);
+    expect(result?.ok).toBe(false);
     expect(JSON.stringify(result)).not.toContain('test-key');
   });
   it('skips non-OpenRouter providers without a request', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    expect((await getOpenRouterUsage({ ...settings, apiBaseUrl: 'https://api.openai.com/v1' })).ok).toBe(false);
+    expect(await getOpenRouterUsage({ ...settings, apiBaseUrl: 'https://api.openai.com/v1' })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

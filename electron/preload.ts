@@ -76,7 +76,7 @@ const api = {
   },
   listHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('history:list'),
   historyStats: (): Promise<HistoryStats> => ipcRenderer.invoke('history:stats'),
-  getUsage: (): Promise<UsageResult> => ipcRenderer.invoke('usage:get'),
+  getUsage: (): Promise<UsageResult | null> => ipcRenderer.invoke('usage:get'),
   clearHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('history:clear'),
   listDictionary: (): Promise<string[]> => ipcRenderer.invoke('dictionary:list'),
   setDictionary: (words: string[]): Promise<string[]> => ipcRenderer.invoke('dictionary:set', words),

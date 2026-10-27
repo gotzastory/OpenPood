@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { DashboardNavItem } from "../components/DashboardNavItem";
+import { UsageNavItem } from "../components/UsageNavItem";
 import { icons } from "../lib/icons";
 import { DictionaryPage } from "./dictionary";
 import { HistoryPage } from "./history";
@@ -103,6 +104,7 @@ export function DashboardPage() {
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1 border-t border-base-300 pt-4">
+          <UsageNavItem key={navigation.refreshKey} />
           <DashboardNavItem
             label="ธีมมืด"
             icon={theme === "light" ? icons.moon : icons.sun}

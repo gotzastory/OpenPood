@@ -87,7 +87,7 @@ Global hotkey
 - Gemini AI Studio uses native `generateContent`; audio is sent inline and capped below Gemini's request limit.
 - ElevenLabs uses native `/speech-to-text` multipart uploads with `xi-api-key`, Scribe v2 (default) or v1, and a language hint. Audio events, diarization, and timestamps are disabled; dictionary keyterms are not sent. Local filler removal and correction rules still apply.
 - ElevenLabs is STT-only in this app's single-provider configuration. Dictation skips AI polish; Translate fails before uploading audio with a message to select another provider. Settings disables its chat controls.
-- With OpenRouter, Home shows credit usage via dashboard-only `usage:get`: main calls `/key` (required) and `/credits` (optional balance; may need a management key) with the saved key.
+- With OpenRouter, the dashboard sidebar shows a credit-usage dropdown via dashboard-only `usage:get` (returns null for other providers): main calls `/key` (required) and `/credits` (optional balance; may need a management key) with the saved key.
 - Dictionary words bias transcription. Correction rules are deterministic local replacements.
 - Dictation polish and translation share the configured chat-completion layer.
 - Custom remote base URLs require HTTPS; plain HTTP is allowed only for loopback services.
