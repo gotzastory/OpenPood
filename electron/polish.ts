@@ -10,10 +10,10 @@ const CATEGORY_HINT: Record<AppCategory, string> = {
   general: 'ข้อความทั่วไป',
 };
 
-function polishSystemPrompt(category: AppCategory): string {
+function polishSystemPrompt(category: AppCategory, tone: string): string {
   return [
     'คุณคือตัวช่วยเก็บงานข้อความที่ถอดเสียงมาจากการพูด',
-    `บริบทที่จะใช้ข้อความนี้: ${CATEGORY_HINT[category]}`,
+    `บริบทที่จะใช้ข้อความนี้: ${tone || CATEGORY_HINT[category]}`,
     'ตัดคำอุทาน/คำติดปากที่เหลือ (อืมม, เอ่ออ, อ่า, um, uh) ใส่วรรคตอนให้เหมาะสม แก้ไวยากรณ์เล็กน้อยที่ผิดจากการพูด',
     'ห้ามเปลี่ยนความหมาย ห้ามเพิ่มเนื้อหาใหม่ ห้ามแปลภาษา — คงเฉพาะภาษาไทยและอังกฤษตามที่พูด (อย่าแปลงเป็นภาษาอื่น)',
     'ตอบเฉพาะข้อความที่แก้แล้วเท่านั้น ห้ามใส่คำอธิบายหรือ prefix ใดๆ เพิ่ม',
@@ -25,10 +25,11 @@ export async function polishText(
   settings: AppSettings,
   category: AppCategory,
   signal?: AbortSignal,
+  tone = '',
 ): Promise<string> {
   if (!text.trim()) return text;
   try {
-    const result = await chatComplete(settings, polishSystemPrompt(category), text, signal);
+    const result = await chatComplete(settings, polishSystemPrompt(category, tone), text, signal);
     return result || text;
   } catch {
     signal?.throwIfAborted();

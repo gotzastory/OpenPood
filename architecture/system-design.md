@@ -69,6 +69,7 @@ Global hotkey
 - Missing/unknown HWNDs never trigger automatic paste. The native host verifies the captured HWND and transcript clipboard sequence immediately before input injection; changed foreground falls back to clipboard delivery.
 - Paste failure deliberately leaves the transcript on the clipboard and reports the failure.
 - History records successful transcription output even when automatic paste is skipped or fails.
+- App profiles (`app-profiles` store, edited in Settings) match the captured foreground process name by lowercase substring, first match wins. A matching profile decides whether dictate polish runs, overriding the global switch, and its non-empty tone replaces the built-in category hint. No match keeps the global switch and category hint. Translate ignores profiles.
 - Empty, malformed, or oversized provider output is rejected before history/paste. Empty output after local filtering is also rejected.
 
 ## Text injection

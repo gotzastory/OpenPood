@@ -69,6 +69,14 @@ export interface CorrectionRule {
   to: string;
 }
 
+/** Per-app override; `process` is a lowercase substring of the process name. */
+export interface AppProfile {
+  process: string;
+  polish: boolean;
+  /** Empty keeps the built-in tone hint for the app's category. */
+  tone: string;
+}
+
 interface TypelessApi {
   cancelTranscription(): Promise<void>;
   reportRecordingError(): void;
@@ -102,6 +110,8 @@ interface TypelessApi {
   setDictionary(words: string[]): Promise<string[]>;
   listCorrections(): Promise<CorrectionRule[]>;
   setCorrections(rules: CorrectionRule[]): Promise<CorrectionRule[]>;
+  listAppProfiles(): Promise<AppProfile[]>;
+  setAppProfiles(profiles: AppProfile[]): Promise<AppProfile[]>;
 }
 
 declare global {

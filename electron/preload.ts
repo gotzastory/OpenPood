@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppSettings, RendererSettings } from './config';
 import type { HistoryEntry } from './history';
 import type { CorrectionRule } from './dictionary';
+import type { AppProfile } from './activeWindow';
 import type { UsageResult } from './openrouterUsage';
 import type { UpdateStatus } from '../src/lib/updateTypes';
 
@@ -88,6 +89,9 @@ const api = {
   listCorrections: (): Promise<CorrectionRule[]> => ipcRenderer.invoke('corrections:list'),
   setCorrections: (rules: CorrectionRule[]): Promise<CorrectionRule[]> =>
     ipcRenderer.invoke('corrections:set', rules),
+  listAppProfiles: (): Promise<AppProfile[]> => ipcRenderer.invoke('appProfiles:list'),
+  setAppProfiles: (profiles: AppProfile[]): Promise<AppProfile[]> =>
+    ipcRenderer.invoke('appProfiles:set', profiles),
 };
 
 contextBridge.exposeInMainWorld('typeless', api);

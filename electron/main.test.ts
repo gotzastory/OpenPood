@@ -67,6 +67,7 @@ vi.mock('./transcribe', () => ({ transcribeAudio: mocks.transcribe, normalizeTha
 vi.mock('./winHost', () => ({ getForegroundWindow: mocks.foreground, warmWinHost: vi.fn(), disposeWinHost: vi.fn() }));
 vi.mock('./pasteText', () => ({ pasteAtCursor: mocks.paste }));
 vi.mock('./history', () => ({ addHistoryEntry: mocks.addHistory, listHistory: () => [], clearHistory: vi.fn(), historyStats: () => ({}), flushHistory: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('./appProfiles', () => ({ listAppProfiles: () => [], setAppProfiles: vi.fn() }));
 vi.mock('./dictionary', () => ({ dictionaryPrompt: () => '', applyCorrections: (text: string) => text,
   listDictionaryWords: () => [], setDictionaryWords: vi.fn(), listCorrections: () => [], setCorrections: vi.fn() }));
 

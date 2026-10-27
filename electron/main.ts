@@ -24,7 +24,8 @@ import { isElevenLabsProvider, ELEVENLABS_STT_ONLY_MESSAGE } from '../src/lib/el
 import { polishText } from './polish';
 import { stripFillers } from './stripFillers';
 import { translateText } from './translate';
-import { categoryForProcess } from './activeWindow';
+import { categoryForProcess, profileForProcess } from './activeWindow';
+import { listAppProfiles, setAppProfiles } from './appProfiles';
 import {
   disposeWinHost,
   getForegroundWindow,
@@ -502,8 +503,11 @@ app.whenReady().then(() => {
           text = applyCorrections(text);
           text = await measureStage('translate', () => translateText(text, settings, controller.signal));
         } else {
-          if (settings.aiPolishEnabled && !isElevenLabsProvider(settings)) {
-            text = await measureStage('polish', () => polishText(text, settings, categoryForProcess(target?.processName ?? ''), controller.signal));
+          // A matching app profile overrides the global polish switch both ways.
+          const processName = target?.processName ?? '';
+          const profile = profileForProcess(listAppProfiles(), processName);
+          if ((profile ? profile.polish : settings.aiPolishEnabled) && !isElevenLabsProvider(settings)) {
+            text = await measureStage('polish', () => polishText(text, settings, categoryForProcess(processName), controller.signal, profile?.tone));
           }
           // After polish: AI cleanup used to run after corrections and could
           // undo exact replacements the user configured (e.g. "บอก" → "or").
@@ -588,6 +592,15 @@ app.whenReady().then(() => {
           )
         : [],
     );
+  });
+
+  ipcMain.handle('appProfiles:list', (event) => {
+    requireRenderer(event, 'main');
+    return listAppProfiles();
+  });
+  ipcMain.handle('appProfiles:set', (event, profiles: unknown) => {
+    requireRenderer(event, 'main');
+    return setAppProfiles(profiles);
   });
 
   app.on('activate', () => {
