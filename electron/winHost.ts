@@ -42,6 +42,19 @@ public static class OpenPoodNative {
   [DllImport("user32.dll", SetLastError=true)] static extern uint EnumClipboardFormats(uint format);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClipboardFormatName(uint format, StringBuilder name, int size);
   [DllImport("kernel32.dll")] static extern void SetLastError(uint error);
+  [DllImport("user32.dll")] static extern IntPtr GetClipboardData(uint format);
+  [DllImport("kernel32.dll")] static extern IntPtr GlobalLock(IntPtr handle);
+  [DllImport("kernel32.dll")] static extern bool GlobalUnlock(IntPtr handle);
+  [DllImport("kernel32.dll")] static extern UIntPtr GlobalSize(IntPtr handle);
+  // History/cloud hints are DWORDs; 0 opts out (password managers). Restoring
+  // without the hint would re-enable history, so only non-zero hints are harmless.
+  static bool HintAllows(uint format) {
+    IntPtr handle = GetClipboardData(format);
+    if (handle == IntPtr.Zero) return false;
+    IntPtr data = GlobalLock(handle);
+    if (data == IntPtr.Zero) return false;
+    try { return GlobalSize(handle).ToUInt64() >= 4 && Marshal.ReadInt32(data) != 0; } finally { GlobalUnlock(handle); }
+  }
   public static int ClipboardFlags() {
     if (!OpenClipboard(IntPtr.Zero)) throw new InvalidOperationException("clipboard unavailable");
     try {
@@ -64,6 +77,9 @@ public static class OpenPoodNative {
         if (value == "HTML Format" || value == "Rich Text Format" || value == "PNG" || value == "JFIF") continue;
         // Provenance-only tags Chromium/Electron add to every copy; losing them on restore is harmless.
         if (value == "Chromium internal source URL" || value == "Chromium internal source RFH token") continue;
+        // OLE marshaling artifacts (Snipping Tool, Office, Explorer); the payload lives in the standard formats.
+        if (value == "DataObject" || value == "Ole Private Data") continue;
+        if ((value == "CanIncludeInClipboardHistory" || value == "CanUploadToCloudClipboard") && HintAllows(format)) continue;
         flags |= 2;
       }
     } finally { CloseClipboard(); }
