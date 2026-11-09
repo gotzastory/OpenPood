@@ -34,10 +34,11 @@ afterEach(() => vi.restoreAllMocks());
 
 const target = { hwnd: '123', processName: 'test' };
 describe('safe paste delivery', () => {
-  it.each([null, { hwnd: '0', processName: '' }])('does not inject keys when the captured target is unknown', async (missing) => {
-    expect(await pasteAtCursor('transcript', missing)).toEqual({ pasted: false, reason: 'focus-changed' });
+  it.each([null, { hwnd: '0', processName: '' }])('does not replace the clipboard when the captured target is unknown', async (missing) => {
+    expect(await pasteAtCursor('transcript', missing)).toEqual({ pasted: false, reason: 'target-unknown' });
     expect(mocks.sendCtrlV).not.toHaveBeenCalled();
-    expect(mocks.text).toBe('transcript');
+    expect(mocks.clipboard.writeText).not.toHaveBeenCalled();
+    expect(mocks.text).toBe('previous');
   });
   it('passes the original HWND and clipboard sequence to the native focus guard', async () => {
     expect(await pasteAtCursor('transcript', target)).toEqual({ pasted: true });

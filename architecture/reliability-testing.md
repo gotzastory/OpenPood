@@ -38,7 +38,7 @@ npm.cmd run dev
 - Clipboard restore grace period เป็นค่า configurable; ทดสอบ Word/browser/chat และแอปที่ตอบสนองช้า.
 - Cancellation หลังส่ง keystrokeแล้วไม่สามารถดึงข้อความกลับจากแอปปลายทาง.
 - History failure เก็บ entry ใน RAM; entry ที่ยังไม่ persist จะหายเมื่อปิดแอป.
-- Clipboard handling อ้างอิง [Electron 43.2.0 API](https://github.com/electron/electron/blob/v43.2.0/docs/api/clipboard.md); file/custom formats ที่คืนไม่ได้จะไม่ถูกเขียนทับ.
+- Clipboard handling อ้างอิง [Electron 43.8.7 API](https://github.com/electron/electron/blob/v43.8.7/docs/api/clipboard.md); file/custom formats ที่คืนไม่ได้จะไม่ถูกเขียนทับ.
 
 ## Performance diagnostics
 

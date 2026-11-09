@@ -63,7 +63,7 @@ Global hotkey
 ```
 
 - Escape is registered globally during microphone setup, recording, and processing. Processing cancellation aborts provider work and prevents late delivery; already-injected keystrokes cannot be retracted.
-- Hotkey starts are serialized before microphone acquisition. The foreground target is captured once on the start press; a stop press never changes it. Slow or failed foreground capture becomes an unknown target.
+- Hotkey starts are serialized before microphone acquisition. The foreground target is captured once on the start press; a stop press never changes it. Capture waits for the PowerShell host and retries once after a failed start. Only a lookup that still fails becomes an unknown target, and an unknown target does not replace the clipboard.
 - Recorder permission/stop operations have deadlines, late permission grants are released after cancellation, and errors/device disconnection stop tracks and close the audio context.
 - If a saved microphone disappears, recording retries with the OS default device.
 - Missing/unknown HWNDs never trigger automatic paste. The native host verifies the captured HWND and transcript clipboard sequence immediately before input injection; changed foreground falls back to clipboard delivery.
@@ -118,7 +118,7 @@ Global hotkey
 
 ## Desktop updates
 
-- `electron/updater.ts` owns `electron-updater` in main. Installed Windows builds check the public GitHub Releases feed configured by `build.publish` after startup and every six hours; development builds disable updates.
+- `electron/updater.ts` owns `electron-updater` in main. Installed Windows builds check the public GitHub Releases feed for `gotzastory/OpenPood` (`build.publish`, also set with `setFeedURL`) after startup and every six hours; development builds disable updates. Builds already installed from v1.0.3 still have `gotzastory/OpenPud` in `app-update.yml` and follow GitHub's rename redirect.
 - Updates never download or install without an explicit dashboard action. Closing the dashboard or quitting via tray does not install a downloaded update.
 - Settings displays current/new versions, plain-text release notes, download progress, retry, and Restart & Update. A native notification opens Settings when a new version is found.
 - Update IPC is dashboard-only. Main rejects installation while a hotkey start is pending, the widget is recording/processing, or transcription/paste is active. Hotkeys are suspended during installation and restored if installation fails.

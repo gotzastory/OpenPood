@@ -1,11 +1,13 @@
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
 import type { AppUpdater } from 'electron-updater';
 import { describe, expect, it, vi } from 'vitest';
-import { UpdateController } from './updater';
+import { UpdateController, UPDATE_FEED } from './updater';
 
 function fixture(enabled = true) {
   const events = new EventEmitter();
   const client = Object.assign(events, {
+    setFeedURL: vi.fn(),
     autoDownload: true, autoInstallOnAppQuit: true, allowPrerelease: true, allowDowngrade: true,
     checkForUpdates: vi.fn(async () => {
       events.emit('update-available', { version: '1.0.2', releaseNotes: '<script>untrusted</script>' });
@@ -23,6 +25,13 @@ function fixture(enabled = true) {
 }
 
 describe('desktop updates', () => {
+  it('checks the OpenPood GitHub release feed', () => {
+    const { client } = fixture();
+    expect(client.setFeedURL).toHaveBeenCalledWith(UPDATE_FEED);
+    expect(UPDATE_FEED.repo).toBe('OpenPood');
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { build: { publish: { provider: string; owner: string; repo: string } } };
+    expect(pkg.build.publish).toMatchObject({ provider: UPDATE_FEED.provider, owner: UPDATE_FEED.owner, repo: UPDATE_FEED.repo });
+  });
   it('requires explicit download and install, and excludes prereleases/downgrades', async () => {
     const { client, controller } = fixture();
     expect(client.autoDownload).toBe(false);

@@ -56,7 +56,7 @@ vi.mock('electron', async () => {
     screen: { getCursorScreenPoint: () => ({ x: 0, y: 0 }), getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }), on: vi.fn() },
   };
 });
-vi.mock('electron-updater', () => ({ default: { autoUpdater: { on: vi.fn() } } }));
+vi.mock('electron-updater', () => ({ default: { autoUpdater: { on: vi.fn(), setFeedURL: vi.fn() } } }));
 vi.mock('./config', () => {
   const settings = { apiKey: 'test-key', model: 'test-model', hotkey: 'Control+Space', translateHotkey: 'Control+Alt+T',
     launchAtStartup: false, onboardingCompleted: true, stripFillersEnabled: false, aiPolishEnabled: false, apiBaseUrl: 'https://provider.test' };
@@ -130,11 +130,29 @@ describe('main dictation integration', () => {
     state('idle');
     expect(mocks.shortcuts.has('Escape')).toBe(false);
   });
-  it('passes unknown foreground through the clipboard fallback', async () => {
+  it('passes unknown foreground through without a paste target', async () => {
     mocks.foreground.mockRejectedValue(new Error('host unavailable'));
     startHotkey(); state('processing');
     await run();
+    expect(mocks.foreground).toHaveBeenCalledTimes(2);
     expect(mocks.paste).toHaveBeenCalledWith('transcript', null, expect.any(AbortSignal));
+  });
+  it('waits for a slow foreground host instead of dropping the HWND', async () => {
+    mocks.foreground.mockImplementation(() => new Promise((resolve) => {
+      setTimeout(() => resolve({ hwnd: '456', processName: 'notepad' }), 350);
+    }));
+    startHotkey(); state('processing');
+    await run();
+    expect(mocks.paste).toHaveBeenCalledWith('transcript', { hwnd: '456', processName: 'notepad' }, expect.any(AbortSignal));
+  });
+  it('retries after a cold host fails and uses the HWND from the restarted lookup', async () => {
+    mocks.foreground
+      .mockRejectedValueOnce(new Error('win host did not become ready'))
+      .mockResolvedValueOnce({ hwnd: '789', processName: 'chrome' });
+    startHotkey(); state('processing');
+    await run();
+    expect(mocks.foreground).toHaveBeenCalledTimes(2);
+    expect(mocks.paste).toHaveBeenCalledWith('transcript', { hwnd: '789', processName: 'chrome' }, expect.any(AbortSignal));
   });
   it('cancels an active request and prevents late history/paste', async () => {
     mocks.transcribe.mockImplementation((_audio, _mime, _settings, _bias, signal: AbortSignal) => new Promise((_resolve, reject) => {

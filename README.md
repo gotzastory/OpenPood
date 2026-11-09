@@ -6,7 +6,7 @@
 
 สร้างด้วย Electron + React + TypeScript + Vite + Tailwind CSS v4 + DaisyUI
 
-**[ดาวน์โหลดตัวติดตั้งล่าสุด](https://github.com/gotzastory/OpenPud/releases/latest)** · [Releases ทั้งหมด](https://github.com/gotzastory/OpenPud/releases)
+**[ดาวน์โหลดตัวติดตั้งล่าสุด](https://github.com/gotzastory/OpenPood/releases/latest)** · [Releases ทั้งหมด](https://github.com/gotzastory/OpenPood/releases)
 
 ---
 
@@ -27,7 +27,7 @@
 
 ## ดาวน์โหลด / ติดตั้ง
 
-ดาวน์โหลดตัวติดตั้งจาก [GitHub Releases](https://github.com/gotzastory/OpenPud/releases/latest) — **ไม่ต้องมี Node.js**
+ดาวน์โหลดตัวติดตั้งจาก [GitHub Releases](https://github.com/gotzastory/OpenPood/releases/latest) — **ไม่ต้องมี Node.js**
 
 1. เปิดหน้า Releases แล้วดาวน์โหลด `OpenPood-Setup-x.x.x.exe`
 2. ดับเบิลคลิกเพื่อติดตั้ง (NSIS, ไม่ต้องสิทธิ์ admin)
