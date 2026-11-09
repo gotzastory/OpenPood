@@ -21,23 +21,21 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "concurrently": "^10.0.3",
-    "cross-env": "^10.1.0",
     "daisyui": "^5.7.47",
-    "electron": "^43.2.0",
-    "electron-builder": "^26.15.3",
+    "electron": "^43.8.7",
+    "electron-builder": "^26.18.1",
     "js-yaml": "^4.3.2",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1",
+    "vite": "^8.3.6",
     "vite-plugin-electron": "^1.1.0",
     "vite-plugin-electron-renderer": "^1.0.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "dependencies": {
     "@fontsource/kanit": "^5.3.0",
     "electron-store": "^11.0.2",
-    "electron-updater": "^6.8.9",
+    "electron-updater": "6.8.11",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -47,7 +45,7 @@
     "publish": {
       "provider": "github",
       "owner": "gotzastory",
-      "repo": "OpenPud",
+      "repo": "OpenPood",
       "releaseType": "release"
     },
     "directories": {
@@ -65,5 +63,8 @@
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "guid": "3d3b2486-1b4f-5e19-895e-ab7f29245ba3"
     }
+  },
+  "overrides": {
+    "fast-uri": "3.1.9"
   }
 }

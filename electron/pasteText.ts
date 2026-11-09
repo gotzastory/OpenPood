@@ -4,7 +4,7 @@ import { RUNTIME } from '../src/lib/runtimeConfig';
 
 export interface PasteResult {
   pasted: boolean;
-  reason?: 'focus-changed' | 'paste-failed' | 'clipboard-preserved';
+  reason?: 'focus-changed' | 'paste-failed' | 'clipboard-preserved' | 'target-unknown';
 }
 
 function delay(ms: number): Promise<void> {
@@ -37,6 +37,8 @@ function snapshotClipboard(hasNativeFormats: boolean): Data {
 
 export async function pasteAtCursor(text: string, target: ForegroundWindow | null, signal?: AbortSignal): Promise<PasteResult> {
   signal?.throwIfAborted();
+  // A missing HWND must not touch the clipboard. The transcript stays in History.
+  if (!target || !/^[1-9]\d*$/.test(target.hwnd)) return { pasted: false, reason: 'target-unknown' };
   let previous: Data;
   try {
     const before = await getClipboardState(signal);
@@ -69,7 +71,6 @@ export async function pasteAtCursor(text: string, target: ForegroundWindow | nul
     // Check content too: another application could change clipboard while the
     // host request is in flight. Recheck sequence in native code at injection.
     if (clipboard.readText() !== text || written.hasFiles || written.hasUnsupported) return { pasted: false, reason: 'clipboard-preserved' };
-    if (!target || !/^[1-9]\d*$/.test(target.hwnd)) return { pasted: false, reason: 'focus-changed' };
     await delay(RUNTIME.clipboardSettleMs);
     signal?.throwIfAborted();
     const result = await sendCtrlV(target.hwnd, ownedSequence, signal);

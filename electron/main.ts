@@ -146,14 +146,24 @@ function recoverWidget(win: BrowserWindow): void {
   }, RUNTIME.widgetRecoveryDelayMs);
 }
 
+const FOREGROUND_LOOKUP_ATTEMPTS = 2;
+
+function knownForeground(window: ForegroundWindow): boolean {
+  return /^[1-9]\d*$/.test(window.hwnd);
+}
+
+// Wait for the PowerShell host to compile and answer. A cold or crashed host
+// is restarted by the next lookup; do not give up on a short timer.
 async function captureForeground(): Promise<ForegroundWindow | null> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      getForegroundWindow().catch(() => null),
-      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), RUNTIME.foregroundCaptureTimeoutMs); }),
-    ]);
-  } finally { clearTimeout(timer); }
+  for (let attempt = 0; attempt < FOREGROUND_LOOKUP_ATTEMPTS; attempt++) {
+    try {
+      const window = await getForegroundWindow();
+      if (knownForeground(window)) return window;
+    } catch (err) {
+      console.warn('[winHost] foreground lookup failed:', err instanceof Error ? err.message : 'unknown');
+    }
+  }
+  return null;
 }
 
 type RendererCapability = 'main' | 'widget' | 'either';
@@ -175,7 +185,8 @@ function requireRenderer(event: { sender: WebContents }, capability: RendererCap
 }
 
 // Capture once at the start press. Stopping in another window must never retarget
-// the dictation. Slow/unavailable lookups deliberately fall back to clipboard.
+// the dictation. A lookup that still fails after a host restart leaves the target
+// unknown; paste then keeps the previous clipboard and History holds the text.
 let foregroundAtHotkey: Promise<ForegroundWindow | null> = Promise.resolve(null);
 
 // Bottom-center of whichever monitor the cursor is on, not just the primary.
@@ -549,7 +560,9 @@ app.whenReady().then(() => {
         }
         assertCurrent();
         const delivery = await measureStage('paste', () => pasteAtCursor(text, target, controller.signal));
-        if (delivery.reason === 'focus-changed') {
+        if (delivery.reason === 'target-unknown') {
+          notify('ยืนยันหน้าต่างปลายทางไม่ได้', 'ไม่พบหน้าต่างปลายทาง กรุณาคัดลอกข้อความจาก History');
+        } else if (delivery.reason === 'focus-changed') {
           notify('ยืนยันหน้าต่างปลายทางไม่ได้', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
         } else if (delivery.reason === 'clipboard-preserved') {
           notify('เก็บ clipboard เดิมไว้แล้ว', 'clipboard มีไฟล์ รูปแบบพิเศษ หรือถูกเปลี่ยน กรุณาคัดลอกข้อความจาก History');
