@@ -19,6 +19,7 @@ export interface AppSettings {
   chatModel: string;
   translateHotkey: string;
   translateTargetLang: string;
+  saveHistory: boolean;
 }
 
 // On disk, apiKey is kept as a base64-encoded blob encrypted via Electron's
@@ -44,6 +45,7 @@ const defaults: StoredSettings = {
   chatModel: 'google/gemini-3.5-flash-lite',
   translateHotkey: 'Control+Alt+T',
   translateTargetLang: 'en',
+  saveHistory: true,
 };
 
 // Shape sent to the renderer over `settings:get` — the plaintext key never
@@ -128,6 +130,7 @@ export function getSettings(): AppSettings {
   const duration = rest.maxDurationSec;
   return { ...rest, maxDurationSec: Number.isFinite(duration) && duration > 0
     ? Math.min(duration, RUNTIME.maxRecordingSec) : defaults.maxDurationSec,
+    saveHistory: rest.saveHistory !== false,
     apiKey: decryptApiKey(apiKeyEncrypted) };
 }
 

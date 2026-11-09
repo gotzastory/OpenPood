@@ -1,12 +1,15 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, Tray, type WebContents } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, Tray, type WebContents } from 'electron';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import electronUpdater from 'electron-updater';
 import { UpdateController, UPDATE_SCHEDULE } from './updater';
 import { getRendererSettings, getSettings, setSettings, type AppSettings } from './config';
 import { normalizeThaiSpacing, transcribeAudio, TranscriptionError } from './transcribe';
 import { pasteAtCursor } from './pasteText';
-import { addHistoryEntry, listHistory, clearHistory, historyStats, flushHistory } from './history';
+import { addHistoryEntry, listHistory, clearHistory, historyStats, flushHistory, warmHistory } from './history';
+import { HistoryEncryptionUnavailable } from './historyRepository';
+import { PRELOAD_FILENAME } from './preloadOutput';
+import { isAppNavigationAllowed, isWidgetMediaAllowed } from './windowGuard';
 import { RUNTIME } from '../src/lib/runtimeConfig';
 import { measureStage, reportDuration, startPerformanceSampling } from './performance';
 import {
@@ -56,13 +59,32 @@ const ALLOWED_ROUTES = new Set(['/', '/history', '/dictionary', '/apps', '/setti
 
 // Both windows only ever show our own bundle; any other navigation target or
 // popup is hostile (or a bug) and gets dropped.
+function appPageUrl(): URL {
+  return pathToFileURL(path.join(__dirname, '../dist/index.html'));
+}
+
 function hardenWindow(win: BrowserWindow) {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  win.webContents.on('will-navigate', (e, url) => {
-    const allowed = VITE_DEV_SERVER_URL ? url.startsWith(VITE_DEV_SERVER_URL) : url.startsWith('file://');
-    if (!allowed) e.preventDefault();
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isAppNavigationAllowed(url, appPageUrl(), VITE_DEV_SERVER_URL)) event.preventDefault();
   });
 }
+
+function installSessionPermissions(): void {
+  const allowed = (contents: WebContents | null, permission: string) =>
+    isWidgetMediaAllowed(permission, contents != null && contents === widget?.webContents);
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+    callback(allowed(contents, permission));
+  });
+  session.defaultSession.setPermissionCheckHandler((contents, permission) => allowed(contents, permission));
+}
+
+const windowPreferences = {
+  preload: path.join(__dirname, PRELOAD_FILENAME),
+  contextIsolation: true,
+  nodeIntegration: false,
+  sandbox: true,
+} as const;
 
 let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
@@ -187,11 +209,7 @@ function createWidget() {
     movable: false,
     focusable: false,
     skipTaskbar: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: { ...windowPreferences },
   });
   widget.setAlwaysOnTop(true, 'screen-saver');
   widget.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -220,7 +238,7 @@ function createWidget() {
 function createMainWindow(route: string) {
   const url = VITE_DEV_SERVER_URL
     ? `${VITE_DEV_SERVER_URL}#${route}`
-    : `file://${path.join(__dirname, '../dist/index.html')}#${route}`;
+    : `${appPageUrl().href}#${route}`;
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
@@ -244,11 +262,7 @@ function createMainWindow(route: string) {
     minHeight: 520,
     title: 'OpenPood',
     icon: path.join(BRAND_ASSET_DIRECTORY, 'openpood.ico'),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: { ...windowPreferences },
   });
   hardenWindow(mainWindow);
   void mainWindow.loadURL(url).catch(() => notify('เปิดแอปไม่สำเร็จ', 'กรุณาปิดหน้าต่างแล้วเปิดใหม่จาก tray'));
@@ -336,8 +350,10 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(() => {
+  installSessionPermissions();
   stopPerformanceSampling = startPerformanceSampling();
   warmWinHost();
+  warmHistory();
   createWidget();
   createTray();
   registerHotkeys(getSettings());
@@ -518,12 +534,19 @@ app.whenReady().then(() => {
         if (!text.trim() || text.length > RUNTIME.maxTextChars) throw new TranscriptionError('ไม่พบข้อความที่ใช้ได้จากเสียง — ลองใหม่อีกครั้ง');
         // Save before delivery so even unsupported clipboard formats have a
         // recovery path. A disk failure keeps a temporary in-memory entry.
-        try {
-          await measureStage('history', () => addHistoryEntry(text, payload.durationMs, settings.model));
-        } catch {
-          notify('บันทึกประวัติไม่สำเร็จ', 'ประวัติครั้งนี้อยู่ชั่วคราวในแอป กรุณาคัดลอกก่อนปิด และตรวจสอบพื้นที่หรือสิทธิ์เขียนไฟล์');
+        if (settings.saveHistory !== false) {
+          try {
+            await measureStage('history', () => addHistoryEntry(text, payload.durationMs, settings.model));
+          } catch (err) {
+            const body = err instanceof HistoryEncryptionUnavailable
+              ? err.message
+              : err instanceof Error && err.message.startsWith('อ่านประวัติ')
+                ? err.message
+                : 'ประวัติครั้งนี้อยู่ชั่วคราวในแอป กรุณาคัดลอกก่อนปิด และตรวจสอบพื้นที่หรือสิทธิ์เขียนไฟล์';
+            notify('บันทึกประวัติไม่สำเร็จ', body);
+          }
+          sendToWindow(mainWindow, 'history:updated');
         }
-        sendToWindow(mainWindow, 'history:updated');
         assertCurrent();
         const delivery = await measureStage('paste', () => pasteAtCursor(text, target, controller.signal));
         if (delivery.reason === 'focus-changed') {

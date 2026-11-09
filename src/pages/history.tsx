@@ -13,6 +13,7 @@ export function HistoryPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyResetTimer = useRef<number | null>(null);
   const [page, setPage] = useState(0);
+  const [saveHistory, setSaveHistory] = useState(true);
   const pageCount = Math.max(1, Math.ceil((entries?.length ?? 0) / RUNTIME.historyPageSize));
   const currentPage = Math.min(page, pageCount - 1);
   const visibleEntries = entries?.slice(currentPage * RUNTIME.historyPageSize, (currentPage + 1) * RUNTIME.historyPageSize);
@@ -38,6 +39,9 @@ export function HistoryPage() {
       void loadHistory();
     });
     void loadHistory();
+    void window.typeless.getSettings().then((settings) => {
+      if (active) setSaveHistory(settings.saveHistory);
+    }).catch(() => undefined);
     document.getElementById("content")?.focus({ preventScroll: true });
 
     return () => {
@@ -86,7 +90,8 @@ export function HistoryPage() {
         <div>
           <h1 className={PAGE_TITLE}>ประวัติการถอดเสียง</h1>
           <p className="mt-1 text-sm text-base-content/65">
-            ย้อนดูและคัดลอกข้อความที่ถอดเสียงไว้ในเครื่องนี้
+            ข้อความถูกเข้ารหัสเก็บในเครื่องนี้
+            {saveHistory ? "" : " การบันทึกประวัติถูกปิดอยู่ในการตั้งค่า"}
           </p>
         </div>
         <button

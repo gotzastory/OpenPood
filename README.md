@@ -104,7 +104,7 @@
 - **Dictionary** — คำเฉพาะ / ชื่อเฉพาะ / ศัพท์เทคนิค ช่วย bias การถอดเสียง (ยังไม่ส่ง Dictionary words ไป ElevenLabs)
 - **Correction rules** — แทนที่คำที่ถอดผิดซ้ำๆ แบบตรงตัวหลังถอดเสียง
 - **AI polish / Translate** — เก็บประโยค หรือแปลจากเสียง (ใช้ chat model)
-- **History** — ประวัติการถอดเสียงสูงสุด 500 รายการ คัดลอกซ้ำได้
+- **History** — ประวัติการถอดเสียงสูงสุด 500 รายการ เข้ารหัสในเครื่อง คัดลอกซ้ำได้ และปิดการบันทึกหรือล้างได้
 - **ตั้งค่าปุ่มลัดแบบกดจริง** — กดคีย์ที่ต้องการ ระบบจับ accelerator ให้เอง
 - **เปิดตอน Windows เริ่ม** — เปิด/ปิดได้ใน Settings
 
@@ -162,7 +162,8 @@ OpenRouter / OpenAI ใช้คีย์เดียวเรียกได้
 
 ## ความเป็นส่วนตัวของข้อมูล
 
-- Settings, History และ Dictionary เก็บเป็น JSON **ในเครื่องเท่านั้น** (`electron-store`) ไม่ซิงก์ขึ้นคลาวด์ของแอป
+- Settings และ Dictionary เก็บเป็น JSON **ในเครื่องเท่านั้น** ไม่ซิงก์ขึ้นคลาวด์ของแอป
+- History ถูกเข้ารหัสด้วย Windows DPAPI ผ่าน Electron `safeStorage` สูงสุด 500 รายการ / 4 MB ปิดการบันทึกได้ใน Settings และล้างได้ในหน้าประวัติ
 - API key เข้ารหัสด้วย Windows DPAPI ผ่าน Electron `safeStorage`
 - มีแค่เสียงพูด / ข้อความที่ส่งไปถอดเสียงหรือ polish เท่านั้นที่ออกนอกเครื่อง และส่งไปยัง endpoint ที่คุณตั้งไว้เท่านั้น
 
@@ -221,7 +222,7 @@ git push origin "v$version"
 
 ### สถาปัตยกรรมโดยย่อ
 
-Electron แยก 2 โปรเซส คุยกันผ่าน `contextBridge` (`electron/preload.ts`) เท่านั้น — `contextIsolation: true`, `nodeIntegration: false`
+Electron แยก 2 โปรเซส คุยกันผ่าน `contextBridge` (`electron/preload.ts`, ถูก build เป็น `preload.cjs`) เท่านั้น — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`
 
 - **`electron/`** — main process: หน้าต่าง widget + dashboard, global hotkey, tray, ถอดเสียง, วางข้อความ, persistence
 - **`src/`** — renderer: React dashboard shell, floating pill, อัดเสียง, dashboard pages และ onboarding

@@ -12,7 +12,7 @@ const settings: AppSettings = {
   language: 'th', hotkey: 'Control+Space', micDeviceId: '', launchAtStartup: false,
   playSound: false, maxDurationSec: 120, onboardingCompleted: true,
   stripFillersEnabled: true, aiPolishEnabled: false, chatModel: 'test-chat',
-  translateHotkey: 'Control+Alt+T', translateTargetLang: 'en',
+  translateHotkey: 'Control+Alt+T', translateTargetLang: 'en', saveHistory: true,
 };
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 

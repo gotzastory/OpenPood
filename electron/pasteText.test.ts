@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   text: 'previous', formats: ['text/plain'], sequence: 1, files: false, unsupported: false, hasFormats: true,
   clipboard: {
     availableFormats: vi.fn(), readText: vi.fn(), readHTML: vi.fn(), readRTF: vi.fn(), readImage: vi.fn(),
-    writeText: vi.fn(), write: vi.fn(),
+    writeText: vi.fn(), write: vi.fn(), writeBuffer: vi.fn(),
   },
   getClipboardState: vi.fn(), sendCtrlV: vi.fn(),
 }));
@@ -54,6 +54,13 @@ describe('safe paste delivery', () => {
     mocks.formats = ['text/plain', 'text/html', 'text/rtf', 'image/png'];
     await pasteAtCursor('transcript', target);
     expect(mocks.clipboard.write).toHaveBeenCalledWith({ text: 'previous', html: '<b>previous</b>', rtf: '{\\rtf1 previous}', image: expect.any(Object) });
+  });
+  it('does not restore a file drop through writeBuffer', async () => {
+    mocks.files = true;
+    expect(await pasteAtCursor('transcript', target)).toEqual({ pasted: false, reason: 'clipboard-preserved' });
+    expect(mocks.clipboard.writeBuffer).not.toHaveBeenCalled();
+    expect(mocks.clipboard.writeText).not.toHaveBeenCalled();
+    expect(mocks.clipboard.write).not.toHaveBeenCalled();
   });
   it.each(['files', 'custom', 'oversized-image'])('preserves %s without overwriting clipboard', async (scenario) => {
     if (scenario === 'files') mocks.files = true;

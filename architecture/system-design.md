@@ -35,7 +35,7 @@ Electron main process
 - The dashboard shell, navigation, Home, History, Dictionary, Settings, and onboarding use React. The recording widget remains DOM-based; microphone capture is handled by `src/runtime/recorder.ts`.
 - The widget is transparent, always on top, mouse-transparent, and non-focusable.
 - The dashboard is a single normal window opened from the tray. Reopening it focuses the existing instance and sends a navigation event.
-- `electron/preload.ts` is the only renderer-to-main bridge. Keep its API synchronized with `src/types.d.ts`.
+- `electron/preload.ts` is the only renderer-to-main bridge. It is emitted as CommonJS `preload.cjs` so both windows can set `sandbox: true`. Keep its API synchronized with `src/types.d.ts`.
 
 ## Lifecycle
 
@@ -96,21 +96,22 @@ Global hotkey
 
 ## Persistence and secrets
 
-- Settings and dictionary use separate `electron-store` files. History retains the migrated `history.json` format, initializes through `electron-store`, then uses a memory cache and serialized asynchronous atomic file replacement.
+- Settings and dictionary use separate `electron-store` files. History keeps the `history.json` path, then uses a memory cache and serialized asynchronous atomic file replacement. The file body is `safeStorage` ciphertext. An existing plaintext `{entries}` file is migrated after encryption is available and is left untouched if encryption is not. New history is not written in plaintext. `saveHistory` can turn off new entries; History can clear what is already stored. The 500-entry and 4 MB caps still apply to the plaintext payload.
 - Stores use `%APPDATA%/OpenPood`. Before any store initializes, `storage.ts` copies the known legacy OpenPud JSON stores byte-for-byte, validating JSON first, retaining the source, and never overwriting existing destination stores. A completion marker prevents later remigration. Migration failure blocks startup with a generic native error; no secret data is logged.
 - The NSIS GUID remains the original upgrade identity while the application ID, product name, and executable name become OpenPood. Installer upgrade behavior still requires a packaged Windows check.
 - A single-instance lock is acquired before migration/store creation. A repeated launch opens the existing dashboard. Packaged startup registration removes the former OpenPud entry before applying the saved setting.
 - The API key is encrypted with Electron `safeStorage` and decrypted only in main. Key saves fail when encryption is unavailable; ciphertext is never treated as plaintext. Legacy plaintext-key migration runs only after encryption is ready and removes the old field.
 - Renderer settings redact the key and expose only `hasApiKey`.
-- History is capped at 500 entries and 4 MB of serialized data, evicting oldest entries without truncating retained transcripts. History UI renders 30 entries per page. A failed history write retains the new transcript temporarily in memory and warns the user; a later successful write retries persistence. Quit waits for pending history writes.
+- History is capped at 500 entries and 4 MB of serialized data, evicting oldest entries without truncating retained transcripts. History UI renders 30 entries per page. A failed disk write retains the new transcript temporarily in memory and warns the user; a later successful write retries persistence. If encryption is unavailable, the new transcript is not written to disk and is not treated as saved. Quit waits for pending history writes.
 - Settings are cached in main; a save validates/encrypts the complete patch before one atomic store write. Failed hotkey registration restores the previous hotkeys and reports the conflict.
-- History text, dictionary words, correction rules, and non-secret settings remain local JSON data.
+- Dictionary words, correction rules, and non-secret settings remain local JSON data. History text is encrypted at rest.
 - Never log API keys, authorization headers, audio payloads, or full provider error bodies.
 
 ## Security boundaries
 
-- Browser windows keep `contextIsolation: true` and `nodeIntegration: false`.
-- New windows and external navigation are denied.
+- Browser windows keep `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`.
+- A session permission handler allows `media` only for the widget and denies every other permission.
+- New windows are denied. `will-navigate` allows only the app page built with `pathToFileURL`, plus the dev server origin while developing.
 - Dashboard routes are allowlisted before crossing IPC.
 - IPC inputs are treated as untrusted: settings keys/types, collections, routes, audio shape, and audio size are validated in main.
 - IPC handlers also authorize the sender by capability: dashboard-only data APIs reject the widget, transcription rejects the dashboard, and unknown renderer senders are rejected.

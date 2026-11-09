@@ -33,6 +33,7 @@ type SettingsForm = Pick<
   | "maxDurationSec"
   | "playSound"
   | "launchAtStartup"
+  | "saveHistory"
 > & { apiKey: string; hasApiKey: boolean };
 
 const PROVIDER_PRESETS: Record<
@@ -111,6 +112,7 @@ function initialForm(settings: AppSettings): SettingsForm {
     maxDurationSec: settings.maxDurationSec,
     playSound: settings.playSound,
     launchAtStartup: settings.launchAtStartup,
+    saveHistory: settings.saveHistory,
   };
 }
 
@@ -191,6 +193,7 @@ export function SettingsPage() {
         maxDurationSec: Number(form.maxDurationSec) || 120,
         playSound: form.playSound,
         launchAtStartup: form.launchAtStartup,
+        saveHistory: form.saveHistory,
       });
       setForm(initialForm(next));
       setProvider(detectProvider(next.apiBaseUrl));
@@ -447,6 +450,12 @@ export function SettingsPage() {
                 label="เปิดแอปอัตโนมัติเมื่อเปิดเครื่อง"
                 checked={form.launchAtStartup}
                 onChange={(value) => update("launchAtStartup", value)}
+              />
+              <Toggle
+                label="บันทึกประวัติการถอดเสียง"
+                hint="ข้อความถูกเข้ารหัสเก็บในเครื่องนี้ ปิดแล้วจะไม่เก็บข้อความใหม่ ประวัติเดิมล้างได้ที่หน้าประวัติ"
+                checked={form.saveHistory}
+                onChange={(value) => update("saveHistory", value)}
               />
             </div>
           </section>

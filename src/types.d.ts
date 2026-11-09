@@ -19,6 +19,8 @@ export interface AppSettings {
   chatModel: string;
   translateHotkey: string;
   translateTargetLang: string;
+  /** When false, new transcripts are not written to history. Existing entries stay until cleared. */
+  saveHistory: boolean;
 }
 
 export type RecordingMode = "dictate" | "translate";
