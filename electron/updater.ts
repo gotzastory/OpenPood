@@ -2,7 +2,15 @@ import type { AppUpdater, UpdateInfo } from 'electron-updater';
 import type { UpdateStatus } from '../src/lib/updateTypes';
 
 export const UPDATE_SCHEDULE = { startupDelayMs: 15_000, intervalMs: 6 * 60 * 60 * 1000 };
-type Client = Pick<AppUpdater, 'on' | 'autoDownload' | 'autoInstallOnAppQuit' | 'allowPrerelease' | 'allowDowngrade' | 'checkForUpdates' | 'downloadUpdate' | 'quitAndInstall'>;
+// Installed v1.0.3 builds still have gotzastory/OpenPud in app-update.yml.
+// New builds ask GitHub for this repository directly.
+export const UPDATE_FEED = {
+  provider: 'github',
+  owner: 'gotzastory',
+  repo: 'OpenPood',
+  releaseType: 'release',
+} as const;
+type Client = Pick<AppUpdater, 'on' | 'setFeedURL' | 'autoDownload' | 'autoInstallOnAppQuit' | 'allowPrerelease' | 'allowDowngrade' | 'checkForUpdates' | 'downloadUpdate' | 'quitAndInstall'>;
 
 function notes(info: UpdateInfo): string {
   const value = typeof info.releaseNotes === 'string'
@@ -40,6 +48,7 @@ export class UpdateController {
     this.prepareInstall = prepareInstall;
     this.restoreAfterFailure = restoreAfterFailure;
     this.status = { phase: enabled ? 'idle' : 'disabled', currentVersion, busy: false };
+    client.setFeedURL(UPDATE_FEED);
     client.autoDownload = false;
     client.autoInstallOnAppQuit = false;
     client.allowPrerelease = false;

@@ -16,7 +16,6 @@ export const RUNTIME = {
   widgetRecoveryDelayMs: 1_000,
   widgetRecoveryAttempts: 3,
   widgetRecoveryWindowMs: 60_000,
-  foregroundCaptureTimeoutMs: 300,
   clipboardSettleMs: 40,
   clipboardRestoreMs: 1_000,
   maxClipboardBytes: 32 * 1024 * 1024,

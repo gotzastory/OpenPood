@@ -26,7 +26,8 @@ const READY_TIMEOUT_MS = 15000;
 // SendInput with virtual-key codes rather than WinForms SendKeys("^v"):
 // SendKeys maps the letter "v" through the active keyboard layout — with Thai
 // Kedmanee active that is not physical V, so Ctrl+V silently does nothing.
-const HOST_SCRIPT = `
+// Exported so tests can check the host loop without launching PowerShell.
+export const HOST_SCRIPT = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -TypeDefinition @"
 using System;
@@ -130,16 +131,16 @@ while ($true) {
       }
       'paste' {
         if ($commandParts.Length -ne 3 -or $commandParts[1] -notmatch '^[1-9][0-9]*$' -or $commandParts[2] -notmatch '^[0-9]+$') { throw 'invalid paste target' }
+        # Stay inside this switch case. A loop-control statement here would leave
+        # the while, skip the flush below, and end the host process.
         if ([OpenPoodNative]::GetClipboardSequenceNumber() -ne [uint32]$commandParts[2]) {
           $out.WriteLine("$id ok clipboard-changed")
-          break
-        }
-        if ([OpenPoodNative]::GetForegroundWindow().ToInt64() -ne [int64]$commandParts[1]) {
+        } elseif ([OpenPoodNative]::GetForegroundWindow().ToInt64() -ne [int64]$commandParts[1]) {
           $out.WriteLine("$id ok focus-changed")
-          break
+        } else {
+          [OpenPoodNative]::CtrlV()
+          $out.WriteLine("$id ok pasted")
         }
-        [OpenPoodNative]::CtrlV()
-        $out.WriteLine("$id ok pasted")
       }
       'clipboard' {
         $sequence = [OpenPoodNative]::GetClipboardSequenceNumber()
