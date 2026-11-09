@@ -42,6 +42,11 @@ export async function pasteAtCursor(text: string, target: ForegroundWindow | nul
   let previous: Data;
   try {
     const before = await getClipboardState(signal);
+    // CF_HDROP is standard format 15 and has no registered clipboard name.
+    // readBuffer('CF_HDROP') registers a different format, so it does not return
+    // the file list. FileNameW is a single UTF-16 path, not the drop Explorer
+    // pastes, and writeBuffer cannot store bytes back as format 15. Images,
+    // plain text, HTML, and RTF are snapshotted below and restored together.
     if (before.hasFiles || before.hasUnsupported) return { pasted: false, reason: 'clipboard-preserved' };
     previous = snapshotClipboard(before.hasFormats);
     const after = await getClipboardState(signal);

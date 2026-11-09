@@ -59,7 +59,7 @@ flowchart LR
 
 ## Security and verification limits
 
-- Keep renderer access behind the preload bridge: `contextIsolation: true`, `nodeIntegration: false`.
+- Keep renderer access behind the preload bridge: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, with the preload emitted as CommonJS.
 - API keys are redacted from returned settings; `safeStorage` encrypts them when available. Current code falls back to plaintext if encryption is unavailable.
 - A known changed HWND skips paste; paste failure leaves text on the clipboard. A missing or failed foreground lookup does not paste and does not replace the clipboard.
 - There is no application backend or server database. Audio/text leaves the device when sent to the configured AI provider.

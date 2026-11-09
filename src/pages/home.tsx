@@ -139,7 +139,7 @@ export function HomePage() {
             </dl>
             <div className="flex items-start gap-2 border-t border-base-200 pt-3 text-xs leading-relaxed text-base-content/65 [&_svg]:mt-0.5 [&_svg]:h-3.5 [&_svg]:w-3.5" aria-label="ข้อมูลความเป็นส่วนตัว">
               <Icon svg={icons.lock} />
-              <span>เสียงส่งไปยังผู้ให้บริการที่คุณเลือก และข้อความอาจส่งเพื่อปรับหรือแปลตามการตั้งค่า ประวัติเก็บในเครื่อง</span>
+              <span>เสียงส่งไปยังผู้ให้บริการที่คุณเลือก และข้อความอาจส่งเพื่อปรับหรือแปลตามการตั้งค่า ประวัติถูกเข้ารหัสเก็บในเครื่อง</span>
             </div>
           </div>
         </aside>

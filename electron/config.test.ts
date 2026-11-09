@@ -62,6 +62,14 @@ describe('settings security and atomic saves', () => {
     expect(() => config.setSettings({ maxDurationSec })).toThrow();
     expect(state.writes).toBe(0);
   });
+  it('saves history by default and can turn it off', async () => {
+    const config = await import('./config');
+    expect(config.getSettings().saveHistory).toBe(true);
+    expect(config.getRendererSettings().saveHistory).toBe(true);
+    config.setSettings({ saveHistory: false });
+    expect(config.getSettings().saveHistory).toBe(false);
+    expect(config.getRendererSettings().saveHistory).toBe(false);
+  });
   it('does not update cached settings if the disk write fails', async () => {
     const config = await import('./config');
     state.failWrite = true;

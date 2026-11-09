@@ -9,7 +9,7 @@ const settings: AppSettings = {
   language: '', hotkey: 'Control+Space', micDeviceId: '', launchAtStartup: false,
   playSound: false, maxDurationSec: 120, onboardingCompleted: true,
   stripFillersEnabled: true, aiPolishEnabled: false, chatModel: '',
-  translateHotkey: 'Control+Alt+T', translateTargetLang: 'en',
+  translateHotkey: 'Control+Alt+T', translateTargetLang: 'en', saveHistory: true,
 };
 const audio = Buffer.from('test audio');
 afterEach(() => vi.unstubAllGlobals());

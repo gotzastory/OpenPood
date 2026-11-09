@@ -3,6 +3,7 @@ import type { EventEmitter } from 'node:events';
 import { RUNTIME } from '../src/lib/runtimeConfig';
 
 type TestWindow = EventEmitter & {
+  options?: { webPreferences?: { preload?: string; sandbox?: boolean; contextIsolation?: boolean; nodeIntegration?: boolean } };
   webContents: EventEmitter & { send: ReturnType<typeof vi.fn>; setWindowOpenHandler: ReturnType<typeof vi.fn>; getURL: ReturnType<typeof vi.fn> };
   destroy: () => void;
   loadURL: ReturnType<typeof vi.fn>;
@@ -15,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   windows: [] as TestWindow[], handlers: new Map<string, (...args: any[]) => any>(),
   listeners: new Map<string, (...args: any[]) => any>(), appEvents: new Map<string, (...args: any[]) => any>(),
   shortcuts: new Map<string, () => void>(),
+  permissionRequest: undefined as ((webContents: object, permission: string, callback: (granted: boolean) => void) => void) | undefined,
+  permissionCheck: undefined as ((webContents: object | null, permission: string) => boolean) | undefined,
+  settings: { apiKey: 'test-key', model: 'test-model', hotkey: 'Control+Space', translateHotkey: 'Control+Alt+T',
+    launchAtStartup: false, onboardingCompleted: true, stripFillersEnabled: false, aiPolishEnabled: false,
+    apiBaseUrl: 'https://provider.test', saveHistory: true },
   foreground: vi.fn(), transcribe: vi.fn(), paste: vi.fn(), addHistory: vi.fn(), setSettings: vi.fn(),
 }));
 
@@ -24,7 +30,8 @@ vi.mock('electron', async () => {
     static getAllWindows() { return mocks.windows; }
     webContents = Object.assign(new EventEmitter(), { send: vi.fn(), setWindowOpenHandler: vi.fn(), getURL: vi.fn(() => 'file:///app/index.html#/'), isDestroyed: () => this.destroyed });
     private destroyed = false;
-    constructor() { super(); mocks.windows.push(this as TestWindow); }
+    options?: TestWindow['options'];
+    constructor(options?: TestWindow['options']) { super(); this.options = options; mocks.windows.push(this as unknown as TestWindow); }
     setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setPosition() {} focus() {}
     loadURL = vi.fn(() => Promise.resolve());
     isMinimized = vi.fn(() => false); restore = vi.fn(); show = vi.fn();
@@ -54,19 +61,22 @@ vi.mock('electron', async () => {
     dialog: { showErrorBox: vi.fn() }, Menu: { buildFromTemplate: vi.fn() },
     nativeImage: { createFromPath: () => ({ isEmpty: () => false, resize: () => ({}) }) },
     screen: { getCursorScreenPoint: () => ({ x: 0, y: 0 }), getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }), on: vi.fn() },
+    session: { defaultSession: {
+      setPermissionRequestHandler: (handler: typeof mocks.permissionRequest) => { mocks.permissionRequest = handler; },
+      setPermissionCheckHandler: (handler: typeof mocks.permissionCheck) => { mocks.permissionCheck = handler; },
+    } },
   };
 });
 vi.mock('electron-updater', () => ({ default: { autoUpdater: { on: vi.fn(), setFeedURL: vi.fn() } } }));
-vi.mock('./config', () => {
-  const settings = { apiKey: 'test-key', model: 'test-model', hotkey: 'Control+Space', translateHotkey: 'Control+Alt+T',
-    launchAtStartup: false, onboardingCompleted: true, stripFillersEnabled: false, aiPolishEnabled: false, apiBaseUrl: 'https://provider.test' };
-  return { getSettings: () => settings, getRendererSettings: () => ({ ...settings, apiKey: '', hasApiKey: true }),
-    setSettings: mocks.setSettings.mockImplementation((partial) => ({ ...settings, ...partial })) };
-});
+vi.mock('./config', () => ({
+  getSettings: () => mocks.settings,
+  getRendererSettings: () => ({ ...mocks.settings, apiKey: '', hasApiKey: true }),
+  setSettings: mocks.setSettings.mockImplementation((partial: Partial<typeof mocks.settings>) => ({ ...mocks.settings, ...partial })),
+}));
 vi.mock('./transcribe', () => ({ transcribeAudio: mocks.transcribe, normalizeThaiSpacing: (text: string) => text, TranscriptionError: class extends Error {} }));
 vi.mock('./winHost', () => ({ getForegroundWindow: mocks.foreground, warmWinHost: vi.fn(), disposeWinHost: vi.fn() }));
 vi.mock('./pasteText', () => ({ pasteAtCursor: mocks.paste }));
-vi.mock('./history', () => ({ addHistoryEntry: mocks.addHistory, listHistory: () => [], clearHistory: vi.fn(), historyStats: () => ({}), flushHistory: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('./history', () => ({ addHistoryEntry: mocks.addHistory, listHistory: () => [], clearHistory: vi.fn(), historyStats: () => ({}), flushHistory: vi.fn().mockResolvedValue(undefined), warmHistory: vi.fn() }));
 vi.mock('./appProfiles', () => ({ listAppProfiles: () => [], setAppProfiles: vi.fn() }));
 vi.mock('./dictionary', () => ({ dictionaryPrompt: () => '', applyCorrections: (text: string) => text,
   listDictionaryWords: () => [], setDictionaryWords: vi.fn(), listCorrections: () => [], setCorrections: vi.fn() }));
@@ -79,6 +89,7 @@ function run() { return mocks.handlers.get('transcription:run')!({ sender: mocks
 beforeEach(async () => {
   vi.resetModules(); vi.clearAllMocks();
   mocks.windows.length = 0; mocks.handlers.clear(); mocks.listeners.clear(); mocks.appEvents.clear(); mocks.shortcuts.clear();
+  mocks.settings.saveHistory = true;
   mocks.foreground.mockResolvedValue({ hwnd: '123', processName: 'test' });
   mocks.transcribe.mockResolvedValue('transcript'); mocks.paste.mockResolvedValue({ pasted: true }); mocks.addHistory.mockResolvedValue({});
   await import('./main');
@@ -88,6 +99,33 @@ beforeEach(async () => {
 afterEach(() => { mocks.appEvents.get('will-quit')?.(); vi.useRealTimers(); });
 
 describe('main dictation integration', () => {
+  it('sandboxes both windows and allows microphone permission only for the widget', async () => {
+    expect(mocks.windows[0].options?.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false });
+    expect(mocks.windows[0].options?.webPreferences?.preload).toMatch(/preload\.cjs$/);
+    const grant = vi.fn();
+    mocks.permissionRequest!(mocks.windows[0].webContents, 'media', grant);
+    expect(grant).toHaveBeenCalledWith(true);
+    grant.mockClear();
+    mocks.permissionRequest!(mocks.windows[0].webContents, 'geolocation', grant);
+    expect(grant).toHaveBeenCalledWith(false);
+    expect(mocks.permissionCheck!(null, 'media')).toBe(false);
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows[1].options?.webPreferences?.sandbox).toBe(true);
+    grant.mockClear();
+    mocks.permissionRequest!(mocks.windows[1].webContents, 'media', grant);
+    expect(grant).toHaveBeenCalledWith(false);
+    const navigation = { preventDefault: vi.fn() };
+    mocks.windows[0].webContents.emit('will-navigate', navigation, 'https://example.com/phish');
+    expect(navigation.preventDefault).toHaveBeenCalledOnce();
+  });
+  it('skips history when saving is turned off and still pastes', async () => {
+    mocks.settings.saveHistory = false;
+    startHotkey(); state('processing');
+    expect(await run()).toMatchObject({ ok: true, pasted: true });
+    expect(mocks.addHistory).not.toHaveBeenCalled();
+    expect(mocks.paste).toHaveBeenCalledOnce();
+  });
   it('loads the dashboard when tray navigation leaves onboarding and restores the window', async () => {
     mocks.appEvents.get('second-instance')?.();
     await Promise.resolve();

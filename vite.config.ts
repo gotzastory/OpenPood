@@ -2,6 +2,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron/simple';
 import tailwindcss from '@tailwindcss/vite';
+import { PRELOAD_FILENAME } from './electron/preloadOutput';
+
+const preloadOutput = {
+  format: 'cjs' as const,
+  entryFileNames: PRELOAD_FILENAME,
+  chunkFileNames: 'preload-[name].cjs',
+  codeSplitting: false,
+};
 
 export default defineConfig({
   // Relative asset URLs so public/ icons work under Electron's file:// protocol.
@@ -24,6 +32,8 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
+            rolldownOptions: { output: preloadOutput },
+            rollupOptions: { output: preloadOutput },
           },
         },
       },
