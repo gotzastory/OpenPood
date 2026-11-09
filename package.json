@@ -20,17 +20,15 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "concurrently": "^10.0.3",
-    "cross-env": "^10.1.0",
     "daisyui": "^5.7.47",
     "electron": "^43.2.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.18.1",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1",
+    "vite": "^8.3.6",
     "vite-plugin-electron": "^1.1.0",
     "vite-plugin-electron-renderer": "^1.0.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "dependencies": {
     "@fontsource/kanit": "^5.3.0",
