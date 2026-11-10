@@ -10,6 +10,8 @@ type TestWindow = EventEmitter & {
   isMinimized: ReturnType<typeof vi.fn>;
   restore: ReturnType<typeof vi.fn>;
   show: ReturnType<typeof vi.fn>;
+  isVisible: ReturnType<typeof vi.fn>;
+  isDestroyed: () => boolean;
   reload: ReturnType<typeof vi.fn>;
 };
 const mocks = vi.hoisted(() => ({
@@ -35,6 +37,7 @@ vi.mock('electron', async () => {
     setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setPosition() {} focus() {}
     loadURL = vi.fn(() => Promise.resolve());
     isMinimized = vi.fn(() => false); restore = vi.fn(); show = vi.fn(); minimize = vi.fn();
+    isVisible = vi.fn(() => !this.destroyed);
     reload = vi.fn();
     loadFile() { return Promise.resolve(); }
     isDestroyed() { return this.destroyed; }
@@ -158,6 +161,22 @@ describe('main dictation integration', () => {
     expect(main.restore).toHaveBeenCalledOnce();
     expect(main.show).toHaveBeenCalled();
     expect(main.webContents.send).not.toHaveBeenCalledWith('nav:goto', '/settings');
+  });
+  it('recreates and shows the dashboard when second-instance runs after the window was destroyed', async () => {
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    const firstMain = mocks.windows[1];
+    expect(firstMain).toBeTruthy();
+    firstMain.destroy();
+    expect(firstMain.isDestroyed()).toBe(true);
+    const before = mocks.windows.length;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows.length).toBe(before + 1);
+    const recreated = mocks.windows[before];
+    expect(recreated.isDestroyed()).toBe(false);
+    expect(recreated.show).toHaveBeenCalled();
+    expect(recreated.loadURL).toHaveBeenCalledWith(expect.stringContaining('#/'));
   });
   it('keeps dashboard navigation in place without reloading its renderer', async () => {
     mocks.appEvents.get('second-instance')?.();

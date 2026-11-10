@@ -264,11 +264,21 @@ function createWidget() {
 
 function focusOrCreateMainWindow(route = '/'): void {
   if (quitting) return;
+  // WM windowclose can destroy the BrowserWindow (closed → null) or leave a
+  // non-destroyed unmapped zombie after our minimize preventDefault. Always
+  // clear destroyed refs, then either focus a truly visible window or recreate.
   if (mainWindow?.isDestroyed()) mainWindow = null;
   const action = secondInstanceAction(mainWindow ? 'alive' : 'absent');
-  // Both paths go through createMainWindow: it creates when absent, or show/restore/focus when alive.
-  if (action === 'create' || action === 'focus-existing') {
+  if (action === 'focus-existing' && mainWindow && !mainWindow.isDestroyed()) {
     createMainWindow(route);
+    if (!mainWindow.isDestroyed() && mainWindow.isVisible()) return;
+    try { if (!mainWindow.isDestroyed()) mainWindow.destroy(); } catch { /* ignore */ }
+    mainWindow = null;
+  }
+  createMainWindow(route);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
   }
 }
 
@@ -292,6 +302,8 @@ function createMainWindow(route: string) {
     }
     return;
   }
+  // Stale destroyed ref (closed race) must not block recreation.
+  mainWindow = null;
   mainWindow = new BrowserWindow({
     width: 1080,
     height: 720,
@@ -310,6 +322,7 @@ function createMainWindow(route: string) {
       mainWindow?.minimize();
     }
   });
+  // Must clear the ref on destroy paths that skip our close handler (WM force-close).
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -426,8 +439,11 @@ function setEscapeCancel(enabled: boolean) {
 app.on('second-instance', () => {
   // Second AppImage/`openpood` launches should restore the existing dashboard.
   // The losing process exits in storage.ts after failing requestSingleInstanceLock().
+  // Never quit the primary instance here — a focus/create throw would leave no app at all.
   if (quitting) return;
-  void app.whenReady().then(() => focusOrCreateMainWindow('/')).catch(() => app.quit());
+  void app.whenReady()
+    .then(() => focusOrCreateMainWindow('/'))
+    .catch((err) => console.error('[second-instance] failed to show dashboard:', err));
 });
 
 app.whenReady().then(async () => {
