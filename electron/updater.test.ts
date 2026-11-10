@@ -120,4 +120,22 @@ describe('desktop updates', () => {
     await vi.waitFor(() => expect(browser.openExternal).toHaveBeenCalledWith('https://github.com/gotzastory/OpenPood/releases/latest'));
     expect(browser.client.quitAndInstall).not.toHaveBeenCalled();
   });
+  it('maps 404 / missing latest-linux.yml to unavailable instead of a network error', async () => {
+    const { client, controller } = fixture();
+    client.checkForUpdates.mockImplementationOnce(async () => {
+      client.emit('error', new Error('Cannot find latest-linux.yml in the latest release artifacts (404)'));
+      throw new Error('Cannot find latest-linux.yml in the latest release artifacts (404)');
+    });
+    await controller.check();
+    expect(controller.getStatus().phase).toBe('unavailable');
+    expect(controller.getStatus().error).toMatch(/แพลตฟอร์มนี้/);
+    expect(controller.getStatus().error).not.toMatch(/อินเทอร์เน็ต/);
+  });
+  it('keeps connectivity failures as a network error phase', async () => {
+    const { client, controller } = fixture();
+    client.checkForUpdates.mockRejectedValueOnce(new Error('getaddrinfo ENOTFOUND github.com'));
+    await controller.check();
+    expect(controller.getStatus().phase).toBe('error');
+    expect(controller.getStatus().error).toMatch(/อินเทอร์เน็ต/);
+  });
 });

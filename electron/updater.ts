@@ -1,6 +1,7 @@
 import type { AppUpdater, UpdateInfo } from 'electron-updater';
 import type { UpdateChannel, UpdateStatus } from '../src/lib/updateTypes';
 import { releasesDownloadUrl, type UpdateChannel as PlatformUpdateChannel } from './platform';
+import { classifyUpdateFailure, UPDATE_NETWORK_MESSAGE, UPDATE_NO_FEED_MESSAGE } from './updateErrors';
 
 export const UPDATE_SCHEDULE = { startupDelayMs: 15_000, intervalMs: 6 * 60 * 60 * 1000 };
 // Installed v1.0.3 builds still have gotzastory/OpenPud in app-update.yml.
@@ -75,7 +76,7 @@ export class UpdateController {
         this.downloaded = true;
         this.set({ phase: 'downloaded', version: info.version, releaseNotes: notes(info), percent: 100, error: undefined });
       });
-      client.on('error', () => this.fail());
+      client.on('error', (error: unknown) => this.fail(error));
     }
   }
 
@@ -89,12 +90,26 @@ export class UpdateController {
     this.publish(this.getStatus());
   }
 
-  private fail(): void {
+  private fail(error?: unknown): void {
     if (this.installing) {
       this.installing = false;
       this.restoreAfterFailure();
     }
-    this.set({ phase: this.downloaded ? 'downloaded' : 'error', error: 'อัปเดตไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง' });
+    if (this.downloaded) {
+      this.set({ phase: 'downloaded', error: UPDATE_NETWORK_MESSAGE });
+      return;
+    }
+    if (classifyUpdateFailure(error) === 'no-feed') {
+      this.set({
+        phase: 'unavailable',
+        version: undefined,
+        releaseNotes: undefined,
+        percent: undefined,
+        error: UPDATE_NO_FEED_MESSAGE,
+      });
+      return;
+    }
+    this.set({ phase: 'error', error: UPDATE_NETWORK_MESSAGE });
   }
 
   async openReleasesPage(): Promise<UpdateStatus> {
@@ -114,8 +129,8 @@ export class UpdateController {
     this.set({ phase: 'checking', error: undefined, percent: undefined, version: undefined, releaseNotes: undefined });
     try {
       const result = await this.client.checkForUpdates();
-      if (!result) this.fail();
-    } catch { this.fail(); }
+      if (!result) this.fail(new Error('No update result from feed'));
+    } catch (error) { this.fail(error); }
     finally { this.operation = false; }
     return this.getStatus();
   }
@@ -126,7 +141,7 @@ export class UpdateController {
     this.operation = true;
     this.set({ phase: 'downloading', percent: 0, error: undefined });
     try { await this.client.downloadUpdate(); }
-    catch { this.fail(); }
+    catch (error) { this.fail(error); }
     finally { this.operation = false; }
     return this.getStatus();
   }
@@ -146,7 +161,7 @@ export class UpdateController {
     try {
       this.prepareInstall();
       this.client.quitAndInstall(false, true);
-    } catch { this.fail(); }
+    } catch (error) { this.fail(error); }
     return this.getStatus();
   }
 }

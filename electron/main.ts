@@ -37,6 +37,7 @@ import {
 } from './winHost';
 import { hotkeyFailureMessage, isWindows, pasteFallbackMessage, resolveUpdateChannel } from './platform';
 import { notifyMissingMacPermissions, requestMacPermissions } from './permissions';
+import { windowCloseAction } from './windowLifecycle';
 
 type RecordingMode = 'dictate' | 'translate';
 type WidgetState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
@@ -91,6 +92,8 @@ const windowPreferences = {
 let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+/** False when Tray construction fails (e.g. missing libappindicator) or is unsupported. */
+let trayAvailable = false;
 let recordingState: WidgetState = 'idle';
 let hotkeyPending = false;
 let activeTranscriptions = 0;
@@ -250,11 +253,20 @@ function createWidget() {
   }
 }
 
+function focusOrCreateMainWindow(route = '/'): void {
+  if (quitting) return;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    createMainWindow(route);
+    return;
+  }
+  createMainWindow(route);
+}
+
 function createMainWindow(route: string) {
   const url = VITE_DEV_SERVER_URL
     ? `${VITE_DEV_SERVER_URL}#${route}`
     : `${appPageUrl().href}#${route}`;
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
     mainWindow.focus();
@@ -281,26 +293,46 @@ function createMainWindow(route: string) {
   });
   hardenWindow(mainWindow);
   void mainWindow.loadURL(url).catch(() => notify('เปิดแอปไม่สำเร็จ', 'กรุณาปิดหน้าต่างแล้วเปิดใหม่จาก tray'));
+  mainWindow.on('close', (event) => {
+    if (quitting) return;
+    if (windowCloseAction(trayAvailable) === 'minimize') {
+      event.preventDefault();
+      mainWindow?.minimize();
+    }
+  });
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
-function createTray() {
-  const icon = nativeImage.createFromPath(path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'));
-  if (icon.isEmpty()) throw new Error('OpenPood tray icon is missing');
-  tray = new Tray(icon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('OpenPood');
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'เปิดแอป', click: () => createMainWindow('/') },
-      { label: 'ตั้งค่า', click: () => createMainWindow('/settings') },
-      { label: 'อัปเดตเวอร์ชัน', click: () => createMainWindow('/settings') },
-      { type: 'separator' },
-      { label: 'ออกจากโปรแกรม', click: () => app.quit() },
-    ]),
-  );
-  tray.on('click', () => createMainWindow('/'));
+function createTray(): boolean {
+  try {
+    const icon = nativeImage.createFromPath(path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'));
+    if (icon.isEmpty()) throw new Error('OpenPood tray icon is missing');
+    tray = new Tray(icon.resize({ width: 16, height: 16 }));
+    tray.setToolTip('OpenPood');
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'เปิดแอป', click: () => createMainWindow('/') },
+        { label: 'ตั้งค่า', click: () => createMainWindow('/settings') },
+        { label: 'อัปเดตเวอร์ชัน', click: () => createMainWindow('/settings') },
+        { type: 'separator' },
+        { label: 'ออกจากโปรแกรม', click: () => app.quit() },
+      ]),
+    );
+    tray.on('click', () => createMainWindow('/'));
+    trayAvailable = true;
+    return true;
+  } catch (err) {
+    tray = null;
+    trayAvailable = false;
+    console.warn('[tray] unavailable:', err instanceof Error ? err.message : 'unknown');
+    notify(
+      'ไม่มี system tray',
+      'ปิดหน้าต่างจะย่อลงแถบงาน — เปิดแอปอีกครั้งเพื่อเรียกหน้าต่างกลับ หรือติดตั้ง libappindicator ตามเดสก์ท็อปของคุณ',
+    );
+    return false;
+  }
 }
 
 function applyLaunchAtStartup(enabled: boolean) {
@@ -363,8 +395,10 @@ function setEscapeCancel(enabled: boolean) {
 }
 
 app.on('second-instance', () => {
+  // Second AppImage/`openpood` launches should restore the existing dashboard.
+  // The losing process exits in storage.ts after failing requestSingleInstanceLock().
   if (quitting) return;
-  void app.whenReady().then(() => createMainWindow('/')).catch(() => app.quit());
+  void app.whenReady().then(() => focusOrCreateMainWindow('/')).catch(() => app.quit());
 });
 
 app.whenReady().then(async () => {
@@ -374,6 +408,8 @@ app.whenReady().then(async () => {
   warmHistory();
   createWidget();
   createTray();
+  // Without a tray, keep a visible dashboard so the user is never stuck headless.
+  if (!trayAvailable) createMainWindow('/');
   registerHotkeys(getSettings());
   applyLaunchAtStartup(getSettings().launchAtStartup);
   const macPermissions = await requestMacPermissions();

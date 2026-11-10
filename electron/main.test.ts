@@ -34,7 +34,7 @@ vi.mock('electron', async () => {
     constructor(options?: TestWindow['options']) { super(); this.options = options; mocks.windows.push(this as unknown as TestWindow); }
     setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setPosition() {} focus() {}
     loadURL = vi.fn(() => Promise.resolve());
-    isMinimized = vi.fn(() => false); restore = vi.fn(); show = vi.fn();
+    isMinimized = vi.fn(() => false); restore = vi.fn(); show = vi.fn(); minimize = vi.fn();
     reload = vi.fn();
     loadFile() { return Promise.resolve(); }
     isDestroyed() { return this.destroyed; }
