@@ -11,6 +11,9 @@ type TestWindow = EventEmitter & {
   restore: ReturnType<typeof vi.fn>;
   show: ReturnType<typeof vi.fn>;
   focus: ReturnType<typeof vi.fn>;
+  setShape: ReturnType<typeof vi.fn>;
+  getBounds: ReturnType<typeof vi.fn>;
+  getNativeWindowHandle: ReturnType<typeof vi.fn>;
   isVisible: ReturnType<typeof vi.fn>;
   isDestroyed: () => boolean;
   reload: ReturnType<typeof vi.fn>;
@@ -29,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   notifications: [] as { title: string; body: string; show: ReturnType<typeof vi.fn> }[],
   platform: { isWindows: true, isMac: false, isLinux: false },
   closeHintShown: false,
+  xWindowMapped: true as boolean | null,
 }));
 
 vi.mock('electron', async () => {
@@ -41,6 +45,13 @@ vi.mock('electron', async () => {
     constructor(options?: TestWindow['options']) { super(); this.options = options; mocks.windows.push(this as unknown as TestWindow); }
     setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setPosition() {}
     focus = vi.fn();
+    setShape = vi.fn();
+    getBounds = vi.fn(() => ({ x: 0, y: 0, width: 320, height: 90 }));
+    getNativeWindowHandle = vi.fn(() => {
+      const buf = Buffer.alloc(8);
+      buf.writeUInt32LE(0x1111, 0);
+      return buf;
+    });
     loadURL = vi.fn(() => Promise.resolve());
     isMinimized = vi.fn(() => false); restore = vi.fn(); show = vi.fn(); minimize = vi.fn();
     isVisible = vi.fn(() => !this.destroyed);
@@ -133,6 +144,13 @@ vi.mock('./windowLifecycle', async () => {
     linuxStatusNotifierPresent: () => false,
   };
 });
+vi.mock('./linuxNoTray', async () => {
+  const actual = await vi.importActual<typeof import('./linuxNoTray')>('./linuxNoTray');
+  return {
+    ...actual,
+    linuxXWindowMapped: () => mocks.xWindowMapped,
+  };
+});
 
 const payload = () => ({ buffer: new ArrayBuffer(10), mimeType: 'audio/webm', durationMs: 1000 });
 function state(value: string, win = mocks.windows[0]) { mocks.listeners.get('recording:state')?.({ sender: win.webContents }, value); }
@@ -144,6 +162,7 @@ beforeEach(async () => {
   mocks.windows.length = 0; mocks.handlers.clear(); mocks.listeners.clear(); mocks.appEvents.clear(); mocks.shortcuts.clear();
   mocks.notifications.length = 0;
   mocks.closeHintShown = false;
+  mocks.xWindowMapped = true;
   mocks.platform.isWindows = true;
   mocks.platform.isMac = false;
   mocks.platform.isLinux = false;
@@ -196,6 +215,58 @@ describe('main dictation integration', () => {
     expect(main.restore).toHaveBeenCalledOnce();
     expect(main.show).toHaveBeenCalled();
     expect(main.webContents.send).not.toHaveBeenCalledWith('nav:goto', '/settings');
+  });
+  it('applies widget setShape only for Linux no-tray and ignores non-widget senders', async () => {
+    mocks.platform.isWindows = false;
+    mocks.platform.isLinux = true;
+    vi.resetModules();
+    mocks.windows.length = 0; mocks.handlers.clear(); mocks.listeners.clear(); mocks.appEvents.clear(); mocks.shortcuts.clear();
+    await import('./main');
+    await Promise.resolve();
+    const widget = mocks.windows[0];
+    const main = mocks.windows[1];
+    widget.setShape.mockClear();
+    mocks.listeners.get('widget:hit-region')?.({ sender: widget.webContents }, { x: 12, y: 40, width: 180, height: 44 });
+    expect(widget.setShape).toHaveBeenCalledWith([{ x: 12, y: 40, width: 180, height: 44 }]);
+    widget.setShape.mockClear();
+    mocks.listeners.get('widget:hit-region')?.({ sender: main.webContents }, { x: 1, y: 1, width: 10, height: 10 });
+    expect(widget.setShape).not.toHaveBeenCalled();
+  });
+  it('does not call setShape on win32 even if a hit-region event arrives', async () => {
+    const widget = mocks.windows[0];
+    // Cold start with tray: only the widget window exists until second-instance.
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    widget.setShape.mockClear();
+    mocks.listeners.get('widget:hit-region')?.({ sender: widget.webContents }, { x: 12, y: 40, width: 180, height: 44 });
+    expect(widget.setShape).not.toHaveBeenCalled();
+  });
+  it('recreates exactly once when Linux no-tray main window is an X-unmapped zombie', async () => {
+    mocks.platform.isWindows = false;
+    mocks.platform.isLinux = true;
+    mocks.xWindowMapped = false;
+    vi.resetModules();
+    mocks.windows.length = 0; mocks.handlers.clear(); mocks.listeners.clear(); mocks.appEvents.clear(); mocks.shortcuts.clear();
+    await import('./main');
+    await Promise.resolve();
+    const zombie = mocks.windows[1];
+    const before = mocks.windows.length;
+    mocks.xWindowMapped = false;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows.length).toBe(before + 1);
+    const recreated = mocks.windows[before];
+    expect(zombie.isDestroyed()).toBe(true);
+    expect(recreated.isDestroyed()).toBe(false);
+    expect(recreated.show).toHaveBeenCalled();
+    expect(recreated.focus).toHaveBeenCalled();
+    // Second hammered relaunch while ensuring uses the same guard / live window.
+    mocks.xWindowMapped = true;
+    const mid = mocks.windows.length;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows.length).toBe(mid);
+    expect(recreated.focus).toHaveBeenCalled();
   });
   it('quit IPC sets quitting and calls app.quit', async () => {
     mocks.appEvents.get('second-instance')?.();

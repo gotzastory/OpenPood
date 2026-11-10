@@ -50,6 +50,9 @@ const api = {
     ipcRenderer.on('widget:presence', listener);
     return () => ipcRenderer.removeListener('widget:presence', listener);
   },
+  reportWidgetHitRegion: (rect: { x: number; y: number; width: number; height: number }): void => {
+    ipcRenderer.send('widget:hit-region', rect);
+  },
   runTranscription: (
     buffer: ArrayBuffer,
     mimeType: string,

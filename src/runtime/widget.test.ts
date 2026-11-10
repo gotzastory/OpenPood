@@ -38,6 +38,7 @@ beforeEach(() => {
       onToggleRecording: (callback: typeof toggle) => { toggle = callback; return vi.fn(); },
       onCancelRecording: (callback: typeof cancel) => { cancel = callback; return vi.fn(); },
       onWidgetPresence: () => vi.fn(),
+      reportWidgetHitRegion: vi.fn(),
     },
     addEventListener: (_event: string, callback: typeof unload) => { unload = callback; },
   });

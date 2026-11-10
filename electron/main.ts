@@ -39,6 +39,13 @@ import { hotkeyFailureMessage, isLinux, isWindows, pasteFallbackMessage, resolve
 import { notifyMissingMacPermissions, requestMacPermissions } from './permissions';
 import { isDashboardCloseHintShown, markDashboardCloseHintShown } from './lifecyclePrefs';
 import {
+  clampWidgetHitRect,
+  linuxNoTrayFocusAction,
+  linuxXWindowMapped,
+  shouldApplyWidgetHitShape,
+  type WidgetHitRect,
+} from './linuxNoTray';
+import {
   linuxStatusNotifierPresent,
   needsPersistentNoTrayShell,
   resolveTrayConfirmed,
@@ -109,6 +116,9 @@ let trayAvailable = false;
 /** Linux-without-tray: keep a visible clickable widget and offer non-tray Quit. */
 let persistentNoTrayMode = false;
 const wiredWidgetMenus = new WeakSet<WebContents>();
+/** Prevents double dashboard creation when relaunch is hammered during ensure. */
+let ensuringLinuxNoTrayMain = false;
+let lastWidgetHitRect: WidgetHitRect | null = null;
 let recordingState: WidgetState = 'idle';
 let hotkeyPending = false;
 let activeTranscriptions = 0;
@@ -145,25 +155,85 @@ function requestAppQuit(): void {
   app.quit();
 }
 
+function applyWidgetHitShape(rect: WidgetHitRect | null): void {
+  if (!shouldApplyWidgetHitShape(persistentNoTrayMode, process.platform)) return;
+  if (!widget || widget.isDestroyed()) return;
+  if (!rect) return;
+  const clamped = clampWidgetHitRect(rect, widget.getBounds());
+  if (!clamped) return;
+  lastWidgetHitRect = clamped;
+  try {
+    // Linux/Windows experimental API: limit hit-testing to the pill so the
+    // transparent 320x90 margin stays click-through (forward:true does not
+    // work on Linux). Lower risk than constantly resizing the widget window.
+    widget.setShape([clamped]);
+  } catch (err) {
+    console.warn('[widget] setShape unavailable:', err instanceof Error ? err.message : 'unknown');
+  }
+}
+
 function enablePersistentWidgetShell(): void {
   if (!widget || widget.isDestroyed()) return;
   widget.setIgnoreMouseEvents(false);
   widget.show();
   sendToWindow(widget, 'widget:presence', { persistent: true });
+  if (lastWidgetHitRect) applyWidgetHitShape(lastWidgetHitRect);
   const contents = widget.webContents;
   if (wiredWidgetMenus.has(contents)) return;
   wiredWidgetMenus.add(contents);
   contents.on('did-finish-load', () => {
     sendToWindow(widget, 'widget:presence', { persistent: true });
+    if (lastWidgetHitRect) applyWidgetHitShape(lastWidgetHitRect);
   });
   contents.on('context-menu', () => {
     if (quitting || !widget || widget.isDestroyed()) return;
     Menu.buildFromTemplate([
-      { label: 'เปิดแอป', click: () => createMainWindow('/') },
+      { label: 'เปิดแอป', click: () => { void focusOrCreateMainWindow(); } },
       { type: 'separator' },
       { label: 'ออกจากโปรแกรม', click: () => requestAppQuit() },
     ]).popup({ window: widget });
   });
+}
+
+/**
+ * Linux no-tray only: after external XDestroyWindow, Electron may keep a
+ * non-destroyed BrowserWindow whose X window is gone (no close/closed). Detect
+ * via xwininfo on the native XID and recreate; never use sync isVisible().
+ */
+function ensureLinuxNoTrayMainWindow(route = '/'): void {
+  if (quitting || ensuringLinuxNoTrayMain) return;
+  ensuringLinuxNoTrayMain = true;
+  try {
+    if (mainWindow?.isDestroyed()) mainWindow = null;
+    const action = linuxNoTrayFocusAction({
+      hasWindow: Boolean(mainWindow),
+      isDestroyed: Boolean(mainWindow?.isDestroyed()),
+      xWindowMapped: mainWindow ? linuxXWindowMapped(mainWindow) : false,
+    });
+    if (action === 'recreate') {
+      const stale = mainWindow;
+      mainWindow = null;
+      if (stale && !stale.isDestroyed()) {
+        try { stale.destroy(); } catch { /* ignore */ }
+      }
+      createMainWindow(route);
+      // createMainWindow mutates the module binding; CFA still sees the prior `null`.
+      const created = mainWindow as BrowserWindow | null;
+      if (created && !created.isDestroyed()) {
+        created.show();
+        created.focus();
+      }
+      return;
+    }
+    // Live mapped window: focus only — do not navigate away from the current route.
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  } finally {
+    ensuringLinuxNoTrayMain = false;
+  }
 }
 
 function recoverWidget(win: BrowserWindow): void {
@@ -299,6 +369,11 @@ function createWidget() {
 
 function focusOrCreateMainWindow(): void {
   if (quitting) return;
+  // Linux-without-tray: may need XID liveness check after external destroy.
+  if (persistentNoTrayMode) {
+    ensureLinuxNoTrayMainWindow('/');
+    return;
+  }
   if (mainWindow?.isDestroyed()) mainWindow = null;
   const action = secondInstanceAction(mainWindow ? 'alive' : 'absent');
   if (action === 'focus-existing' && mainWindow && !mainWindow.isDestroyed()) {
@@ -582,7 +657,9 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('app:open-main-window', (event, route: string) => {
     requireRenderer(event, 'main');
-    createMainWindow(ALLOWED_ROUTES.has(route) ? route : '/');
+    const next = ALLOWED_ROUTES.has(route) ? route : '/';
+    if (persistentNoTrayMode) ensureLinuxNoTrayMainWindow(next);
+    else createMainWindow(next);
   },
   );
 
@@ -590,6 +667,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('app:quit', (event) => {
     requireRenderer(event, 'main');
     requestAppQuit();
+  });
+
+  // Widget → main hit region for setShape (Linux no-tray only). Non-widget senders ignored.
+  ipcMain.on('widget:hit-region', (event, rect: unknown) => {
+    if (!shouldApplyWidgetHitShape(persistentNoTrayMode, process.platform)) return;
+    if (!widget || event.sender !== widget.webContents) return;
+    if (!rect || typeof rect !== 'object') return;
+    const candidate = rect as WidgetHitRect;
+    applyWidgetHitShape(candidate);
   });
 
   ipcMain.on('recording:state', (e, state: unknown) => {

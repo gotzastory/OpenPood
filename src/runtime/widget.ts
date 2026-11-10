@@ -56,8 +56,41 @@ export function mountWidget(root: HTMLElement) {
 
   const pillWrap = document.getElementById("pill-wrap")!;
   const micLabel = document.getElementById("mic-label")!;
+  const pill = document.getElementById("pill")!;
   const canvas = document.getElementById("wave") as HTMLCanvasElement;
   const ctx = canvas.getContext("2d")!;
+  let presencePersistent = false;
+  let hitRegionRaf = 0;
+
+  function reportHitRegion() {
+    if (!presencePersistent) return;
+    const pillRect = pill.getBoundingClientRect();
+    let left = pillRect.left;
+    let top = pillRect.top;
+    let right = pillRect.right;
+    let bottom = pillRect.bottom;
+    // Include the mic label when it is visible so it stays clickable for context menus.
+    if (micLabel.textContent && micLabel.offsetParent !== null) {
+      const labelRect = micLabel.getBoundingClientRect();
+      left = Math.min(left, labelRect.left);
+      top = Math.min(top, labelRect.top);
+      right = Math.max(right, labelRect.right);
+      bottom = Math.max(bottom, labelRect.bottom);
+    }
+    // setShape uses DIP/CSS pixels (same space as getBoundingClientRect), not device pixels.
+    window.typeless.reportWidgetHitRegion({
+      x: Math.round(left),
+      y: Math.round(top),
+      width: Math.round(right - left),
+      height: Math.round(bottom - top),
+    });
+  }
+
+  function scheduleHitRegion() {
+    if (!presencePersistent) return;
+    cancelAnimationFrame(hitRegionRaf);
+    hitRegionRaf = requestAnimationFrame(reportHitRegion);
+  }
 
   const recorder = new MicRecorder(() => {
     ++session;
@@ -81,6 +114,7 @@ export function mountWidget(root: HTMLElement) {
     pillWrap.dataset.state = next;
     // Main grabs Escape during setup, recording, and processing.
     window.typeless.setRecordingState(next);
+    scheduleHitRegion();
   }
 
   function drawLiveBars() {
@@ -220,12 +254,22 @@ export function mountWidget(root: HTMLElement) {
   const unsubscribeToggle = window.typeless.onToggleRecording(toggleFromHotkey);
   const unsubscribeCancel = window.typeless.onCancelRecording(cancelRecording);
   const unsubscribePresence = window.typeless.onWidgetPresence(({ persistent }) => {
+    presencePersistent = persistent;
     pillWrap.dataset.presence = persistent ? 'persistent' : 'normal';
+    scheduleHitRegion();
   });
+  const hitObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(() => scheduleHitRegion())
+    : null;
+  hitObserver?.observe(pill);
+  hitObserver?.observe(micLabel);
+  hitObserver?.observe(pillWrap);
   window.addEventListener('beforeunload', () => {
     ++session;
     stopWave();
     clearTimeout(skippedTimer);
+    cancelAnimationFrame(hitRegionRaf);
+    hitObserver?.disconnect();
     recorder.cancel();
     unsubscribeToggle();
     unsubscribeCancel();

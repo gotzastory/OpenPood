@@ -92,6 +92,7 @@ interface TypelessApi {
   openMainWindow(route?: string): Promise<void>;
   quitApp(): Promise<void>;
   onWidgetPresence(callback: (state: { persistent: boolean }) => void): () => void;
+  reportWidgetHitRegion(rect: { x: number; y: number; width: number; height: number }): void;
   runTranscription(
     buffer: ArrayBuffer,
     mimeType: string,
