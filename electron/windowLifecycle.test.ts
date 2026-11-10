@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   linuxStatusNotifierPresent,
+  needsPersistentNoTrayShell,
   resolveTrayConfirmed,
   secondInstanceAction,
   shouldExitLosingInstance,
   shouldOpenMainWindowOnColdStart,
+  shouldShowDashboardCloseHint,
   windowCloseAction,
 } from './windowLifecycle';
 
@@ -54,6 +56,20 @@ describe('cold-start dashboard visibility', () => {
 
   it('skips the cold-start dashboard when a tray is confirmed', () => {
     expect(shouldOpenMainWindowOnColdStart(true)).toBe(false);
+  });
+});
+
+describe('Linux no-tray shell', () => {
+  it('enables the persistent widget shell only on Linux without a confirmed tray', () => {
+    expect(needsPersistentNoTrayShell(false, 'linux')).toBe(true);
+    expect(needsPersistentNoTrayShell(true, 'linux')).toBe(false);
+    expect(needsPersistentNoTrayShell(false, 'win32')).toBe(false);
+    expect(needsPersistentNoTrayShell(false, 'darwin')).toBe(false);
+  });
+
+  it('shows the first-close hint only once', () => {
+    expect(shouldShowDashboardCloseHint(false)).toBe(true);
+    expect(shouldShowDashboardCloseHint(true)).toBe(false);
   });
 });
 

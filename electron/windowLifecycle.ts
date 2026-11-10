@@ -44,6 +44,22 @@ export function shouldOpenMainWindowOnColdStart(trayConfirmed: boolean): boolean
 }
 
 /**
+ * Linux without a confirmed tray has no tray reopen path: keep a visible,
+ * clickable widget shell and allow dashboard Quit instead of tray-only Quit.
+ */
+export function needsPersistentNoTrayShell(
+  trayConfirmed: boolean,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  return isLinux(platform) && !trayConfirmed;
+}
+
+/** First dashboard close in no-tray Linux mode should warn once. */
+export function shouldShowDashboardCloseHint(alreadyShown: boolean): boolean {
+  return !alreadyShown;
+}
+
+/**
  * Second launches must recreate a missing/destroyed dashboard, otherwise focus it.
  */
 export function secondInstanceAction(windowState: 'absent' | 'alive'): SecondInstanceAction {

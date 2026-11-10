@@ -90,6 +90,8 @@ interface TypelessApi {
   getSettings(): Promise<AppSettings>;
   setSettings(partial: Partial<AppSettings>): Promise<AppSettings>;
   openMainWindow(route?: string): Promise<void>;
+  quitApp(): Promise<void>;
+  onWidgetPresence(callback: (state: { persistent: boolean }) => void): () => void;
   runTranscription(
     buffer: ArrayBuffer,
     mimeType: string,

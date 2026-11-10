@@ -25,6 +25,10 @@ const mocks = vi.hoisted(() => ({
     launchAtStartup: false, onboardingCompleted: true, stripFillersEnabled: false, aiPolishEnabled: false,
     apiBaseUrl: 'https://provider.test', saveHistory: true },
   foreground: vi.fn(), transcribe: vi.fn(), paste: vi.fn(), addHistory: vi.fn(), setSettings: vi.fn(),
+  quit: vi.fn(),
+  notifications: [] as { title: string; body: string; show: ReturnType<typeof vi.fn> }[],
+  platform: { isWindows: true, isMac: false, isLinux: false },
+  closeHintShown: false,
 }));
 
 vi.mock('electron', async () => {
@@ -46,12 +50,23 @@ vi.mock('electron', async () => {
     destroy() { this.destroyed = true; this.emit('closed'); }
   }
   class Tray extends EventEmitter { setToolTip() {} setContextMenu() {} destroy() {} }
-  class Notification { static isSupported() { return false; } }
+  class Notification {
+    static isSupported() { return true; }
+    title: string;
+    body: string;
+    show = vi.fn();
+    constructor(options: { title: string; body: string }) {
+      this.title = options.title;
+      this.body = options.body;
+      mocks.notifications.push(this);
+    }
+  }
   return {
     BrowserWindow, Tray, Notification,
     app: {
       setAppUserModelId: vi.fn(), whenReady: () => Promise.resolve(), isPackaged: false,
-      getVersion: () => 'test-version', quit: vi.fn(), getAppMetrics: () => [],
+      getVersion: () => 'test-version', quit: (...args: unknown[]) => mocks.quit(...args), getAppMetrics: () => [],
+      getPath: () => '/tmp/openpood-test',
       on: (event: string, callback: (...args: any[]) => any) => mocks.appEvents.set(event, callback),
     },
     ipcMain: {
@@ -63,7 +78,7 @@ vi.mock('electron', async () => {
       register: (key: string, callback: () => void) => { if (mocks.shortcuts.has(key)) return false; mocks.shortcuts.set(key, callback); return true; },
       unregister: (key: string) => mocks.shortcuts.delete(key), isRegistered: (key: string) => mocks.shortcuts.has(key),
     },
-    dialog: { showErrorBox: vi.fn() }, Menu: { buildFromTemplate: vi.fn() },
+    dialog: { showErrorBox: vi.fn() }, Menu: { buildFromTemplate: vi.fn(() => ({ popup: vi.fn() })) },
     nativeImage: { createFromPath: () => ({ isEmpty: () => false, resize: () => ({}) }) },
     screen: { getCursorScreenPoint: () => ({ x: 0, y: 0 }), getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }), on: vi.fn() },
     session: { defaultSession: {
@@ -92,9 +107,9 @@ vi.mock('./appProfiles', () => ({ listAppProfiles: () => [], setAppProfiles: vi.
 vi.mock('./dictionary', () => ({ dictionaryPrompt: () => '', applyCorrections: (text: string) => text,
   listDictionaryWords: () => [], setDictionaryWords: vi.fn(), listCorrections: () => [], setCorrections: vi.fn() }));
 vi.mock('./platform', () => ({
-  isWindows: () => true,
-  isMac: () => false,
-  isLinux: () => false,
+  isWindows: () => mocks.platform.isWindows,
+  isMac: () => mocks.platform.isMac,
+  isLinux: () => mocks.platform.isLinux,
   isWayland: () => false,
   resolveUpdateChannel: () => 'disabled',
   hotkeyFailureMessage: () => ({ title: 'ปุ่มลัดใช้งานไม่ได้', body: 'ปุ่มลัดอาจถูกแอปอื่นใช้อยู่ กรุณาเลือกปุ่มลัดใหม่ใน Settings' }),
@@ -105,6 +120,19 @@ vi.mock('./permissions', () => ({
   requestMacPermissions: vi.fn(async () => ({ microphone: 'unsupported', accessibility: 'unsupported' })),
   notifyMissingMacPermissions: vi.fn(),
 }));
+vi.mock('./lifecyclePrefs', () => ({
+  isDashboardCloseHintShown: () => mocks.closeHintShown,
+  markDashboardCloseHintShown: () => { mocks.closeHintShown = true; },
+  resetDashboardCloseHintForTests: () => { mocks.closeHintShown = false; },
+}));
+vi.mock('./windowLifecycle', async () => {
+  const actual = await vi.importActual<typeof import('./windowLifecycle')>('./windowLifecycle');
+  return {
+    ...actual,
+    // Keep dbus out of unit tests; Linux no-tray shell is driven by platform mocks.
+    linuxStatusNotifierPresent: () => false,
+  };
+});
 
 const payload = () => ({ buffer: new ArrayBuffer(10), mimeType: 'audio/webm', durationMs: 1000 });
 function state(value: string, win = mocks.windows[0]) { mocks.listeners.get('recording:state')?.({ sender: win.webContents }, value); }
@@ -114,6 +142,11 @@ function run() { return mocks.handlers.get('transcription:run')!({ sender: mocks
 beforeEach(async () => {
   vi.resetModules(); vi.clearAllMocks();
   mocks.windows.length = 0; mocks.handlers.clear(); mocks.listeners.clear(); mocks.appEvents.clear(); mocks.shortcuts.clear();
+  mocks.notifications.length = 0;
+  mocks.closeHintShown = false;
+  mocks.platform.isWindows = true;
+  mocks.platform.isMac = false;
+  mocks.platform.isLinux = false;
   mocks.settings.saveHistory = true;
   mocks.foreground.mockResolvedValue({ hwnd: '123', processName: 'test' });
   mocks.transcribe.mockResolvedValue('transcript'); mocks.paste.mockResolvedValue({ pasted: true }); mocks.addHistory.mockResolvedValue({});
@@ -163,6 +196,43 @@ describe('main dictation integration', () => {
     expect(main.restore).toHaveBeenCalledOnce();
     expect(main.show).toHaveBeenCalled();
     expect(main.webContents.send).not.toHaveBeenCalledWith('nav:goto', '/settings');
+  });
+  it('quit IPC sets quitting and calls app.quit', async () => {
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    const main = mocks.windows[1];
+    await mocks.handlers.get('app:quit')!({ sender: main.webContents });
+    expect(mocks.quit).toHaveBeenCalled();
+    const before = mocks.windows.length;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows.length).toBe(before);
+  });
+  it('keeps the widget shown and notifies once after dashboard close on Linux without tray', async () => {
+    mocks.platform.isWindows = false;
+    mocks.platform.isLinux = true;
+    vi.resetModules();
+    mocks.windows.length = 0; mocks.handlers.clear(); mocks.listeners.clear(); mocks.appEvents.clear(); mocks.shortcuts.clear();
+    mocks.notifications.length = 0;
+    mocks.closeHintShown = false;
+    await import('./main');
+    await Promise.resolve();
+    // Cold start opens the dashboard when the tray is unconfirmed.
+    const widget = mocks.windows[0];
+    const main = mocks.windows[1];
+    expect(main).toBeTruthy();
+    widget.show.mockClear();
+    main.destroy();
+    expect(widget.isDestroyed()).toBe(false);
+    expect(widget.show).toHaveBeenCalled();
+    expect(mocks.notifications.some((n) => n.title.includes('ยังทำงานอยู่'))).toBe(true);
+    expect(mocks.closeHintShown).toBe(true);
+    const notified = mocks.notifications.length;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    const again = mocks.windows[mocks.windows.length - 1];
+    again.destroy();
+    expect(mocks.notifications.length).toBe(notified);
   });
   it('recreates exactly one dashboard when second-instance runs after the window was destroyed', async () => {
     mocks.appEvents.get('second-instance')?.();

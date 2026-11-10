@@ -44,6 +44,12 @@ const api = {
   setSettings: (partial: Partial<AppSettings>): Promise<RendererSettings> =>
     ipcRenderer.invoke('settings:set', partial),
   openMainWindow: (route = '/'): Promise<void> => ipcRenderer.invoke('app:open-main-window', route),
+  quitApp: (): Promise<void> => ipcRenderer.invoke('app:quit'),
+  onWidgetPresence: (callback: (state: { persistent: boolean }) => void) => {
+    const listener = (_event: unknown, state: { persistent: boolean }) => callback(state);
+    ipcRenderer.on('widget:presence', listener);
+    return () => ipcRenderer.removeListener('widget:presence', listener);
+  },
   runTranscription: (
     buffer: ArrayBuffer,
     mimeType: string,

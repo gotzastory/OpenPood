@@ -37,11 +37,14 @@ import {
 } from './winHost';
 import { hotkeyFailureMessage, isLinux, isWindows, pasteFallbackMessage, resolveUpdateChannel } from './platform';
 import { notifyMissingMacPermissions, requestMacPermissions } from './permissions';
+import { isDashboardCloseHintShown, markDashboardCloseHintShown } from './lifecyclePrefs';
 import {
   linuxStatusNotifierPresent,
+  needsPersistentNoTrayShell,
   resolveTrayConfirmed,
   secondInstanceAction,
   shouldOpenMainWindowOnColdStart,
+  shouldShowDashboardCloseHint,
   windowCloseAction,
 } from './windowLifecycle';
 
@@ -103,6 +106,9 @@ let tray: Tray | null = null;
  * On Linux, `new Tray()` not throwing is insufficient — StatusNotifierWatcher must be present.
  */
 let trayAvailable = false;
+/** Linux-without-tray: keep a visible clickable widget and offer non-tray Quit. */
+let persistentNoTrayMode = false;
+const wiredWidgetMenus = new WeakSet<WebContents>();
 let recordingState: WidgetState = 'idle';
 let hotkeyPending = false;
 let activeTranscriptions = 0;
@@ -134,6 +140,32 @@ function notify(title: string, body: string): void {
   } catch { console.warn('Native notification unavailable.'); }
 }
 
+function requestAppQuit(): void {
+  quitting = true;
+  app.quit();
+}
+
+function enablePersistentWidgetShell(): void {
+  if (!widget || widget.isDestroyed()) return;
+  widget.setIgnoreMouseEvents(false);
+  widget.show();
+  sendToWindow(widget, 'widget:presence', { persistent: true });
+  const contents = widget.webContents;
+  if (wiredWidgetMenus.has(contents)) return;
+  wiredWidgetMenus.add(contents);
+  contents.on('did-finish-load', () => {
+    sendToWindow(widget, 'widget:presence', { persistent: true });
+  });
+  contents.on('context-menu', () => {
+    if (quitting || !widget || widget.isDestroyed()) return;
+    Menu.buildFromTemplate([
+      { label: 'เปิดแอป', click: () => createMainWindow('/') },
+      { type: 'separator' },
+      { label: 'ออกจากโปรแกรม', click: () => requestAppQuit() },
+    ]).popup({ window: widget });
+  });
+}
+
 function recoverWidget(win: BrowserWindow): void {
   if (quitting || widget !== win) return;
   widget = null;
@@ -155,7 +187,10 @@ function recoverWidget(win: BrowserWindow): void {
   recoveryTimer = setTimeout(() => {
     recoveryTimer = undefined;
     if (quitting || widget) return;
-    try { createWidget(); }
+    try {
+      createWidget();
+      if (persistentNoTrayMode) enablePersistentWidgetShell();
+    }
     catch { notify('เปิดไมโครโฟนไม่สำเร็จ', 'กรุณาปิดแล้วเปิด OpenPood ใหม่'); }
   }, RUNTIME.widgetRecoveryDelayMs);
 }
@@ -326,6 +361,16 @@ function createMainWindow(route: string) {
   // Must clear the ref on destroy paths (WM force-close / allowed close).
   mainWindow.on('closed', () => {
     mainWindow = null;
+    if (!persistentNoTrayMode) return;
+    // Keep the widget visible as the only on-screen affordance without a tray.
+    enablePersistentWidgetShell();
+    if (shouldShowDashboardCloseHint(isDashboardCloseHintShown())) {
+      markDashboardCloseHintShown();
+      notify(
+        'OpenPood ยังทำงานอยู่',
+        'เปิด OpenPood อีกครั้งเพื่อเรียกแดชบอร์ด หรือคลิกขวาที่วิดเจ็ตด้านล่างหน้าจอ',
+      );
+    }
   });
 }
 
@@ -454,6 +499,8 @@ app.whenReady().then(async () => {
   warmHistory();
   createWidget();
   createTray();
+  persistentNoTrayMode = needsPersistentNoTrayShell(trayAvailable, process.platform);
+  if (persistentNoTrayMode) enablePersistentWidgetShell();
   // Without a confirmed tray (always the Linux default unless StatusNotifierWatcher
   // is present), open the dashboard so cold start is never headless.
   if (shouldOpenMainWindowOnColdStart(trayAvailable)) createMainWindow('/');
@@ -538,6 +585,12 @@ app.whenReady().then(async () => {
     createMainWindow(ALLOWED_ROUTES.has(route) ? route : '/');
   },
   );
+
+  // Available on all OSes so Linux-without-tray (and tests) can quit without a tray menu.
+  ipcMain.handle('app:quit', (event) => {
+    requireRenderer(event, 'main');
+    requestAppQuit();
+  });
 
   ipcMain.on('recording:state', (e, state: unknown) => {
     // Only the widget drives the global Escape grab.

@@ -37,7 +37,7 @@ export function mountWidget(root: HTMLElement) {
     <div
       id="pill-wrap"
       data-state="idle"
-      class="group flex h-full flex-col items-center justify-end gap-2 pb-3.5 opacity-0 translate-y-1.5 pointer-events-none transition-[opacity,transform] duration-150 ease-out data-[state=starting]:opacity-100 data-[state=starting]:translate-y-0 data-[state=recording]:opacity-100 data-[state=recording]:translate-y-0 data-[state=processing]:opacity-100 data-[state=processing]:translate-y-0 data-[state=skipped]:opacity-100 data-[state=skipped]:translate-y-0"
+      class="group flex h-full flex-col items-center justify-end gap-2 pb-3.5 opacity-0 translate-y-1.5 pointer-events-none transition-[opacity,transform] duration-150 ease-out data-[presence=persistent]:opacity-100 data-[presence=persistent]:translate-y-0 data-[presence=persistent]:pointer-events-auto data-[state=starting]:opacity-100 data-[state=starting]:translate-y-0 data-[state=recording]:opacity-100 data-[state=recording]:translate-y-0 data-[state=processing]:opacity-100 data-[state=processing]:translate-y-0 data-[state=skipped]:opacity-100 data-[state=skipped]:translate-y-0"
     >
       <div id="mic-label" class="max-w-[300px] truncate whitespace-nowrap rounded-full border border-white/10 bg-brand-ink/90 px-2.5 py-1 text-[11px] text-brand-paper empty:hidden group-data-[state=skipped]:hidden"></div>
       <div id="pill" class="flex h-11 items-center justify-center rounded-full border border-white/10 bg-brand-ink/95 px-[18px] text-brand-paper shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
@@ -219,6 +219,9 @@ export function mountWidget(root: HTMLElement) {
 
   const unsubscribeToggle = window.typeless.onToggleRecording(toggleFromHotkey);
   const unsubscribeCancel = window.typeless.onCancelRecording(cancelRecording);
+  const unsubscribePresence = window.typeless.onWidgetPresence(({ persistent }) => {
+    pillWrap.dataset.presence = persistent ? 'persistent' : 'normal';
+  });
   window.addEventListener('beforeunload', () => {
     ++session;
     stopWave();
@@ -226,6 +229,7 @@ export function mountWidget(root: HTMLElement) {
     recorder.cancel();
     unsubscribeToggle();
     unsubscribeCancel();
+    unsubscribePresence();
   }, { once: true });
   setState('idle');
 }
