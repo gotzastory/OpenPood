@@ -65,6 +65,12 @@ vi.mock('electron', async () => {
       setPermissionRequestHandler: (handler: typeof mocks.permissionRequest) => { mocks.permissionRequest = handler; },
       setPermissionCheckHandler: (handler: typeof mocks.permissionCheck) => { mocks.permissionCheck = handler; },
     } },
+    shell: { openExternal: vi.fn(async () => undefined) },
+    systemPreferences: {
+      askForMediaAccess: vi.fn(async () => true),
+      getMediaAccessStatus: vi.fn(() => 'granted'),
+      isTrustedAccessibilityClient: vi.fn(() => true),
+    },
   };
 });
 vi.mock('electron-updater', () => ({ default: { autoUpdater: { on: vi.fn(), setFeedURL: vi.fn() } } }));
@@ -80,6 +86,20 @@ vi.mock('./history', () => ({ addHistoryEntry: mocks.addHistory, listHistory: ()
 vi.mock('./appProfiles', () => ({ listAppProfiles: () => [], setAppProfiles: vi.fn() }));
 vi.mock('./dictionary', () => ({ dictionaryPrompt: () => '', applyCorrections: (text: string) => text,
   listDictionaryWords: () => [], setDictionaryWords: vi.fn(), listCorrections: () => [], setCorrections: vi.fn() }));
+vi.mock('./platform', () => ({
+  isWindows: () => true,
+  isMac: () => false,
+  isLinux: () => false,
+  isWayland: () => false,
+  resolveUpdateChannel: () => 'disabled',
+  hotkeyFailureMessage: () => ({ title: 'ปุ่มลัดใช้งานไม่ได้', body: 'ปุ่มลัดอาจถูกแอปอื่นใช้อยู่ กรุณาเลือกปุ่มลัดใหม่ใน Settings' }),
+  pasteFallbackMessage: () => ({ title: 'วางข้อความไม่สำเร็จ', body: 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง' }),
+  releasesDownloadUrl: () => 'https://github.com/gotzastory/OpenPood/releases/latest',
+}));
+vi.mock('./permissions', () => ({
+  requestMacPermissions: vi.fn(async () => ({ microphone: 'unsupported', accessibility: 'unsupported' })),
+  notifyMissingMacPermissions: vi.fn(),
+}));
 
 const payload = () => ({ buffer: new ArrayBuffer(10), mimeType: 'audio/webm', durationMs: 1000 });
 function state(value: string, win = mocks.windows[0]) { mocks.listeners.get('recording:state')?.({ sender: win.webContents }, value); }

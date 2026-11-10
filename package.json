@@ -2,7 +2,7 @@
   "name": "openpood",
   "private": true,
   "version": "1.0.3",
-  "description": "Voice dictation for Windows: hold a hotkey, speak, and the text is pasted at your cursor.",
+  "description": "Voice dictation for Windows, macOS, and Linux: hold a hotkey, speak, and the text is pasted at your cursor.",
   "author": "Gotzastory",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -42,6 +42,7 @@
   "build": {
     "appId": "com.openpood.app",
     "productName": "OpenPood",
+    "desktopName": "com.openpood.app",
     "publish": {
       "provider": "github",
       "owner": "gotzastory",
@@ -62,6 +63,42 @@
     "nsis": {
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "guid": "3d3b2486-1b4f-5e19-895e-ab7f29245ba3"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "OpenPood needs microphone access to dictate speech into text."
+      },
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility",
+      "executableName": "openpood",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "synopsis": "Voice dictation for the desktop",
+      "description": "Press a global hotkey, speak, and OpenPood pastes the transcript at your cursor.",
+      "desktop": {
+        "Name": "OpenPood",
+        "Comment": "Voice dictation — press a hotkey, speak, paste at your cursor",
+        "Categories": "Utility;AudioVideo;",
+        "StartupWMClass": "openpood"
+      }
     }
   },
   "overrides": {

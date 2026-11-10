@@ -1,8 +1,9 @@
 name: Release
 
-# Builds the Windows NSIS installer and attaches it to a GitHub Release
-# whenever a version tag (v1.2.3) is pushed. Can also be run by hand from
-# the Actions tab to produce a build artifact without publishing.
+# Builds platform installers and attaches them to a GitHub Release whenever a
+# version tag (v1.2.3) is pushed. Can also be run by hand from the Actions tab
+# to produce build artifacts without publishing (workflow_dispatch never creates
+# a tag or release on its own).
 on:
   push:
     tags:
@@ -14,7 +15,20 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: windows
+          - os: ubuntu-latest
+            platform: linux
+            artifact: linux
+          - os: macos-latest
+            platform: mac
+            artifact: mac
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
 
@@ -38,26 +52,86 @@ jobs:
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # Ad-hoc signing for macOS arm64 (identity '-' is also set in package.json).
+          CSC_IDENTITY: ${{ matrix.platform == 'mac' && '-' || '' }}
+
+      - name: Verify ad-hoc macOS signature
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="$(find release -type d -name '*.app' | head -n 1)"
+          if [ -z "$app_path" ]; then
+            echo "No .app bundle found under release/" >&2
+            exit 1
+          fi
+          echo "Verifying codesign on: $app_path"
+          codesign -dv --verbose=2 "$app_path" 2>&1 | tee /tmp/codesign-adhoc.txt
+          if ! grep -q 'Signature=adhoc' /tmp/codesign-adhoc.txt; then
+            echo "Expected Signature=adhoc for unsigned mac builds (required for arm64)." >&2
+            exit 1
+          fi
 
       - name: Verify update artifacts
-        run: node scripts/verify-update-artifacts.cjs
+        run: node scripts/verify-update-artifacts.cjs release ${{ matrix.platform }}
 
-      - name: Upload build artifact
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'win'
         uses: actions/upload-artifact@v5
         with:
-          name: OpenPood-Setup-${{ github.ref_name }}
+          name: OpenPood-windows-${{ github.ref_name }}
           path: |
             release/*.exe
             release/*.exe.blockmap
             release/latest.yml
           if-no-files-found: error
 
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v5
+        with:
+          name: OpenPood-linux-${{ github.ref_name }}
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/latest-linux.yml
+          if-no-files-found: error
+
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v5
+        with:
+          name: OpenPood-mac-${{ github.ref_name }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.zip.blockmap
+            release/latest-mac.yml
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-assets -type f ! -name '.*' | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release assets found" >&2
+            exit 1
+          fi
           notes_file="release-notes/${GITHUB_REF_NAME}.md"
           notes_args=(--generate-notes)
           if [ -f "$notes_file" ]; then
@@ -68,5 +142,5 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "OpenPood ${GITHUB_REF_NAME#v}" \
             "${notes_args[@]}" \
-            release/*.exe release/*.exe.blockmap release/latest.yml
+            "${files[@]}"
           gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest

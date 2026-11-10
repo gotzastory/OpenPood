@@ -3,7 +3,7 @@ import type { UpdatePhase, UpdateStatus } from '../lib/updateTypes';
 import { BTN } from '../lib/uiClasses';
 
 const LABELS: Record<UpdatePhase, string> = {
-  disabled: 'อัปเดตได้จากแอปที่ติดตั้งบน Windows เท่านั้น',
+  disabled: 'อัปเดตอัตโนมัติใช้ได้บน Windows และ Linux AppImage เท่านั้น',
   idle: 'เช็กเวอร์ชันใหม่อัตโนมัติเมื่อเปิดแอป และทุก 6 ชั่วโมง',
   checking: 'กำลังเช็กเวอร์ชันใหม่…',
   current: 'คุณใช้เวอร์ชันล่าสุดแล้ว',
@@ -13,6 +13,8 @@ const LABELS: Record<UpdatePhase, string> = {
   installing: 'กำลังเปิดตัวติดตั้ง แอปจะปิดและเปิดใหม่…',
   error: 'เช็กหรือดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง',
 };
+
+const BROWSER_LABEL = 'macOS (unsigned) และแพ็กเกจ .deb ไม่รองรับอัปเดตในแอป — เปิดหน้า GitHub Releases เพื่อดาวน์โหลด';
 
 export function UpdatePanel() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
@@ -40,6 +42,7 @@ export function UpdatePanel() {
     finally { setPending(false); }
   };
   const working = pending || status?.phase === 'checking' || status?.phase === 'downloading' || status?.phase === 'installing';
+  const browser = status?.channel === 'browser';
 
   return (
     <section className="card card-border mt-5 bg-base-100" aria-labelledby="updates-title">
@@ -48,24 +51,38 @@ export function UpdatePanel() {
         <p className="text-sm text-base-content/65">
           {status ? `เวอร์ชันปัจจุบัน ${status.currentVersion}${status.version ? ` → ${status.version}` : ''}` : 'กำลังโหลด…'}
         </p>
-        <p role="status" aria-live="polite" className="text-sm">{status && LABELS[status.phase]}</p>
-        {status?.phase === 'downloading' && (
+        <p role="status" aria-live="polite" className="text-sm">
+          {status && (browser ? BROWSER_LABEL : LABELS[status.phase])}
+        </p>
+        {status?.phase === 'downloading' && !browser && (
           <div>
             <progress className="progress w-full" max={100} value={status.percent ?? 0} aria-label="ความคืบหน้าดาวน์โหลด" />
             <p className="mt-1 text-xs text-base-content/65">{Math.round(status.percent ?? 0)}%</p>
           </div>
         )}
-        {status?.releaseNotes && <details className="text-sm"><summary className="cursor-pointer">มีอะไรใหม่</summary><pre className="mt-3 whitespace-pre-wrap break-words font-sans text-base-content/65">{status.releaseNotes}</pre></details>}
+        {status?.releaseNotes && !browser && <details className="text-sm"><summary className="cursor-pointer">มีอะไรใหม่</summary><pre className="mt-3 whitespace-pre-wrap break-words font-sans text-base-content/65">{status.releaseNotes}</pre></details>}
         {(bridgeError || status?.error) && <p role="alert" className="text-sm text-error">{bridgeError || status?.error}</p>}
-        {status?.busy && status.phase === 'downloaded' && <p className="text-sm text-base-content/65">รอให้การอัดเสียง ถอดเสียง และวางข้อความเสร็จก่อนติดตั้ง</p>}
+        {status?.busy && status.phase === 'downloaded' && !browser && <p className="text-sm text-base-content/65">รอให้การอัดเสียง ถอดเสียง และวางข้อความเสร็จก่อนติดตั้ง</p>}
         {status && status.phase !== 'disabled' && (
           <div className="flex flex-wrap gap-2">
-            {status.phase !== 'downloaded' && status.phase !== 'installing' && <button type="button" className={BTN} disabled={working} onClick={() => void run(() => window.typeless.checkForUpdates())}>เช็กอัปเดต</button>}
-            {(status.phase === 'available' || (status.phase === 'error' && status.version)) && <button type="button" className={BTN} disabled={working} onClick={() => void run(() => window.typeless.downloadUpdate())}>{status.phase === 'error' ? 'ดาวน์โหลดอีกครั้ง' : 'ดาวน์โหลดอัปเดต'}</button>}
-            {status.phase === 'downloaded' && <button type="button" className={BTN} disabled={working || status.busy} onClick={() => void run(() => window.typeless.installUpdate())}>Restart &amp; Update</button>}
+            {browser ? (
+              <button type="button" className={BTN} disabled={working} onClick={() => void run(() => window.typeless.downloadUpdate())}>
+                เปิดหน้าดาวน์โหลดบน GitHub
+              </button>
+            ) : (
+              <>
+                {status.phase !== 'downloaded' && status.phase !== 'installing' && <button type="button" className={BTN} disabled={working} onClick={() => void run(() => window.typeless.checkForUpdates())}>เช็กอัปเดต</button>}
+                {(status.phase === 'available' || (status.phase === 'error' && status.version)) && <button type="button" className={BTN} disabled={working} onClick={() => void run(() => window.typeless.downloadUpdate())}>{status.phase === 'error' ? 'ดาวน์โหลดอีกครั้ง' : 'ดาวน์โหลดอัปเดต'}</button>}
+                {status.phase === 'downloaded' && <button type="button" className={BTN} disabled={working || status.busy} onClick={() => void run(() => window.typeless.installUpdate())}>Restart &amp; Update</button>}
+              </>
+            )}
           </div>
         )}
-        <p className="text-xs text-base-content/65">คุณเลือกเวลาดาวน์โหลดและติดตั้งได้ ปิดหน้านี้เพื่อไว้ภายหลัง</p>
+        <p className="text-xs text-base-content/65">
+          {browser
+            ? 'แพ็กเกจ .deb และ macOS ที่ยังไม่ได้ code-sign จ่ายเงินจะไม่ติดตั้งอัปเดตอัตโนมัติ'
+            : 'คุณเลือกเวลาดาวน์โหลดและติดตั้งได้ ปิดหน้านี้เพื่อไว้ภายหลัง'}
+        </p>
       </div>
     </section>
   );

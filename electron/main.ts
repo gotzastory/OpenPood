@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, Tray, type WebContents } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, shell, Tray, type WebContents } from 'electron';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import electronUpdater from 'electron-updater';
@@ -35,6 +35,8 @@ import {
   warmWinHost,
   type ForegroundWindow,
 } from './winHost';
+import { hotkeyFailureMessage, isWindows, pasteFallbackMessage, resolveUpdateChannel } from './platform';
+import { notifyMissingMacPermissions, requestMacPermissions } from './permissions';
 
 type RecordingMode = 'dictate' | 'translate';
 type WidgetState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
@@ -45,7 +47,7 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const BRAND_ASSET_DIRECTORY = path.join(__dirname, VITE_DEV_SERVER_URL ? '../public/brand' : '../dist/brand');
 const APP_ID = 'com.openpood.app';
 
-if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
+if (isWindows()) app.setAppUserModelId(APP_ID);
 
 const WIDGET_WIDTH = 320;
 const WIDGET_HEIGHT = 90;
@@ -154,7 +156,9 @@ function knownForeground(window: ForegroundWindow): boolean {
 
 // Wait for the PowerShell host to compile and answer. A cold or crashed host
 // is restarted by the next lookup; do not give up on a short timer.
+// On macOS/Linux there is no HWND host — paste uses the current focused app.
 async function captureForeground(): Promise<ForegroundWindow | null> {
+  if (!isWindows()) return { hwnd: '1', processName: '' };
   for (let attempt = 0; attempt < FOREGROUND_LOOKUP_ATTEMPTS; attempt++) {
     try {
       const window = await getForegroundWindow();
@@ -338,7 +342,10 @@ function registerHotkeys(settings: AppSettings): string[] {
       console.warn(`Failed to register ${mode} hotkey.`);
     }
   }
-  if (failed.length) notify('ปุ่มลัดใช้งานไม่ได้', 'ปุ่มลัดอาจถูกแอปอื่นใช้อยู่ กรุณาเลือกปุ่มลัดใหม่ใน Settings');
+  if (failed.length) {
+    const message = hotkeyFailureMessage(failed);
+    notify(message.title, message.body);
+  }
   return failed;
 }
 
@@ -360,24 +367,27 @@ app.on('second-instance', () => {
   void app.whenReady().then(() => createMainWindow('/')).catch(() => app.quit());
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   installSessionPermissions();
   stopPerformanceSampling = startPerformanceSampling();
-  warmWinHost();
+  if (isWindows()) warmWinHost();
   warmHistory();
   createWidget();
   createTray();
   registerHotkeys(getSettings());
   applyLaunchAtStartup(getSettings().launchAtStartup);
+  const macPermissions = await requestMacPermissions();
+  notifyMissingMacPermissions(notify, macPermissions);
   let notifiedVersion: string | undefined;
+  const updateChannel = resolveUpdateChannel({ packaged: app.isPackaged });
   updater = new UpdateController(
     electronUpdater.autoUpdater,
     app.getVersion(),
-    app.isPackaged && process.platform === 'win32',
+    updateChannel,
     () => hotkeyPending || recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing' || activeTranscriptions > 0,
     (status) => {
       sendToWindow(mainWindow, 'updates:status', status);
-      if (status.phase === 'available' && status.version !== notifiedVersion && Notification.isSupported()) {
+      if (status.channel === 'in-app' && status.phase === 'available' && status.version !== notifiedVersion && Notification.isSupported()) {
         notifiedVersion = status.version;
         const notification = new Notification({ title: 'มี OpenPood เวอร์ชันใหม่', body: `เวอร์ชัน ${status.version} พร้อมดาวน์โหลด เปิดการตั้งค่าเพื่ออัปเดต` });
         notification.on('click', () => createMainWindow('/settings'));
@@ -390,8 +400,9 @@ app.whenReady().then(() => {
       registerHotkeys(getSettings());
       setEscapeCancel(recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing');
     },
+    (url) => shell.openExternal(url),
   );
-  if (app.isPackaged && process.platform === 'win32') {
+  if (updater.supportsAutoCheck()) {
     updateStartupTimer = setTimeout(() => { void updater.check(); }, UPDATE_SCHEDULE.startupDelayMs);
     updateInterval = setInterval(() => { void updater.check(); }, UPDATE_SCHEDULE.intervalMs);
   }
@@ -566,8 +577,9 @@ app.whenReady().then(() => {
           notify('ยืนยันหน้าต่างปลายทางไม่ได้', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
         } else if (delivery.reason === 'clipboard-preserved') {
           notify('เก็บ clipboard เดิมไว้แล้ว', 'clipboard มีไฟล์ รูปแบบพิเศษ หรือถูกเปลี่ยน กรุณาคัดลอกข้อความจาก History');
-        } else if (delivery.reason === 'paste-failed') {
-          notify('วางข้อความไม่สำเร็จ', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
+        } else if (delivery.reason === 'paste-failed' || delivery.reason === 'injection-unavailable') {
+          const message = pasteFallbackMessage(delivery.reason);
+          notify(message.title, message.body);
         }
         return { ok: true as const, text, pasted: delivery.pasted };
       } catch (err) {
@@ -661,7 +673,7 @@ app.on('will-quit', () => {
   clearTimeout(updateStartupTimer);
   clearInterval(updateInterval);
   globalShortcut.unregisterAll();
-  disposeWinHost();
+  if (isWindows()) disposeWinHost();
 });
 
 app.on('before-quit', (event) => {
