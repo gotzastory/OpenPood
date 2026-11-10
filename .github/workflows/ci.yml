@@ -1,8 +1,9 @@
 name: CI
 
-# The app is Windows-only, so typecheck, tests, and the Vite/Electron build
-# run on a Windows runner. Branch protection cannot be enabled from this
-# workflow; require this check on `main` in the repository settings.
+# Typecheck, unit tests, Vite/Electron build, and a Linux electron-builder
+# smoke pack (schema + packaging) so invalid builder config fails in PRs.
+# Branch protection cannot be enabled from this workflow; require this check
+# on `main` in the repository settings.
 on:
   pull_request:
   push:
@@ -15,7 +16,9 @@ permissions:
 jobs:
   verify:
     name: Typecheck, test, and build
-    runs-on: windows-latest
+    # ubuntu-latest so `electron-builder --linux dir` runs natively; Windows/
+    # macOS installer packaging remains covered by the Release workflow matrix.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -35,6 +38,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Pack Linux dir (electron-builder smoke)
+        run: npx electron-builder --linux dir --publish never
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
