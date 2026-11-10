@@ -9,9 +9,18 @@ import {
 } from './windowLifecycle';
 
 describe('window close policy', () => {
-  it('destroys the dashboard only when a tray is confirmed', () => {
-    expect(windowCloseAction(true)).toBe('destroy-keep-running');
-    expect(windowCloseAction(false)).toBe('minimize');
+  it('allows close when a tray is confirmed (app stays via tray)', () => {
+    expect(windowCloseAction(true, 'win32')).toBe('destroy-keep-running');
+    expect(windowCloseAction(true, 'linux')).toBe('destroy-keep-running');
+  });
+
+  it('minimizes on Windows/mac without a tray so the taskbar can restore', () => {
+    expect(windowCloseAction(false, 'win32')).toBe('minimize');
+    expect(windowCloseAction(false, 'darwin')).toBe('minimize');
+  });
+
+  it('allows real close on Linux without a confirmed tray (no minimize zombie)', () => {
+    expect(windowCloseAction(false, 'linux')).toBe('destroy-keep-running');
   });
 
   it('never treats Linux Tray construction alone as confirmation', () => {

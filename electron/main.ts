@@ -262,20 +262,20 @@ function createWidget() {
   }
 }
 
-function focusOrCreateMainWindow(route = '/'): void {
+function focusOrCreateMainWindow(): void {
   if (quitting) return;
-  // WM windowclose can destroy the BrowserWindow (closed → null) or leave a
-  // non-destroyed unmapped zombie after our minimize preventDefault. Always
-  // clear destroyed refs, then either focus a truly visible window or recreate.
   if (mainWindow?.isDestroyed()) mainWindow = null;
   const action = secondInstanceAction(mainWindow ? 'alive' : 'absent');
   if (action === 'focus-existing' && mainWindow && !mainWindow.isDestroyed()) {
-    createMainWindow(route);
-    if (!mainWindow.isDestroyed() && mainWindow.isVisible()) return;
-    try { if (!mainWindow.isDestroyed()) mainWindow.destroy(); } catch { /* ignore */ }
-    mainWindow = null;
+    // Alive window (including tray-hidden isVisible===false): never destroy/recreate
+    // or navigate — only restore/show/focus so route and renderer state survive.
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    return;
   }
-  createMainWindow(route);
+  // Recreate only when the ref is null or was destroyed (`closed` must clear it).
+  createMainWindow('/');
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     mainWindow.focus();
@@ -317,12 +317,13 @@ function createMainWindow(route: string) {
   void mainWindow.loadURL(url).catch(() => notify('เปิดแอปไม่สำเร็จ', 'กรุณาปิดหน้าต่างแล้วเปิดใหม่จาก tray'));
   mainWindow.on('close', (event) => {
     if (quitting) return;
-    if (windowCloseAction(trayAvailable) === 'minimize') {
+    // Linux without confirmed tray: allow close so WM windowclose destroys for real.
+    if (windowCloseAction(trayAvailable, process.platform) === 'minimize') {
       event.preventDefault();
       mainWindow?.minimize();
     }
   });
-  // Must clear the ref on destroy paths that skip our close handler (WM force-close).
+  // Must clear the ref on destroy paths (WM force-close / allowed close).
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -442,7 +443,7 @@ app.on('second-instance', () => {
   // Never quit the primary instance here — a focus/create throw would leave no app at all.
   if (quitting) return;
   void app.whenReady()
-    .then(() => focusOrCreateMainWindow('/'))
+    .then(() => focusOrCreateMainWindow())
     .catch((err) => console.error('[second-instance] failed to show dashboard:', err));
 });
 

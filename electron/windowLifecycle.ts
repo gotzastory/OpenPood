@@ -7,11 +7,19 @@ export type WindowCloseAction = 'destroy-keep-running' | 'minimize';
 export type SecondInstanceAction = 'create' | 'focus-existing';
 
 /**
- * With a confirmed tray, closing the dashboard keeps the app (widget/hotkeys) alive.
- * Without a confirmed tray there is no reopen affordance — minimize to the taskbar.
+ * With a confirmed tray, allow the dashboard to close (app stays via tray/widget).
+ * Windows/mac without a tray: minimize so the taskbar can restore it.
+ * Linux without a confirmed tray: do NOT minimize — preventDefault+minimize can
+ * unmap the window with no taskbar/tray reopen path, so WM close must destroy for
+ * real (`closed` clears the ref) and second-instance recreates the dashboard.
  */
-export function windowCloseAction(trayConfirmed: boolean): WindowCloseAction {
-  return trayConfirmed ? 'destroy-keep-running' : 'minimize';
+export function windowCloseAction(
+  trayConfirmed: boolean,
+  platform: NodeJS.Platform = process.platform,
+): WindowCloseAction {
+  if (trayConfirmed) return 'destroy-keep-running';
+  if (isLinux(platform)) return 'destroy-keep-running';
+  return 'minimize';
 }
 
 /**

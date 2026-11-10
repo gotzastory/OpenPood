@@ -10,6 +10,7 @@ type TestWindow = EventEmitter & {
   isMinimized: ReturnType<typeof vi.fn>;
   restore: ReturnType<typeof vi.fn>;
   show: ReturnType<typeof vi.fn>;
+  focus: ReturnType<typeof vi.fn>;
   isVisible: ReturnType<typeof vi.fn>;
   isDestroyed: () => boolean;
   reload: ReturnType<typeof vi.fn>;
@@ -34,7 +35,8 @@ vi.mock('electron', async () => {
     private destroyed = false;
     options?: TestWindow['options'];
     constructor(options?: TestWindow['options']) { super(); this.options = options; mocks.windows.push(this as unknown as TestWindow); }
-    setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setPosition() {} focus() {}
+    setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setPosition() {}
+    focus = vi.fn();
     loadURL = vi.fn(() => Promise.resolve());
     isMinimized = vi.fn(() => false); restore = vi.fn(); show = vi.fn(); minimize = vi.fn();
     isVisible = vi.fn(() => !this.destroyed);
@@ -162,7 +164,7 @@ describe('main dictation integration', () => {
     expect(main.show).toHaveBeenCalled();
     expect(main.webContents.send).not.toHaveBeenCalledWith('nav:goto', '/settings');
   });
-  it('recreates and shows the dashboard when second-instance runs after the window was destroyed', async () => {
+  it('recreates exactly one dashboard when second-instance runs after the window was destroyed', async () => {
     mocks.appEvents.get('second-instance')?.();
     await Promise.resolve();
     const firstMain = mocks.windows[1];
@@ -176,7 +178,46 @@ describe('main dictation integration', () => {
     const recreated = mocks.windows[before];
     expect(recreated.isDestroyed()).toBe(false);
     expect(recreated.show).toHaveBeenCalled();
+    expect(recreated.focus).toHaveBeenCalled();
     expect(recreated.loadURL).toHaveBeenCalledWith(expect.stringContaining('#/'));
+  });
+  it('shows and focuses an alive hidden window on second-instance without recreating or navigating', async () => {
+    // win32/darwin tray-hide: isVisible===false by design; must not destroy+recreate.
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    const main = mocks.windows[1];
+    main.webContents.getURL.mockReturnValue('file:///app/index.html#/settings');
+    main.isVisible.mockReturnValue(false);
+    main.loadURL.mockClear();
+    main.show.mockClear();
+    main.focus.mockClear();
+    main.webContents.send.mockClear();
+    const before = mocks.windows.length;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows.length).toBe(before);
+    expect(main.show).toHaveBeenCalled();
+    expect(main.focus).toHaveBeenCalled();
+    expect(main.loadURL).not.toHaveBeenCalled();
+    expect(main.webContents.send).not.toHaveBeenCalledWith('nav:goto', '/');
+  });
+  it('restores and focuses an alive minimized window on second-instance without recreating', async () => {
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    const main = mocks.windows[1];
+    main.isMinimized.mockReturnValue(true);
+    main.loadURL.mockClear();
+    main.restore.mockClear();
+    main.show.mockClear();
+    main.focus.mockClear();
+    const before = mocks.windows.length;
+    mocks.appEvents.get('second-instance')?.();
+    await Promise.resolve();
+    expect(mocks.windows.length).toBe(before);
+    expect(main.restore).toHaveBeenCalled();
+    expect(main.show).toHaveBeenCalled();
+    expect(main.focus).toHaveBeenCalled();
+    expect(main.loadURL).not.toHaveBeenCalled();
   });
   it('keeps dashboard navigation in place without reloading its renderer', async () => {
     mocks.appEvents.get('second-instance')?.();
