@@ -8,6 +8,114 @@ function fail(message) {
   throw new Error(message);
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Reject path traversal, separators, spaces, and shell metacharacters. */
+function isSafeArtifactBasename(name) {
+  if (typeof name !== 'string' || name.length === 0) return false;
+  if (name !== path.basename(name)) return false;
+  if (name.includes('..')) return false;
+  // Allow letters, digits, dot, underscore, hyphen only (matches electron-builder artifact names).
+  return /^[\w.-]+$/.test(name);
+}
+
+function productName(pkg) {
+  return pkg.build?.productName || pkg.productName || pkg.name;
+}
+
+/** Expected Windows NSIS name from build.nsis.artifactName. */
+function expectedWinExeName(pkg) {
+  const template = pkg.build?.nsis?.artifactName || '${productName}-Setup-${version}.${ext}';
+  return template
+    .replaceAll('${productName}', productName(pkg))
+    .replaceAll('${version}', pkg.version)
+    .replaceAll('${ext}', 'exe');
+}
+
+/**
+ * Expected Linux names from build.linux.artifactName.
+ * electron-builder uses x86_64 for AppImage and amd64 for deb on x64 hosts.
+ */
+function expectedLinuxArtifactNames(pkg) {
+  const template = pkg.build?.linux?.artifactName || '${productName}-${version}-${arch}.${ext}';
+  const render = (arch, ext) => template
+    .replaceAll('${productName}', productName(pkg))
+    .replaceAll('${version}', pkg.version)
+    .replaceAll('${arch}', arch)
+    .replaceAll('${ext}', ext);
+  return {
+    appImage: render('x86_64', 'AppImage'),
+    deb: render('amd64', 'deb'),
+  };
+}
+
+/** Expected mac dmg/zip names from build.mac.artifactName for x64 and arm64. */
+function expectedMacArtifactNames(pkg) {
+  const template = pkg.build?.mac?.artifactName || '${productName}-${version}-${arch}.${ext}';
+  const render = (arch, ext) => template
+    .replaceAll('${productName}', productName(pkg))
+    .replaceAll('${version}', pkg.version)
+    .replaceAll('${arch}', arch)
+    .replaceAll('${ext}', ext);
+  return {
+    x64Zip: render('x64', 'zip'),
+    arm64Zip: render('arm64', 'zip'),
+    x64Dmg: render('x64', 'dmg'),
+    arm64Dmg: render('arm64', 'dmg'),
+  };
+}
+
+function winFilenamePattern(pkg) {
+  return new RegExp(`^${escapeRegExp(expectedWinExeName(pkg))}$`);
+}
+
+function linuxFilenamePattern(pkg) {
+  const { appImage, deb } = expectedLinuxArtifactNames(pkg);
+  return new RegExp(`^(?:${escapeRegExp(appImage)}|${escapeRegExp(deb)})$`);
+}
+
+function macFilenamePattern(pkg) {
+  const names = expectedMacArtifactNames(pkg);
+  const allowed = [names.x64Zip, names.arm64Zip, names.x64Dmg, names.arm64Dmg].map(escapeRegExp);
+  return new RegExp(`^(?:${allowed.join('|')})$`);
+}
+
+function assertSafeAndAllowed(name, pattern) {
+  if (!isSafeArtifactBasename(name)) fail(`Unsafe installer filename: ${name}`);
+  if (!pattern.test(name)) fail(`Unsafe installer filename: ${name}`);
+}
+
+/**
+ * Every `files[].url` in the update metadata must exist under root, match the
+ * platform allowlist, and satisfy size/sha512 (and non-empty blockmap when present).
+ */
+function verifyFiles(root, info, pattern) {
+  if (!Array.isArray(info.files) || info.files.length < 1) fail('Expected installer files in metadata');
+  for (const item of info.files) {
+    if (typeof item.url !== 'string') fail(`Unsafe installer filename: ${item.url}`);
+    assertSafeAndAllowed(item.url, pattern);
+    const file = path.join(root, item.url);
+    if (!fs.existsSync(file)) fail(`Missing artifact referenced by metadata: ${item.url}`);
+    const content = fs.readFileSync(file);
+    if (content.length !== item.size) fail(`Installer size mismatch: ${item.url}`);
+    if (crypto.createHash('sha512').update(content).digest('base64') !== item.sha512) {
+      fail(`Installer checksum mismatch: ${item.url}`);
+    }
+    const blockmap = `${file}.blockmap`;
+    if (fs.existsSync(blockmap) && fs.statSync(blockmap).size === 0) fail(`Empty installer blockmap: ${item.url}`);
+  }
+}
+
+/** latest-mac.yml must list zip artifacts for both x64 and arm64 so both arches can auto-update. */
+function requireMacZipArches(info, pkg) {
+  const { x64Zip, arm64Zip } = expectedMacArtifactNames(pkg);
+  const urls = Array.isArray(info.files) ? info.files.map((item) => item.url) : [];
+  if (!urls.includes(x64Zip)) fail(`latest-mac.yml missing x64 zip: expected ${x64Zip}`);
+  if (!urls.includes(arm64Zip)) fail(`latest-mac.yml missing arm64 zip: expected ${arm64Zip}`);
+}
+
 function verifyFeedOwnerRepo(config, pkg) {
   const expected = pkg.build.publish;
   if (
@@ -18,19 +126,6 @@ function verifyFeedOwnerRepo(config, pkg) {
     || config.repo !== 'OpenPood'
   ) {
     fail(`Packaged update feed mismatch: expected gotzastory/OpenPood, got ${config.owner}/${config.repo}`);
-  }
-}
-
-function verifyFiles(root, info, extensionPattern) {
-  if (!Array.isArray(info.files) || info.files.length < 1) fail('Expected installer files in metadata');
-  for (const item of info.files) {
-    if (typeof item.url !== 'string' || !extensionPattern.test(item.url)) fail(`Unsafe installer filename: ${item.url}`);
-    const file = path.join(root, item.url);
-    const content = fs.readFileSync(file);
-    if (content.length !== item.size) fail(`Installer size mismatch: ${item.url}`);
-    if (crypto.createHash('sha512').update(content).digest('base64') !== item.sha512) fail(`Installer checksum mismatch: ${item.url}`);
-    const blockmap = `${file}.blockmap`;
-    if (fs.existsSync(blockmap) && fs.statSync(blockmap).size === 0) fail(`Empty installer blockmap: ${item.url}`);
   }
 }
 
@@ -73,20 +168,25 @@ function verifyMacAppUpdateFeeds(root, pkg) {
 function verifyLinux(root, pkg) {
   const info = yaml.load(fs.readFileSync(path.join(root, 'latest-linux.yml'), 'utf8'));
   if (info.version !== pkg.version) fail('Metadata version mismatch');
-  verifyFiles(root, info, /^[\w.-]+\.(AppImage|deb)$/);
-  const hasAppImage = fs.readdirSync(root).some((name) => name.endsWith('.AppImage'));
-  const hasDeb = fs.readdirSync(root).some((name) => name.endsWith('.deb'));
-  if (!hasAppImage || !hasDeb) fail('Expected both AppImage and deb artifacts');
+  verifyFiles(root, info, linuxFilenamePattern(pkg));
+  const expected = expectedLinuxArtifactNames(pkg);
+  const names = new Set(fs.readdirSync(root));
+  if (!names.has(expected.appImage) || !names.has(expected.deb)) {
+    fail(`Expected both ${expected.appImage} and ${expected.deb}`);
+  }
   verifyPackagedUpdater(root, pkg, 'linux-unpacked');
 }
 
 function verifyMac(root, pkg) {
   const info = yaml.load(fs.readFileSync(path.join(root, 'latest-mac.yml'), 'utf8'));
   if (info.version !== pkg.version) fail('Metadata version mismatch');
-  verifyFiles(root, info, /^[\w.-]+\.zip$/);
-  const hasDmg = fs.readdirSync(root).some((name) => name.endsWith('.dmg'));
-  const hasZip = fs.readdirSync(root).some((name) => name.endsWith('.zip'));
-  if (!hasDmg || !hasZip) fail('Expected both dmg and zip artifacts');
+  requireMacZipArches(info, pkg);
+  verifyFiles(root, info, macFilenamePattern(pkg));
+  const expected = expectedMacArtifactNames(pkg);
+  const names = new Set(fs.readdirSync(root));
+  for (const required of [expected.x64Dmg, expected.arm64Dmg, expected.x64Zip, expected.arm64Zip]) {
+    if (!names.has(required)) fail(`Missing mac artifact on disk: ${required}`);
+  }
   verifyMacAppUpdateFeeds(root, pkg);
 }
 
@@ -94,7 +194,7 @@ function verifyWin(root, pkg) {
   const info = yaml.load(fs.readFileSync(path.join(root, 'latest.yml'), 'utf8'));
   if (info.version !== pkg.version) fail('Metadata version mismatch');
   if (!Array.isArray(info.files) || info.files.length !== 1) fail('Expected one installer in metadata');
-  verifyFiles(root, info, /^[\w.-]+\.exe$/);
+  verifyFiles(root, info, winFilenamePattern(pkg));
   verifyPackagedUpdater(root, pkg, 'win-unpacked');
 }
 
@@ -113,7 +213,7 @@ function main(argv = process.argv, env = process.env) {
     console.log(`Verified Linux v${pkg.version}: latest-linux.yml, AppImage, deb, linux-unpacked app-update.yml`);
   } else if (platform === 'mac') {
     verifyMac(root, pkg);
-    console.log(`Verified macOS v${pkg.version}: latest-mac.yml, dmg, zip, per-app app-update.yml`);
+    console.log(`Verified macOS v${pkg.version}: latest-mac.yml, dmg, zip (x64+arm64), per-app app-update.yml`);
   } else {
     fail(`Unknown platform: ${platform}`);
   }
@@ -132,5 +232,16 @@ module.exports = {
   verifyFeedOwnerRepo,
   listMacApps,
   verifyMacAppUpdateFeeds,
+  isSafeArtifactBasename,
+  expectedWinExeName,
+  expectedLinuxArtifactNames,
+  expectedMacArtifactNames,
+  winFilenamePattern,
+  linuxFilenamePattern,
+  macFilenamePattern,
+  assertSafeAndAllowed,
+  requireMacZipArches,
+  verifyFiles,
+  verifyMac,
   main,
 };
