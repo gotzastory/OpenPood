@@ -2,7 +2,7 @@
 
 ![OpenPood logo](/logo.png)
 
-โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ สำหรับ **Windows** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง เป็นโปรเจกต์ open-source ของผม 
+โปรแกรมแปลงเสียงพูดเป็นข้อความอัตโนมัติ สำหรับ **Windows / macOS / Linux** — กดปุ่มลัด พูด ปล่อยปุ่ม แล้วข้อความจะถูกวางที่ตำแหน่ง cursor ในแอปที่กำลังใช้งานอยู่ทันที ไม่ต้องสลับหน้าต่าง ไม่ต้องคัดลอกเอง เป็นโปรเจกต์ open-source ของผม 
 
 สร้างด้วย Electron + React + TypeScript + Vite + Tailwind CSS v4 + DaisyUI
 
@@ -29,6 +29,8 @@
 
 ดาวน์โหลดตัวติดตั้งจาก [GitHub Releases](https://github.com/gotzastory/OpenPood/releases/latest) — **ไม่ต้องมี Node.js**
 
+### Windows
+
 1. เปิดหน้า Releases แล้วดาวน์โหลด `OpenPood-Setup-x.x.x.exe`
 2. ดับเบิลคลิกเพื่อติดตั้ง (NSIS, ไม่ต้องสิทธิ์ admin)
 3. เปิดแอปครั้งแรก → onboarding wizard จะพาตั้งค่า API key / ไมค์ / ปุ่มลัด
@@ -40,10 +42,46 @@
 
 แบบ portable (ไม่ติดตั้ง): หลัง build เอง ใช้ `release/win-unpacked/OpenPood.exe`
 
+### macOS
+
+1. ดาวน์โหลด `OpenPood-x.x.x-arm64.dmg` (Apple Silicon) หรือ `OpenPood-x.x.x-x64.dmg` (Intel) จาก Releases
+2. เปิด DMG แล้วลาก **OpenPood** ไปที่ Applications
+3. เปิดครั้งแรก: ไปที่ **System Settings → Privacy & Security** แล้วกด **Open Anyway** สำหรับ OpenPood (บน macOS 15+ วิธี right-click → Open ใช้ไม่ได้แล้ว)
+4. ทางเลือก: ลบ quarantine จาก Terminal แล้วค่อยเปิดแอป  
+   `xattr -dr com.apple.quarantine /Applications/OpenPood.app`
+5. อนุญาต **Microphone** และ **Accessibility** เมื่อระบบถาม (Accessibility จำเป็นสำหรับวางข้อความด้วย Cmd+V)
+
+Build นี้ใช้ ad-hoc signing (ไม่มีใบรับรองแบบจ่ายเงิน / ไม่ notarize)
+
+### Linux
+
+**AppImage (แนะนำถ้าต้องการอัปเดตในแอป)**
+
+1. ดาวน์โหลด `OpenPood-x.x.x-*.AppImage`
+2. `chmod +x OpenPood-*.AppImage` แล้วรันไฟล์
+3. AppImage ต้องการ `libfuse.so.2` และคำสั่ง `fusermount` (ไม่ใช่แค่ `fusermount3`). ตรวจก่อนว่ามี fuse3 หรือยังด้วย `dpkg -l | grep '^ii  fuse3'`:
+   - **มี fuse3 แล้ว:** ติดตั้งเฉพาะ libfuse2 — Ubuntu 24.04+ / Debian 13: `sudo apt install libfuse2t64` · Debian 12 / Ubuntu 22.04 หรือเก่ากว่า: `sudo apt install libfuse2` — **อย่า** `apt install fuse` (บน Ubuntu 22.04 แพ็กเกจ `fuse` มี Breaks/Replaces กับ fuse3 จะถอด fuse3 ทิ้ง)
+   - **ยังไม่มี fuse3** และเป็น Ubuntu 24.04+ / Debian 13: `sudo apt install libfuse2t64 fuse3` (บนรุ่นเหล่านี้ fuse3 ให้ `/usr/bin/fusermount`)
+   - **ยังไม่มี fuse3** และเป็น Ubuntu เก่ากว่า 22.04 / Debian 12 ที่ไม่มี fuse3: ติดตั้ง `libfuse2` แล้วถ้า `command -v fusermount` ยังว่างค่อย `sudo apt install fuse`
+   - หลังติดตั้งตรวจด้วย `command -v fusermount` ต้องพิมพ์ path — ถ้ามีแค่ `fusermount3` หรือยังว่าง AppImage จะล้มด้วย `fuse: failed to exec fusermount` ให้ใช้ fallback: `./OpenPood-*.AppImage --appimage-extract-and-run`
+4. บน X11 ควรวางข้อความอัตโนมัติด้วย `xdotool` (ติดตั้งถ้ายังไม่มี)
+5. ถ้าไม่มี `x11-utils` (`xwininfo`) แล้วปิดแดชบอร์ดจากภายนอก (เช่น WM / `xdotool windowclose`) การเปิดแอปอีกครั้งอาจไม่กู้หน้าต่างกลับ — ติดตั้ง `sudo apt install x11-utils` เพื่อให้กู้ได้
+6. บน Wayland: ติดตั้ง `wtype` หรือ `ydotool` หากต้องการวางอัตโนมัติ — ถ้าไม่มี แอปจะแจ้งเตือนและ **เก็บข้อความไว้บน clipboard** ให้กด Ctrl+V เอง
+
+**deb (แนะนำถ้าไม่ต้องการอัปเดตอัตโนมัติในแอป — ไม่ต้องใช้ libfuse)**
+
+1. ดาวน์โหลด `OpenPood-x.x.x-*.deb`
+2. `sudo apt install ./OpenPood-*.deb` (หรือ Software Center)
+3. **แพ็กเกจ `.deb` ไม่มีอัปเดตอัตโนมัติในแอป** — เปิด Settings → อัปเดต OpenPood จะพาไปหน้า GitHub Releases
+4. บนเดสก์ท็อปที่ไม่มี system tray / libappindicator แนะนำใช้ `.deb` หรือติดตั้ง tray indicator ตาม DE ของคุณ
+
+`package.json` ตั้ง `desktopName` เป็น `com.openpood.app.desktop` และ `linux.syncDesktopName: true` เพื่อให้ชื่อไฟล์ `.desktop` / `StartupWMClass` ตรงกับ Electron `app_id` (สำคัญสำหรับ Wayland portal / global shortcuts)
+
 ### อัปเดตเวอร์ชัน
 
 - OpenPud และ OpenPood ก่อน v1.0.1: ปิดแอปจาก tray แล้วดาวน์โหลด installer รุ่นล่าสุดมาติดตั้งทับหนึ่งครั้ง โดยไม่ต้องถอนรุ่นเดิมก่อน
-- ตั้งแต่ v1.0.1: แอปเช็กอัปเดตอัตโนมัติหลังเปิดและทุก 6 ชั่วโมง เปิด **Settings → อัปเดต OpenPood** เพื่อเช็กเอง ดูรายละเอียด และดาวน์โหลด
+- ตั้งแต่ v1.0.1 บน **Windows** และ **Linux AppImage**: แอปเช็กอัปเดตอัตโนมัติหลังเปิดและทุก 6 ชั่วโมง เปิด **Settings → อัปเดต OpenPood** เพื่อเช็กเอง ดูรายละเอียด และดาวน์โหลด
+- **macOS (unsigned)** และ **Linux .deb**: ปุ่มอัปเดตเปิดหน้า [GitHub Releases](https://github.com/gotzastory/OpenPood/releases/latest) ให้ดาวน์โหลดเอง ไม่พยายาม auto-update
 - ดาวน์โหลดเสร็จแล้วกด **Restart & Update** เมื่อสะดวก แอปจะกันการติดตั้งระหว่างอัดเสียง ถอดเสียง หรือวางข้อความ
 - ปิดหน้า Settings หรือออกจากแอปจะไม่ติดตั้งอัปเดตเอง หากเน็ตมีปัญหากดเช็กหรือดาวน์โหลดอีกครั้งได้
 - การย้ายจาก OpenPud เก็บข้อมูลต้นฉบับไว้ และคัดลอก settings/history/dictionary ไปยัง OpenPood โดยไม่เขียนทับข้อมูล OpenPood ที่มีอยู่
@@ -54,7 +92,7 @@
 
 | รายการ | รายละเอียด |
 |---|---|
-| OS | Windows 10 / 11 (x64) |
+| OS | Windows 10 / 11 (x64); macOS 12+ (Intel หรือ Apple Silicon); Linux (x64, X11 หรือ Wayland) |
 | ไมโครโฟน | มีไมค์ (built-in หรือ USB) และอนุญาตสิทธิ์ไมค์ให้แอป |
 | อินเทอร์เน็ต | จำเป็นตอนถอดเสียง / ใช้ AI (เรียก API ของ provider ที่เลือก) |
 | API key | [OpenRouter](https://openrouter.ai/keys) (แนะนำ), [Google AI Studio](https://aistudio.google.com/app/apikey), [OpenAI](https://platform.openai.com/api-keys), หรือ ElevenLabs (STT เท่านั้น) |
@@ -188,7 +226,7 @@ npm run dev
 |---|---|
 | `npm run dev` | รัน Vite + Electron แบบ hot reload |
 | `npm run build` | typecheck แล้ว build production |
-| `npm run dist` | build แล้ว pack เป็น `.exe` (NSIS) ด้วย electron-builder → ออกที่ `release/` |
+| `npm run dist` | build แล้ว pack ด้วย electron-builder สำหรับ OS ปัจจุบัน (Windows NSIS / macOS dmg+zip / Linux AppImage+deb) → ออกที่ `release/` |
 
 Typecheck แยกสองฝั่ง (global types คนละชุด):
 

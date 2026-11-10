@@ -1,5 +1,7 @@
 import type { AppUpdater, UpdateInfo } from 'electron-updater';
-import type { UpdateStatus } from '../src/lib/updateTypes';
+import type { UpdateChannel, UpdateStatus } from '../src/lib/updateTypes';
+import { releasesDownloadUrl, type UpdateChannel as PlatformUpdateChannel } from './platform';
+import { classifyUpdateFailure, UPDATE_NETWORK_MESSAGE, UPDATE_NO_FEED_MESSAGE } from './updateErrors';
 
 export const UPDATE_SCHEDULE = { startupDelayMs: 15_000, intervalMs: 6 * 60 * 60 * 1000 };
 // Installed v1.0.3 builds still have gotzastory/OpenPud in app-update.yml.
@@ -20,90 +22,136 @@ function notes(info: UpdateInfo): string {
   return value.slice(0, 8000);
 }
 
+function toStatusChannel(channel: PlatformUpdateChannel): UpdateChannel {
+  return channel;
+}
+
 export class UpdateController {
   private status: UpdateStatus;
   private operation = false;
   private installing = false;
   private downloaded = false;
   private readonly client: Client;
-  private readonly enabled: boolean;
+  private readonly channel: PlatformUpdateChannel;
   private readonly isBusy: () => boolean;
   private readonly publish: (status: UpdateStatus) => void;
   private readonly prepareInstall: () => void;
   private readonly restoreAfterFailure: () => void;
+  private readonly openExternal: (url: string) => Promise<void>;
 
   constructor(
     client: Client,
     currentVersion: string,
-    enabled: boolean,
+    channel: PlatformUpdateChannel,
     isBusy: () => boolean,
     publish: (status: UpdateStatus) => void,
     prepareInstall: () => void,
     restoreAfterFailure: () => void,
+    openExternal: (url: string) => Promise<void> = async () => undefined,
   ) {
     this.client = client;
-    this.enabled = enabled;
+    this.channel = channel;
     this.isBusy = isBusy;
     this.publish = publish;
     this.prepareInstall = prepareInstall;
     this.restoreAfterFailure = restoreAfterFailure;
-    this.status = { phase: enabled ? 'idle' : 'disabled', currentVersion, busy: false };
-    client.setFeedURL(UPDATE_FEED);
-    client.autoDownload = false;
-    client.autoInstallOnAppQuit = false;
-    client.allowPrerelease = false;
-    client.allowDowngrade = false;
-    client.on('update-available', (info) => this.set({ phase: 'available', version: info.version, releaseNotes: notes(info), error: undefined }));
-    client.on('update-not-available', () => this.set({ phase: 'current', version: undefined, releaseNotes: undefined }));
-    client.on('download-progress', (progress) => this.set({ phase: 'downloading', percent: Math.max(0, Math.min(100, progress.percent)) }));
-    client.on('update-downloaded', (info) => {
-      this.downloaded = true;
-      this.set({ phase: 'downloaded', version: info.version, releaseNotes: notes(info), percent: 100, error: undefined });
-    });
-    client.on('error', () => this.fail());
+    this.openExternal = openExternal;
+    const statusChannel = toStatusChannel(channel);
+    this.status = {
+      phase: channel === 'disabled' ? 'disabled' : 'idle',
+      currentVersion,
+      busy: false,
+      channel: statusChannel,
+    };
+    if (channel === 'in-app') {
+      client.setFeedURL(UPDATE_FEED);
+      client.autoDownload = false;
+      client.autoInstallOnAppQuit = false;
+      client.allowPrerelease = false;
+      client.allowDowngrade = false;
+      client.on('update-available', (info) => this.set({ phase: 'available', version: info.version, releaseNotes: notes(info), error: undefined }));
+      client.on('update-not-available', () => this.set({ phase: 'current', version: undefined, releaseNotes: undefined }));
+      client.on('download-progress', (progress) => this.set({ phase: 'downloading', percent: Math.max(0, Math.min(100, progress.percent)) }));
+      client.on('update-downloaded', (info) => {
+        this.downloaded = true;
+        this.set({ phase: 'downloaded', version: info.version, releaseNotes: notes(info), percent: 100, error: undefined });
+      });
+      client.on('error', (error: unknown) => this.fail(error));
+    }
   }
 
-  getStatus(): UpdateStatus { return { ...this.status, busy: this.isBusy() }; }
+  getStatus(): UpdateStatus { return { ...this.status, busy: this.isBusy(), channel: toStatusChannel(this.channel) }; }
   refreshBusy(): void { this.publish(this.getStatus()); }
   isInstalling(): boolean { return this.installing; }
+  supportsAutoCheck(): boolean { return this.channel === 'in-app'; }
 
   private set(partial: Partial<UpdateStatus>): void {
-    this.status = { ...this.status, ...partial };
+    this.status = { ...this.status, ...partial, channel: toStatusChannel(this.channel) };
     this.publish(this.getStatus());
   }
 
-  private fail(): void {
+  private fail(error?: unknown): void {
     if (this.installing) {
       this.installing = false;
       this.restoreAfterFailure();
     }
-    this.set({ phase: this.downloaded ? 'downloaded' : 'error', error: 'อัปเดตไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง' });
+    if (this.downloaded) {
+      this.set({ phase: 'downloaded', error: UPDATE_NETWORK_MESSAGE });
+      return;
+    }
+    if (classifyUpdateFailure(error) === 'no-feed') {
+      this.set({
+        phase: 'unavailable',
+        version: undefined,
+        releaseNotes: undefined,
+        percent: undefined,
+        error: UPDATE_NO_FEED_MESSAGE,
+      });
+      return;
+    }
+    this.set({ phase: 'error', error: UPDATE_NETWORK_MESSAGE });
+  }
+
+  async openReleasesPage(): Promise<UpdateStatus> {
+    if (this.channel === 'disabled') return this.getStatus();
+    try {
+      await this.openExternal(releasesDownloadUrl(UPDATE_FEED.owner, UPDATE_FEED.repo));
+    } catch {
+      this.set({ error: 'เปิดหน้าดาวน์โหลดไม่สำเร็จ ลองอีกครั้ง' });
+    }
+    return this.getStatus();
   }
 
   async check(): Promise<UpdateStatus> {
-    if (!this.enabled || this.operation || this.downloaded || this.installing) return this.getStatus();
+    if (this.channel === 'browser') return this.openReleasesPage();
+    if (this.channel !== 'in-app' || this.operation || this.downloaded || this.installing) return this.getStatus();
     this.operation = true;
     this.set({ phase: 'checking', error: undefined, percent: undefined, version: undefined, releaseNotes: undefined });
     try {
       const result = await this.client.checkForUpdates();
-      if (!result) this.fail();
-    } catch { this.fail(); }
+      if (!result) this.fail(new Error('No update result from feed'));
+    } catch (error) { this.fail(error); }
     finally { this.operation = false; }
     return this.getStatus();
   }
 
   async download(): Promise<UpdateStatus> {
-    if (!this.enabled || this.operation || this.installing || this.downloaded || !this.status.version) return this.getStatus();
+    if (this.channel === 'browser') return this.openReleasesPage();
+    if (this.channel !== 'in-app' || this.operation || this.installing || this.downloaded || !this.status.version) return this.getStatus();
     this.operation = true;
     this.set({ phase: 'downloading', percent: 0, error: undefined });
     try { await this.client.downloadUpdate(); }
-    catch { this.fail(); }
+    catch (error) { this.fail(error); }
     finally { this.operation = false; }
     return this.getStatus();
   }
 
   install(): UpdateStatus {
-    if (!this.enabled || !this.downloaded || this.operation || this.installing) return this.getStatus();
+    if (this.channel === 'browser') {
+      void this.openReleasesPage();
+      return this.getStatus();
+    }
+    if (this.channel !== 'in-app' || !this.downloaded || this.operation || this.installing) return this.getStatus();
     if (this.isBusy()) {
       this.set({ error: 'รอให้การอัดเสียง ถอดเสียง และวางข้อความเสร็จก่อนอัปเดต' });
       return this.getStatus();
@@ -113,7 +161,7 @@ export class UpdateController {
     try {
       this.prepareInstall();
       this.client.quitAndInstall(false, true);
-    } catch { this.fail(); }
+    } catch (error) { this.fail(error); }
     return this.getStatus();
   }
 }

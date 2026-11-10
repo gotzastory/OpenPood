@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, Tray, type WebContents } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, shell, Tray, type WebContents } from 'electron';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import electronUpdater from 'electron-updater';
@@ -35,6 +35,26 @@ import {
   warmWinHost,
   type ForegroundWindow,
 } from './winHost';
+import { hotkeyFailureMessage, isLinux, isWindows, pasteFallbackMessage, resolveUpdateChannel } from './platform';
+import { notifyMissingMacPermissions, requestMacPermissions } from './permissions';
+import { isDashboardCloseHintShown, markDashboardCloseHintShown } from './lifecyclePrefs';
+import {
+  clampWidgetHitRect,
+  linuxNoTrayFocusAction,
+  linuxXWindowMapped,
+  resolveElectronOzonePlatform,
+  shouldApplyWidgetHitShape,
+  type WidgetHitRect,
+} from './linuxNoTray';
+import {
+  linuxStatusNotifierPresent,
+  needsPersistentNoTrayShell,
+  resolveTrayConfirmed,
+  secondInstanceAction,
+  shouldOpenMainWindowOnColdStart,
+  shouldShowDashboardCloseHint,
+  windowCloseAction,
+} from './windowLifecycle';
 
 type RecordingMode = 'dictate' | 'translate';
 type WidgetState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
@@ -45,7 +65,7 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const BRAND_ASSET_DIRECTORY = path.join(__dirname, VITE_DEV_SERVER_URL ? '../public/brand' : '../dist/brand');
 const APP_ID = 'com.openpood.app';
 
-if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
+if (isWindows()) app.setAppUserModelId(APP_ID);
 
 const WIDGET_WIDTH = 320;
 const WIDGET_HEIGHT = 90;
@@ -89,6 +109,17 @@ const windowPreferences = {
 let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+/**
+ * True only when a tray reopen affordance is confirmed.
+ * On Linux, `new Tray()` not throwing is insufficient — StatusNotifierWatcher must be present.
+ */
+let trayAvailable = false;
+/** Linux-without-tray: keep a visible clickable widget and offer non-tray Quit. */
+let persistentNoTrayMode = false;
+const wiredWidgetMenus = new WeakSet<WebContents>();
+/** Prevents double dashboard creation when relaunch is hammered during ensure. */
+let ensuringLinuxNoTrayMain = false;
+let lastWidgetHitRect: WidgetHitRect | null = null;
 let recordingState: WidgetState = 'idle';
 let hotkeyPending = false;
 let activeTranscriptions = 0;
@@ -120,6 +151,101 @@ function notify(title: string, body: string): void {
   } catch { console.warn('Native notification unavailable.'); }
 }
 
+function requestAppQuit(): void {
+  quitting = true;
+  app.quit();
+}
+
+function applyWidgetHitShape(rect: WidgetHitRect | null): void {
+  if (!shouldApplyWidgetHitShape(persistentNoTrayMode, process.platform)) return;
+  if (!widget || widget.isDestroyed()) return;
+  if (!rect) return;
+  const clamped = clampWidgetHitRect(rect, widget.getBounds());
+  if (!clamped) return;
+  lastWidgetHitRect = clamped;
+  try {
+    // Linux/Windows experimental API: limit hit-testing to the pill so the
+    // transparent 320x90 margin stays click-through (forward:true does not
+    // work on Linux). Lower risk than constantly resizing the widget window.
+    widget.setShape([clamped]);
+  } catch (err) {
+    console.warn('[widget] setShape unavailable:', err instanceof Error ? err.message : 'unknown');
+  }
+}
+
+function enablePersistentWidgetShell(): void {
+  if (!widget || widget.isDestroyed()) return;
+  widget.setIgnoreMouseEvents(false);
+  widget.show();
+  sendToWindow(widget, 'widget:presence', { persistent: true });
+  if (lastWidgetHitRect) applyWidgetHitShape(lastWidgetHitRect);
+  const contents = widget.webContents;
+  if (wiredWidgetMenus.has(contents)) return;
+  wiredWidgetMenus.add(contents);
+  contents.on('did-finish-load', () => {
+    sendToWindow(widget, 'widget:presence', { persistent: true });
+    if (lastWidgetHitRect) applyWidgetHitShape(lastWidgetHitRect);
+  });
+  contents.on('context-menu', () => {
+    if (quitting || !widget || widget.isDestroyed()) return;
+    Menu.buildFromTemplate([
+      { label: 'เปิดแอป', click: () => { void focusOrCreateMainWindow(); } },
+      { type: 'separator' },
+      { label: 'ออกจากโปรแกรม', click: () => requestAppQuit() },
+    ]).popup({ window: widget });
+  });
+}
+
+function currentOzonePlatform() {
+  // Electron 43: no dedicated ozone getter — commandLine switch + hint + env.
+  return resolveElectronOzonePlatform({
+    ozoneSwitch: app.commandLine.getSwitchValue('ozone-platform'),
+    ozoneHint: process.env.ELECTRON_OZONE_PLATFORM_HINT,
+    env: process.env,
+  });
+}
+
+/**
+ * Linux no-tray only: after external XDestroyWindow, Electron may keep a
+ * non-destroyed BrowserWindow whose X window is gone (no close/closed). Detect
+ * via xwininfo BadWindow on X11 ozone only; never use sync isVisible().
+ */
+function ensureLinuxNoTrayMainWindow(route = '/'): void {
+  if (quitting || ensuringLinuxNoTrayMain) return;
+  ensuringLinuxNoTrayMain = true;
+  try {
+    if (mainWindow?.isDestroyed()) mainWindow = null;
+    const action = linuxNoTrayFocusAction({
+      hasWindow: Boolean(mainWindow),
+      isDestroyed: Boolean(mainWindow?.isDestroyed()),
+      xWindowMapped: mainWindow ? linuxXWindowMapped(mainWindow, currentOzonePlatform()) : null,
+    });
+    if (action === 'recreate') {
+      const stale = mainWindow;
+      mainWindow = null;
+      if (stale && !stale.isDestroyed()) {
+        try { stale.destroy(); } catch { /* ignore */ }
+      }
+      createMainWindow(route);
+      // createMainWindow mutates the module binding; CFA still sees the prior `null`.
+      const created = mainWindow as BrowserWindow | null;
+      if (created && !created.isDestroyed()) {
+        created.show();
+        created.focus();
+      }
+      return;
+    }
+    // Live mapped window: focus only — do not navigate away from the current route.
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  } finally {
+    ensuringLinuxNoTrayMain = false;
+  }
+}
+
 function recoverWidget(win: BrowserWindow): void {
   if (quitting || widget !== win) return;
   widget = null;
@@ -141,7 +267,10 @@ function recoverWidget(win: BrowserWindow): void {
   recoveryTimer = setTimeout(() => {
     recoveryTimer = undefined;
     if (quitting || widget) return;
-    try { createWidget(); }
+    try {
+      createWidget();
+      if (persistentNoTrayMode) enablePersistentWidgetShell();
+    }
     catch { notify('เปิดไมโครโฟนไม่สำเร็จ', 'กรุณาปิดแล้วเปิด OpenPood ใหม่'); }
   }, RUNTIME.widgetRecoveryDelayMs);
 }
@@ -154,7 +283,9 @@ function knownForeground(window: ForegroundWindow): boolean {
 
 // Wait for the PowerShell host to compile and answer. A cold or crashed host
 // is restarted by the next lookup; do not give up on a short timer.
+// On macOS/Linux there is no HWND host — paste uses the current focused app.
 async function captureForeground(): Promise<ForegroundWindow | null> {
+  if (!isWindows()) return { hwnd: '1', processName: '' };
   for (let attempt = 0; attempt < FOREGROUND_LOOKUP_ATTEMPTS; attempt++) {
     try {
       const window = await getForegroundWindow();
@@ -246,11 +377,36 @@ function createWidget() {
   }
 }
 
+function focusOrCreateMainWindow(): void {
+  if (quitting) return;
+  // Linux-without-tray: may need XID liveness check after external destroy.
+  if (persistentNoTrayMode) {
+    ensureLinuxNoTrayMainWindow('/');
+    return;
+  }
+  if (mainWindow?.isDestroyed()) mainWindow = null;
+  const action = secondInstanceAction(mainWindow ? 'alive' : 'absent');
+  if (action === 'focus-existing' && mainWindow && !mainWindow.isDestroyed()) {
+    // Alive window (including tray-hidden isVisible===false): never destroy/recreate
+    // or navigate — only restore/show/focus so route and renderer state survive.
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+  // Recreate only when the ref is null or was destroyed (`closed` must clear it).
+  createMainWindow('/');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+}
+
 function createMainWindow(route: string) {
   const url = VITE_DEV_SERVER_URL
     ? `${VITE_DEV_SERVER_URL}#${route}`
     : `${appPageUrl().href}#${route}`;
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
     mainWindow.focus();
@@ -266,6 +422,8 @@ function createMainWindow(route: string) {
     }
     return;
   }
+  // Stale destroyed ref (closed race) must not block recreation.
+  mainWindow = null;
   mainWindow = new BrowserWindow({
     width: 1080,
     height: 720,
@@ -277,26 +435,77 @@ function createMainWindow(route: string) {
   });
   hardenWindow(mainWindow);
   void mainWindow.loadURL(url).catch(() => notify('เปิดแอปไม่สำเร็จ', 'กรุณาปิดหน้าต่างแล้วเปิดใหม่จาก tray'));
+  mainWindow.on('close', (event) => {
+    if (quitting) return;
+    // Linux without confirmed tray: allow close so WM windowclose destroys for real.
+    if (windowCloseAction(trayAvailable, process.platform) === 'minimize') {
+      event.preventDefault();
+      mainWindow?.minimize();
+    }
+  });
+  // Must clear the ref on destroy paths (WM force-close / allowed close).
   mainWindow.on('closed', () => {
     mainWindow = null;
+    if (!persistentNoTrayMode) return;
+    // Keep the widget visible as the only on-screen affordance without a tray.
+    enablePersistentWidgetShell();
+    if (shouldShowDashboardCloseHint(isDashboardCloseHintShown())) {
+      markDashboardCloseHintShown();
+      notify(
+        'OpenPood ยังทำงานอยู่',
+        'เปิด OpenPood อีกครั้งเพื่อเรียกแดชบอร์ด หรือคลิกขวาที่วิดเจ็ตด้านล่างหน้าจอ',
+      );
+    }
   });
 }
 
-function createTray() {
-  const icon = nativeImage.createFromPath(path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'));
-  if (icon.isEmpty()) throw new Error('OpenPood tray icon is missing');
-  tray = new Tray(icon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('OpenPood');
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'เปิดแอป', click: () => createMainWindow('/') },
-      { label: 'ตั้งค่า', click: () => createMainWindow('/settings') },
-      { label: 'อัปเดตเวอร์ชัน', click: () => createMainWindow('/settings') },
-      { type: 'separator' },
-      { label: 'ออกจากโปรแกรม', click: () => app.quit() },
-    ]),
-  );
-  tray.on('click', () => createMainWindow('/'));
+function createTray(): boolean {
+  try {
+    // Linux: probe the session bus first. Constructing Tray without a host still
+    // "succeeds" and would wrongly enable destroy-keep-running close policy.
+    const notifierPresent = isLinux() ? linuxStatusNotifierPresent() : true;
+    if (isLinux() && !notifierPresent) {
+      tray = null;
+      trayAvailable = false;
+      console.warn('[tray] Linux StatusNotifierWatcher not present; leaving tray unconfirmed');
+      return false;
+    }
+
+    const icon = nativeImage.createFromPath(path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'));
+    if (icon.isEmpty()) throw new Error('OpenPood tray icon is missing');
+    tray = new Tray(icon.resize({ width: 16, height: 16 }));
+    tray.setToolTip('OpenPood');
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'เปิดแอป', click: () => createMainWindow('/') },
+        { label: 'ตั้งค่า', click: () => createMainWindow('/settings') },
+        { label: 'อัปเดตเวอร์ชัน', click: () => createMainWindow('/settings') },
+        { type: 'separator' },
+        { label: 'ออกจากโปรแกรม', click: () => app.quit() },
+      ]),
+    );
+    tray.on('click', () => createMainWindow('/'));
+    trayAvailable = resolveTrayConfirmed({
+      platform: process.platform,
+      trayConstructed: true,
+      linuxStatusNotifierPresent: notifierPresent,
+    });
+    if (!trayAvailable) {
+      tray.destroy();
+      tray = null;
+      return false;
+    }
+    return true;
+  } catch (err) {
+    tray = null;
+    trayAvailable = false;
+    console.warn('[tray] unavailable:', err instanceof Error ? err.message : 'unknown');
+    notify(
+      'ไม่มี system tray',
+      'ปิดหน้าต่างจะย่อลงแถบงาน — เปิดแอปอีกครั้งเพื่อเรียกหน้าต่างกลับ หรือติดตั้ง libappindicator ตามเดสก์ท็อปของคุณ',
+    );
+    return false;
+  }
 }
 
 function applyLaunchAtStartup(enabled: boolean) {
@@ -338,7 +547,10 @@ function registerHotkeys(settings: AppSettings): string[] {
       console.warn(`Failed to register ${mode} hotkey.`);
     }
   }
-  if (failed.length) notify('ปุ่มลัดใช้งานไม่ได้', 'ปุ่มลัดอาจถูกแอปอื่นใช้อยู่ กรุณาเลือกปุ่มลัดใหม่ใน Settings');
+  if (failed.length) {
+    const message = hotkeyFailureMessage(failed);
+    notify(message.title, message.body);
+  }
   return failed;
 }
 
@@ -356,28 +568,41 @@ function setEscapeCancel(enabled: boolean) {
 }
 
 app.on('second-instance', () => {
+  // Second AppImage/`openpood` launches should restore the existing dashboard.
+  // The losing process exits in storage.ts after failing requestSingleInstanceLock().
+  // Never quit the primary instance here — a focus/create throw would leave no app at all.
   if (quitting) return;
-  void app.whenReady().then(() => createMainWindow('/')).catch(() => app.quit());
+  void app.whenReady()
+    .then(() => focusOrCreateMainWindow())
+    .catch((err) => console.error('[second-instance] failed to show dashboard:', err));
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   installSessionPermissions();
   stopPerformanceSampling = startPerformanceSampling();
-  warmWinHost();
+  if (isWindows()) warmWinHost();
   warmHistory();
   createWidget();
   createTray();
+  persistentNoTrayMode = needsPersistentNoTrayShell(trayAvailable, process.platform);
+  if (persistentNoTrayMode) enablePersistentWidgetShell();
+  // Without a confirmed tray (always the Linux default unless StatusNotifierWatcher
+  // is present), open the dashboard so cold start is never headless.
+  if (shouldOpenMainWindowOnColdStart(trayAvailable)) createMainWindow('/');
   registerHotkeys(getSettings());
   applyLaunchAtStartup(getSettings().launchAtStartup);
+  const macPermissions = await requestMacPermissions();
+  notifyMissingMacPermissions(notify, macPermissions);
   let notifiedVersion: string | undefined;
+  const updateChannel = resolveUpdateChannel({ packaged: app.isPackaged });
   updater = new UpdateController(
     electronUpdater.autoUpdater,
     app.getVersion(),
-    app.isPackaged && process.platform === 'win32',
+    updateChannel,
     () => hotkeyPending || recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing' || activeTranscriptions > 0,
     (status) => {
       sendToWindow(mainWindow, 'updates:status', status);
-      if (status.phase === 'available' && status.version !== notifiedVersion && Notification.isSupported()) {
+      if (status.channel === 'in-app' && status.phase === 'available' && status.version !== notifiedVersion && Notification.isSupported()) {
         notifiedVersion = status.version;
         const notification = new Notification({ title: 'มี OpenPood เวอร์ชันใหม่', body: `เวอร์ชัน ${status.version} พร้อมดาวน์โหลด เปิดการตั้งค่าเพื่ออัปเดต` });
         notification.on('click', () => createMainWindow('/settings'));
@@ -390,8 +615,9 @@ app.whenReady().then(() => {
       registerHotkeys(getSettings());
       setEscapeCancel(recordingState === 'starting' || recordingState === 'recording' || recordingState === 'processing');
     },
+    (url) => shell.openExternal(url),
   );
-  if (app.isPackaged && process.platform === 'win32') {
+  if (updater.supportsAutoCheck()) {
     updateStartupTimer = setTimeout(() => { void updater.check(); }, UPDATE_SCHEDULE.startupDelayMs);
     updateInterval = setInterval(() => { void updater.check(); }, UPDATE_SCHEDULE.intervalMs);
   }
@@ -441,9 +667,26 @@ app.whenReady().then(() => {
 
   ipcMain.handle('app:open-main-window', (event, route: string) => {
     requireRenderer(event, 'main');
-    createMainWindow(ALLOWED_ROUTES.has(route) ? route : '/');
+    const next = ALLOWED_ROUTES.has(route) ? route : '/';
+    if (persistentNoTrayMode) ensureLinuxNoTrayMainWindow(next);
+    else createMainWindow(next);
   },
   );
+
+  // Available on all OSes so Linux-without-tray (and tests) can quit without a tray menu.
+  ipcMain.handle('app:quit', (event) => {
+    requireRenderer(event, 'main');
+    requestAppQuit();
+  });
+
+  // Widget → main hit region for setShape (Linux no-tray only). Non-widget senders ignored.
+  ipcMain.on('widget:hit-region', (event, rect: unknown) => {
+    if (!shouldApplyWidgetHitShape(persistentNoTrayMode, process.platform)) return;
+    if (!widget || event.sender !== widget.webContents) return;
+    if (!rect || typeof rect !== 'object') return;
+    const candidate = rect as WidgetHitRect;
+    applyWidgetHitShape(candidate);
+  });
 
   ipcMain.on('recording:state', (e, state: unknown) => {
     // Only the widget drives the global Escape grab.
@@ -566,8 +809,9 @@ app.whenReady().then(() => {
           notify('ยืนยันหน้าต่างปลายทางไม่ได้', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
         } else if (delivery.reason === 'clipboard-preserved') {
           notify('เก็บ clipboard เดิมไว้แล้ว', 'clipboard มีไฟล์ รูปแบบพิเศษ หรือถูกเปลี่ยน กรุณาคัดลอกข้อความจาก History');
-        } else if (delivery.reason === 'paste-failed') {
-          notify('วางข้อความไม่สำเร็จ', 'ข้อความอยู่ใน clipboard แล้ว กด Ctrl+V เพื่อวางเอง');
+        } else if (delivery.reason === 'paste-failed' || delivery.reason === 'injection-unavailable') {
+          const message = pasteFallbackMessage(delivery.reason);
+          notify(message.title, message.body);
         }
         return { ok: true as const, text, pasted: delivery.pasted };
       } catch (err) {
@@ -661,7 +905,7 @@ app.on('will-quit', () => {
   clearTimeout(updateStartupTimer);
   clearInterval(updateInterval);
   globalShortcut.unregisterAll();
-  disposeWinHost();
+  if (isWindows()) disposeWinHost();
 });
 
 app.on('before-quit', (event) => {
