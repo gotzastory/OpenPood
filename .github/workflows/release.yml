@@ -1,20 +1,18 @@
 name: Release
 
-# Builds platform installers and attaches them to a GitHub Release whenever a
-# version tag (v1.2.3) is pushed. Can also be run by hand from the Actions tab
-# to produce build artifacts without publishing (workflow_dispatch never creates
-# a tag or release on its own).
+# Builds platform installers. Tag pushes (v*) also publish a GitHub Release.
+# workflow_dispatch on any non-tag ref only builds, verifies, and uploads
+# workflow artifacts — it never creates a tag, draft, or published release.
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -45,32 +43,44 @@ jobs:
           npm run typecheck
           npm test
 
-      # `npm run dist` passes --publish never: electron-builder otherwise
-      # auto-publishes when it detects a git tag and fails without GH_TOKEN.
-      # We publish explicitly below so the release notes stay under our control.
+      # Always --publish never here. electron-builder otherwise auto-publishes
+      # when it sees a git tag. Publishing is owned exclusively by the publish job.
+      # Ad-hoc mac signing comes from package.json mac.identity: "-" (not CSC_IDENTITY).
       - name: Build installer
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          # Ad-hoc signing for macOS arm64 (identity '-' is also set in package.json).
-          CSC_IDENTITY: ${{ matrix.platform == 'mac' && '-' || '' }}
 
       - name: Verify ad-hoc macOS signature
         if: matrix.platform == 'mac'
         shell: bash
         run: |
           set -euo pipefail
-          app_path="$(find release -type d -name '*.app' | head -n 1)"
-          if [ -z "$app_path" ]; then
-            echo "No .app bundle found under release/" >&2
+          mapfile -t apps < <(find release -type d -name '*.app' | sort)
+          if [ "${#apps[@]}" -eq 0 ]; then
+            echo "No .app bundle found under release/ (expected release/mac and release/mac-arm64)." >&2
             exit 1
           fi
-          echo "Verifying codesign on: $app_path"
-          codesign -dv --verbose=2 "$app_path" 2>&1 | tee /tmp/codesign-adhoc.txt
-          if ! grep -q 'Signature=adhoc' /tmp/codesign-adhoc.txt; then
-            echo "Expected Signature=adhoc for unsigned mac builds (required for arm64)." >&2
+          found_arm64=0
+          for app_path in "${apps[@]}"; do
+            echo "Verifying codesign on: $app_path"
+            codesign_out="$(codesign -dv --verbose=2 "$app_path" 2>&1 || true)"
+            printf '%s\n' "$codesign_out" | tee "/tmp/codesign-$(basename "$app_path").txt"
+            if ! printf '%s\n' "$codesign_out" | grep -q 'Signature=adhoc'; then
+              echo "Expected Signature=adhoc for $app_path (required for arm64)." >&2
+              exit 1
+            fi
+            if [[ "$app_path" == *arm64* ]] || printf '%s\n' "$codesign_out" | grep -Eqi '(arm64|aarch64)'; then
+              found_arm64=1
+            fi
+          done
+          if [ "$found_arm64" -ne 1 ]; then
+            echo "No arm64 .app found under release/ (looked for mac-arm64 / arm64 in path or codesign output)." >&2
+            printf 'Apps checked:\n' >&2
+            printf '  %s\n' "${apps[@]}" >&2
             exit 1
           fi
+          echo "Verified ad-hoc signatures on ${#apps[@]} app bundle(s), including arm64."
 
       - name: Verify update artifacts
         run: node scripts/verify-update-artifacts.cjs release ${{ matrix.platform }}
@@ -111,7 +121,10 @@ jobs:
 
   publish:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Tag pushes only — never on workflow_dispatch, even if the ref looks like a tag.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

@@ -8,6 +8,19 @@ function fail(message) {
   throw new Error(message);
 }
 
+function verifyFeedOwnerRepo(config, pkg) {
+  const expected = pkg.build.publish;
+  if (
+    config.provider !== expected.provider
+    || config.owner !== expected.owner
+    || config.repo !== expected.repo
+    || config.owner !== 'gotzastory'
+    || config.repo !== 'OpenPood'
+  ) {
+    fail(`Packaged update feed mismatch: expected gotzastory/OpenPood, got ${config.owner}/${config.repo}`);
+  }
+}
+
 function verifyFiles(root, info, extensionPattern) {
   if (!Array.isArray(info.files) || info.files.length < 1) fail('Expected installer files in metadata');
   for (const item of info.files) {
@@ -22,50 +35,102 @@ function verifyFiles(root, info, extensionPattern) {
 }
 
 function verifyPackagedUpdater(root, pkg, unpackedDir) {
-  const config = yaml.load(fs.readFileSync(path.join(root, unpackedDir, 'resources/app-update.yml'), 'utf8'));
-  if (config.provider !== pkg.build.publish.provider || config.owner !== pkg.build.publish.owner || config.repo !== pkg.build.publish.repo) {
-    fail('Packaged update feed mismatch');
-  }
+  const updateYml = path.join(root, unpackedDir, 'resources/app-update.yml');
+  const config = yaml.load(fs.readFileSync(updateYml, 'utf8'));
+  verifyFeedOwnerRepo(config, pkg);
   const archive = path.join(root, unpackedDir, 'resources/app.asar');
   const packed = JSON.parse(asar.extractFile(archive, 'package.json').toString());
   if (packed.version !== pkg.version || !packed.dependencies['electron-updater']) fail('Packaged updater missing or wrong version');
   asar.extractFile(archive, path.join('node_modules', 'electron-updater', 'out', 'main.js'));
 }
 
-try {
-  const root = path.resolve(process.argv[2] || 'release');
-  const platform = process.argv[3] || 'win';
+function listMacApps(root) {
+  const apps = [];
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory() && entry.name.endsWith('.app')) apps.push(full);
+      else if (entry.isDirectory()) walk(full);
+    }
+  };
+  walk(root);
+  return apps.sort();
+}
+
+function verifyMacAppUpdateFeeds(root, pkg) {
+  const apps = listMacApps(root);
+  if (apps.length === 0) fail('Expected at least one .app under release/');
+  for (const appPath of apps) {
+    const updateYml = path.join(appPath, 'Contents/Resources/app-update.yml');
+    if (!fs.existsSync(updateYml)) fail(`Missing app-update.yml in ${appPath}`);
+    const config = yaml.load(fs.readFileSync(updateYml, 'utf8'));
+    verifyFeedOwnerRepo(config, pkg);
+  }
+  return apps.length;
+}
+
+function verifyLinux(root, pkg) {
+  const info = yaml.load(fs.readFileSync(path.join(root, 'latest-linux.yml'), 'utf8'));
+  if (info.version !== pkg.version) fail('Metadata version mismatch');
+  verifyFiles(root, info, /^[\w.-]+\.(AppImage|deb)$/);
+  const hasAppImage = fs.readdirSync(root).some((name) => name.endsWith('.AppImage'));
+  const hasDeb = fs.readdirSync(root).some((name) => name.endsWith('.deb'));
+  if (!hasAppImage || !hasDeb) fail('Expected both AppImage and deb artifacts');
+  verifyPackagedUpdater(root, pkg, 'linux-unpacked');
+}
+
+function verifyMac(root, pkg) {
+  const info = yaml.load(fs.readFileSync(path.join(root, 'latest-mac.yml'), 'utf8'));
+  if (info.version !== pkg.version) fail('Metadata version mismatch');
+  verifyFiles(root, info, /^[\w.-]+\.zip$/);
+  const hasDmg = fs.readdirSync(root).some((name) => name.endsWith('.dmg'));
+  const hasZip = fs.readdirSync(root).some((name) => name.endsWith('.zip'));
+  if (!hasDmg || !hasZip) fail('Expected both dmg and zip artifacts');
+  verifyMacAppUpdateFeeds(root, pkg);
+}
+
+function verifyWin(root, pkg) {
+  const info = yaml.load(fs.readFileSync(path.join(root, 'latest.yml'), 'utf8'));
+  if (info.version !== pkg.version) fail('Metadata version mismatch');
+  if (!Array.isArray(info.files) || info.files.length !== 1) fail('Expected one installer in metadata');
+  verifyFiles(root, info, /^[\w.-]+\.exe$/);
+  verifyPackagedUpdater(root, pkg, 'win-unpacked');
+}
+
+function main(argv = process.argv, env = process.env) {
+  const root = path.resolve(argv[2] || 'release');
+  const platform = argv[3] || 'win';
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  const tag = process.env.GITHUB_REF_TYPE === 'tag' ? process.env.GITHUB_REF_NAME : undefined;
+  const tag = env.GITHUB_REF_TYPE === 'tag' ? env.GITHUB_REF_NAME : undefined;
   if (tag && tag !== `v${pkg.version}`) fail('Tag and package version mismatch');
 
   if (platform === 'win') {
-    const info = yaml.load(fs.readFileSync(path.join(root, 'latest.yml'), 'utf8'));
-    if (info.version !== pkg.version) fail('Metadata version mismatch');
-    if (!Array.isArray(info.files) || info.files.length !== 1) fail('Expected one installer in metadata');
-    verifyFiles(root, info, /^[\w.-]+\.exe$/);
-    verifyPackagedUpdater(root, pkg, 'win-unpacked');
+    verifyWin(root, pkg);
     console.log(`Verified Windows v${pkg.version}: installer name, size, SHA-512, blockmap, packaged updater and feed`);
   } else if (platform === 'linux') {
-    const info = yaml.load(fs.readFileSync(path.join(root, 'latest-linux.yml'), 'utf8'));
-    if (info.version !== pkg.version) fail('Metadata version mismatch');
-    verifyFiles(root, info, /^[\w.-]+\.(AppImage|deb)$/);
-    const hasAppImage = fs.readdirSync(root).some((name) => name.endsWith('.AppImage'));
-    const hasDeb = fs.readdirSync(root).some((name) => name.endsWith('.deb'));
-    if (!hasAppImage || !hasDeb) fail('Expected both AppImage and deb artifacts');
-    console.log(`Verified Linux v${pkg.version}: latest-linux.yml, AppImage, deb`);
+    verifyLinux(root, pkg);
+    console.log(`Verified Linux v${pkg.version}: latest-linux.yml, AppImage, deb, linux-unpacked app-update.yml`);
   } else if (platform === 'mac') {
-    const info = yaml.load(fs.readFileSync(path.join(root, 'latest-mac.yml'), 'utf8'));
-    if (info.version !== pkg.version) fail('Metadata version mismatch');
-    verifyFiles(root, info, /^[\w.-]+\.zip$/);
-    const hasDmg = fs.readdirSync(root).some((name) => name.endsWith('.dmg'));
-    const hasZip = fs.readdirSync(root).some((name) => name.endsWith('.zip'));
-    if (!hasDmg || !hasZip) fail('Expected both dmg and zip artifacts');
-    console.log(`Verified macOS v${pkg.version}: latest-mac.yml, dmg, zip`);
+    verifyMac(root, pkg);
+    console.log(`Verified macOS v${pkg.version}: latest-mac.yml, dmg, zip, per-app app-update.yml`);
   } else {
     fail(`Unknown platform: ${platform}`);
   }
-} catch (error) {
-  console.error(error instanceof Error ? error.message : 'Artifact verification failed');
-  process.exitCode = 1;
 }
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : 'Artifact verification failed');
+    process.exitCode = 1;
+  }
+}
+
+module.exports = {
+  verifyFeedOwnerRepo,
+  listMacApps,
+  verifyMacAppUpdateFeeds,
+  main,
+};

@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 export type UpdateChannel = 'in-app' | 'browser' | 'disabled';
 
 export function isWindows(platform = process.platform): boolean {
@@ -30,7 +28,8 @@ export function isDebInstall(
 ): boolean {
   if (isAppImage(env)) return false;
   if (!isLinux(platform)) return false;
-  const normalized = path.resolve(execPath).replaceAll('\\', '/');
+  // Do not path.resolve(): on Windows that rewrites "/usr/..." to a drive path.
+  const normalized = execPath.replaceAll('\\', '/');
   return normalized.startsWith('/usr/') || normalized.startsWith('/opt/');
 }
 
