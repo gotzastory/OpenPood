@@ -59,10 +59,11 @@ Build นี้ใช้ ad-hoc signing (ไม่มีใบรับรอง
 
 1. ดาวน์โหลด `OpenPood-x.x.x-*.AppImage`
 2. `chmod +x OpenPood-*.AppImage` แล้วรันไฟล์
-3. AppImage ต้องการ `libfuse.so.2` และคำสั่ง `fusermount` (ไม่ใช่แค่ `fusermount3`):
-   - Ubuntu 24.04+ และ Debian 13 (trixie): `sudo apt install libfuse2t64 fuse3` แล้วตรวจด้วย `command -v fusermount` ต้องพิมพ์ path — ถ้ามีแค่ `fusermount3` AppImage จะล้มด้วย `fuse: failed to exec fusermount` (บน trixie/Ubuntu 24.04 แพ็กเกจ `fuse3` เป็นตัวที่ให้ `/usr/bin/fusermount`; แพ็กเกจชื่อ `fuse` เป็น transitional ที่ดึง fuse3)
-   - Debian 12 (bookworm) และ Ubuntu 22.04 หรือเก่ากว่า: `sudo apt install libfuse2` — ถ้า `command -v fusermount` ว่าง ให้ติดตั้ง `sudo apt install fuse`
-   - หรือรันแบบไม่พึ่ง FUSE: `./OpenPood-*.AppImage --appimage-extract-and-run`
+3. AppImage ต้องการ `libfuse.so.2` และคำสั่ง `fusermount` (ไม่ใช่แค่ `fusermount3`). ตรวจก่อนว่ามี fuse3 หรือยังด้วย `dpkg -l | grep '^ii  fuse3'`:
+   - **มี fuse3 แล้ว:** ติดตั้งเฉพาะ libfuse2 — Ubuntu 24.04+ / Debian 13: `sudo apt install libfuse2t64` · Debian 12 / Ubuntu 22.04 หรือเก่ากว่า: `sudo apt install libfuse2` — **อย่า** `apt install fuse` (บน Ubuntu 22.04 แพ็กเกจ `fuse` มี Breaks/Replaces กับ fuse3 จะถอด fuse3 ทิ้ง)
+   - **ยังไม่มี fuse3** และเป็น Ubuntu 24.04+ / Debian 13: `sudo apt install libfuse2t64 fuse3` (บนรุ่นเหล่านี้ fuse3 ให้ `/usr/bin/fusermount`)
+   - **ยังไม่มี fuse3** และเป็น Ubuntu เก่ากว่า 22.04 / Debian 12 ที่ไม่มี fuse3: ติดตั้ง `libfuse2` แล้วถ้า `command -v fusermount` ยังว่างค่อย `sudo apt install fuse`
+   - หลังติดตั้งตรวจด้วย `command -v fusermount` ต้องพิมพ์ path — ถ้ามีแค่ `fusermount3` หรือยังว่าง AppImage จะล้มด้วย `fuse: failed to exec fusermount` ให้ใช้ fallback: `./OpenPood-*.AppImage --appimage-extract-and-run`
 4. บน X11 ควรวางข้อความอัตโนมัติด้วย `xdotool` (ติดตั้งถ้ายังไม่มี)
 5. บน Wayland: ติดตั้ง `wtype` หรือ `ydotool` หากต้องการวางอัตโนมัติ — ถ้าไม่มี แอปจะแจ้งเตือนและ **เก็บข้อความไว้บน clipboard** ให้กด Ctrl+V เอง
 
