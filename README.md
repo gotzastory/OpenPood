@@ -60,8 +60,8 @@ Build นี้ใช้ ad-hoc signing (ไม่มีใบรับรอง
 1. ดาวน์โหลด `OpenPood-x.x.x-*.AppImage`
 2. `chmod +x OpenPood-*.AppImage` แล้วรันไฟล์
 3. ถ้าขึ้น `dlopen(): error loading libfuse.so.2` แสดงว่าเครื่องยังไม่มี FUSE 2:
-   - Ubuntu 24.04+: `sudo apt install libfuse2t64`
-   - Debian / Ubuntu เก่ากว่า: `sudo apt install libfuse2`
+   - Ubuntu 24.04+ และ Debian 13 (trixie): `sudo apt install libfuse2t64` (trixie ไม่มีแพ็กเกจชื่อ `libfuse2`)
+   - Debian 12 (bookworm) และ Ubuntu 22.04 หรือเก่ากว่า: `sudo apt install libfuse2`
    - หรือรันแบบไม่พึ่ง FUSE: `./OpenPood-*.AppImage --appimage-extract-and-run`
 4. บน X11 ควรวางข้อความอัตโนมัติด้วย `xdotool` (ติดตั้งถ้ายังไม่มี)
 5. บน Wayland: ติดตั้ง `wtype` หรือ `ydotool` หากต้องการวางอัตโนมัติ — ถ้าไม่มี แอปจะแจ้งเตือนและ **เก็บข้อความไว้บน clipboard** ให้กด Ctrl+V เอง
