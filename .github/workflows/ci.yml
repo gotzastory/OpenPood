@@ -1,9 +1,9 @@
 name: CI
 
 # Typecheck, unit tests, Vite/Electron build, and a Linux electron-builder
-# smoke pack (schema + packaging) so invalid builder config fails in PRs.
-# Branch protection cannot be enabled from this workflow; require this check
-# on `main` in the repository settings.
+# smoke pack (dir + deb) so invalid builder config / missing Maintainer email
+# fails in PRs. Branch protection cannot be enabled from this workflow; require
+# this check on `main` in the repository settings.
 on:
   pull_request:
   push:
@@ -16,7 +16,7 @@ permissions:
 jobs:
   verify:
     name: Typecheck, test, and build
-    # ubuntu-latest so `electron-builder --linux dir` runs natively; Windows/
+    # ubuntu-latest so electron-builder can pack Linux targets natively; Windows/
     # macOS installer packaging remains covered by the Release workflow matrix.
     runs-on: ubuntu-latest
     steps:
@@ -39,8 +39,15 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Pack Linux dir (electron-builder smoke)
-        run: npx electron-builder --linux dir --publish never
+      - name: Install Linux packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fakeroot dpkg-dev
+
+      - name: Pack Linux dir + deb (electron-builder smoke)
+        # dir validates packaging; deb also requires author.email / Maintainer.
+        # electron-builder downloads its own fpm binary; fakeroot/dpkg-dev cover host tooling.
+        run: npx electron-builder --linux dir deb --publish never
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
