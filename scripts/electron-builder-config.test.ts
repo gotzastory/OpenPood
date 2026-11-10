@@ -55,4 +55,21 @@ describe('electron-builder packaging config', () => {
     // deb/fpm requires author.email for the Maintainer field.
     expect(pkg.author && typeof pkg.author === 'object' ? pkg.author.email : '').toMatch(/@/);
   });
+
+  it('keeps electron-builder 26 default deb depends and adds x11-utils', () => {
+    const deb = (pkg.build as { deb?: { depends?: string[] } }).deb;
+    // app-builder-lib FpmTarget.getDefaultDepends('deb') for 26.18.1, plus x11-utils.
+    expect(deb?.depends).toEqual([
+      'libgtk-3-0',
+      'libnotify4',
+      'libnss3',
+      'libxss1',
+      'libxtst6',
+      'xdg-utils',
+      'libatspi2.0-0',
+      'libuuid1',
+      'libsecret-1-0',
+      'x11-utils',
+    ]);
+  });
 });

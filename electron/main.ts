@@ -42,6 +42,7 @@ import {
   clampWidgetHitRect,
   linuxNoTrayFocusAction,
   linuxXWindowMapped,
+  resolveElectronOzonePlatform,
   shouldApplyWidgetHitShape,
   type WidgetHitRect,
 } from './linuxNoTray';
@@ -195,10 +196,19 @@ function enablePersistentWidgetShell(): void {
   });
 }
 
+function currentOzonePlatform() {
+  // Electron 43: no dedicated ozone getter — commandLine switch + hint + env.
+  return resolveElectronOzonePlatform({
+    ozoneSwitch: app.commandLine.getSwitchValue('ozone-platform'),
+    ozoneHint: process.env.ELECTRON_OZONE_PLATFORM_HINT,
+    env: process.env,
+  });
+}
+
 /**
  * Linux no-tray only: after external XDestroyWindow, Electron may keep a
  * non-destroyed BrowserWindow whose X window is gone (no close/closed). Detect
- * via xwininfo on the native XID and recreate; never use sync isVisible().
+ * via xwininfo BadWindow on X11 ozone only; never use sync isVisible().
  */
 function ensureLinuxNoTrayMainWindow(route = '/'): void {
   if (quitting || ensuringLinuxNoTrayMain) return;
@@ -208,7 +218,7 @@ function ensureLinuxNoTrayMainWindow(route = '/'): void {
     const action = linuxNoTrayFocusAction({
       hasWindow: Boolean(mainWindow),
       isDestroyed: Boolean(mainWindow?.isDestroyed()),
-      xWindowMapped: mainWindow ? linuxXWindowMapped(mainWindow) : false,
+      xWindowMapped: mainWindow ? linuxXWindowMapped(mainWindow, currentOzonePlatform()) : null,
     });
     if (action === 'recreate') {
       const stale = mainWindow;

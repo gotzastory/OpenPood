@@ -78,6 +78,7 @@ vi.mock('electron', async () => {
       setAppUserModelId: vi.fn(), whenReady: () => Promise.resolve(), isPackaged: false,
       getVersion: () => 'test-version', quit: (...args: unknown[]) => mocks.quit(...args), getAppMetrics: () => [],
       getPath: () => '/tmp/openpood-test',
+      commandLine: { getSwitchValue: () => '' },
       on: (event: string, callback: (...args: any[]) => any) => mocks.appEvents.set(event, callback),
     },
     ipcMain: {
@@ -148,6 +149,7 @@ vi.mock('./linuxNoTray', async () => {
   const actual = await vi.importActual<typeof import('./linuxNoTray')>('./linuxNoTray');
   return {
     ...actual,
+    resolveElectronOzonePlatform: () => (mocks.platform.isLinux ? 'x11' : 'unknown'),
     linuxXWindowMapped: () => mocks.xWindowMapped,
   };
 });
