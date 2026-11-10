@@ -4,6 +4,7 @@
   "version": "1.0.3",
   "description": "Voice dictation for Windows, macOS, and Linux: hold a hotkey, speak, and the text is pasted at your cursor.",
   "author": "Gotzastory",
+  "desktopName": "com.openpood.app.desktop",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -42,7 +43,6 @@
   "build": {
     "appId": "com.openpood.app",
     "productName": "OpenPood",
-    "desktopName": "com.openpood.app",
     "publish": {
       "provider": "github",
       "owner": "gotzastory",
@@ -90,14 +90,17 @@
       "target": ["AppImage", "deb"],
       "category": "Utility",
       "executableName": "openpood",
+      "syncDesktopName": true,
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "synopsis": "Voice dictation for the desktop",
       "description": "Press a global hotkey, speak, and OpenPood pastes the transcript at your cursor.",
       "desktop": {
-        "Name": "OpenPood",
-        "Comment": "Voice dictation — press a hotkey, speak, paste at your cursor",
-        "Categories": "Utility;AudioVideo;",
-        "StartupWMClass": "openpood"
+        "entry": {
+          "Name": "OpenPood",
+          "Comment": "Voice dictation — press a hotkey, speak, paste at your cursor",
+          "Categories": "Utility;AudioVideo;",
+          "StartupWMClass": "com.openpood.app"
+        }
       }
     }
   },

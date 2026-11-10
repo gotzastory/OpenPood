@@ -68,7 +68,7 @@ Build นี้ใช้ ad-hoc signing (ไม่มีใบรับรอง
 2. `sudo apt install ./OpenPood-*.deb` (หรือ Software Center)
 3. **แพ็กเกจ `.deb` ไม่มีอัปเดตอัตโนมัติในแอป** — เปิด Settings → อัปเดต OpenPood จะพาไปหน้า GitHub Releases
 
-`desktopName` ของ build คือ `com.openpood.app` ให้ตรงกับไฟล์ `.desktop` (สำคัญสำหรับ Wayland portal / global shortcuts)
+`package.json` ตั้ง `desktopName` เป็น `com.openpood.app.desktop` และ `linux.syncDesktopName: true` เพื่อให้ชื่อไฟล์ `.desktop` / `StartupWMClass` ตรงกับ Electron `app_id` (สำคัญสำหรับ Wayland portal / global shortcuts)
 
 ### อัปเดตเวอร์ชัน
 
