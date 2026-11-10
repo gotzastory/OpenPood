@@ -40,7 +40,7 @@ vi.mock('electron', async () => {
     isDestroyed() { return this.destroyed; }
     destroy() { this.destroyed = true; this.emit('closed'); }
   }
-  class Tray extends EventEmitter { setToolTip() {} setContextMenu() {} }
+  class Tray extends EventEmitter { setToolTip() {} setContextMenu() {} destroy() {} }
   class Notification { static isSupported() { return false; } }
   return {
     BrowserWindow, Tray, Notification,

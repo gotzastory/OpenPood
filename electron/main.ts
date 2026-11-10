@@ -35,9 +35,15 @@ import {
   warmWinHost,
   type ForegroundWindow,
 } from './winHost';
-import { hotkeyFailureMessage, isWindows, pasteFallbackMessage, resolveUpdateChannel } from './platform';
+import { hotkeyFailureMessage, isLinux, isWindows, pasteFallbackMessage, resolveUpdateChannel } from './platform';
 import { notifyMissingMacPermissions, requestMacPermissions } from './permissions';
-import { windowCloseAction } from './windowLifecycle';
+import {
+  linuxStatusNotifierPresent,
+  resolveTrayConfirmed,
+  secondInstanceAction,
+  shouldOpenMainWindowOnColdStart,
+  windowCloseAction,
+} from './windowLifecycle';
 
 type RecordingMode = 'dictate' | 'translate';
 type WidgetState = 'idle' | 'starting' | 'recording' | 'processing' | 'skipped';
@@ -92,7 +98,10 @@ const windowPreferences = {
 let widget: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-/** False when Tray construction fails (e.g. missing libappindicator) or is unsupported. */
+/**
+ * True only when a tray reopen affordance is confirmed.
+ * On Linux, `new Tray()` not throwing is insufficient — StatusNotifierWatcher must be present.
+ */
 let trayAvailable = false;
 let recordingState: WidgetState = 'idle';
 let hotkeyPending = false;
@@ -255,11 +264,12 @@ function createWidget() {
 
 function focusOrCreateMainWindow(route = '/'): void {
   if (quitting) return;
-  if (mainWindow && !mainWindow.isDestroyed()) {
+  if (mainWindow?.isDestroyed()) mainWindow = null;
+  const action = secondInstanceAction(mainWindow ? 'alive' : 'absent');
+  // Both paths go through createMainWindow: it creates when absent, or show/restore/focus when alive.
+  if (action === 'create' || action === 'focus-existing') {
     createMainWindow(route);
-    return;
   }
-  createMainWindow(route);
 }
 
 function createMainWindow(route: string) {
@@ -307,6 +317,16 @@ function createMainWindow(route: string) {
 
 function createTray(): boolean {
   try {
+    // Linux: probe the session bus first. Constructing Tray without a host still
+    // "succeeds" and would wrongly enable destroy-keep-running close policy.
+    const notifierPresent = isLinux() ? linuxStatusNotifierPresent() : true;
+    if (isLinux() && !notifierPresent) {
+      tray = null;
+      trayAvailable = false;
+      console.warn('[tray] Linux StatusNotifierWatcher not present; leaving tray unconfirmed');
+      return false;
+    }
+
     const icon = nativeImage.createFromPath(path.join(BRAND_ASSET_DIRECTORY, 'openpood-symbol.png'));
     if (icon.isEmpty()) throw new Error('OpenPood tray icon is missing');
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
@@ -321,7 +341,16 @@ function createTray(): boolean {
       ]),
     );
     tray.on('click', () => createMainWindow('/'));
-    trayAvailable = true;
+    trayAvailable = resolveTrayConfirmed({
+      platform: process.platform,
+      trayConstructed: true,
+      linuxStatusNotifierPresent: notifierPresent,
+    });
+    if (!trayAvailable) {
+      tray.destroy();
+      tray = null;
+      return false;
+    }
     return true;
   } catch (err) {
     tray = null;
@@ -408,8 +437,9 @@ app.whenReady().then(async () => {
   warmHistory();
   createWidget();
   createTray();
-  // Without a tray, keep a visible dashboard so the user is never stuck headless.
-  if (!trayAvailable) createMainWindow('/');
+  // Without a confirmed tray (always the Linux default unless StatusNotifierWatcher
+  // is present), open the dashboard so cold start is never headless.
+  if (shouldOpenMainWindowOnColdStart(trayAvailable)) createMainWindow('/');
   registerHotkeys(getSettings());
   applyLaunchAtStartup(getSettings().launchAtStartup);
   const macPermissions = await requestMacPermissions();
