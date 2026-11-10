@@ -3,7 +3,10 @@
   "private": true,
   "version": "1.0.3",
   "description": "Voice dictation for Windows, macOS, and Linux: hold a hotkey, speak, and the text is pasted at your cursor.",
-  "author": "Gotzastory",
+  "author": {
+    "name": "Gotzastory",
+    "email": "gotzastory@users.noreply.github.com"
+  },
   "desktopName": "com.openpood.app.desktop",
   "type": "module",
   "main": "dist-electron/main.js",

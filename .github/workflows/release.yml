@@ -56,7 +56,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t apps < <(find release -type d -name '*.app' | sort)
+          # macOS ships Bash 3.2 — no mapfile. Collect .app paths portably.
+          apps=()
+          while IFS= read -r app_path; do
+            apps+=("$app_path")
+          done < <(find release -type d -name '*.app' | sort)
           if [ "${#apps[@]}" -eq 0 ]; then
             echo "No .app bundle found under release/ (expected release/mac and release/mac-arm64)." >&2
             exit 1
@@ -64,8 +68,9 @@ jobs:
           found_arm64=0
           for app_path in "${apps[@]}"; do
             echo "Verifying codesign on: $app_path"
+            safe_name="$(basename "$app_path" | tr '/ ' '__')"
             codesign_out="$(codesign -dv --verbose=2 "$app_path" 2>&1 || true)"
-            printf '%s\n' "$codesign_out" | tee "/tmp/codesign-$(basename "$app_path").txt"
+            printf '%s\n' "$codesign_out" | tee "/tmp/codesign-${safe_name}.txt"
             if ! printf '%s\n' "$codesign_out" | grep -q 'Signature=adhoc'; then
               echo "Expected Signature=adhoc for $app_path (required for arm64)." >&2
               exit 1
@@ -85,11 +90,12 @@ jobs:
       - name: Verify update artifacts
         run: node scripts/verify-update-artifacts.cjs release ${{ matrix.platform }}
 
+      # Use run_id (not ref_name): branch refs contain '/' which upload-artifact rejects.
       - name: Upload Windows artifacts
         if: matrix.platform == 'win'
         uses: actions/upload-artifact@v5
         with:
-          name: OpenPood-windows-${{ github.ref_name }}
+          name: OpenPood-windows-${{ github.run_id }}
           path: |
             release/*.exe
             release/*.exe.blockmap
@@ -100,7 +106,7 @@ jobs:
         if: matrix.platform == 'linux'
         uses: actions/upload-artifact@v5
         with:
-          name: OpenPood-linux-${{ github.ref_name }}
+          name: OpenPood-linux-${{ github.run_id }}
           path: |
             release/*.AppImage
             release/*.deb
@@ -111,7 +117,7 @@ jobs:
         if: matrix.platform == 'mac'
         uses: actions/upload-artifact@v5
         with:
-          name: OpenPood-mac-${{ github.ref_name }}
+          name: OpenPood-mac-${{ github.run_id }}
           path: |
             release/*.dmg
             release/*.zip

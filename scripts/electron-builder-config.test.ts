@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as {
   desktopName?: string;
+  author?: string | { name?: string; email?: string };
   build: Record<string, unknown> & {
     linux?: {
       syncDesktopName?: boolean;
@@ -50,5 +51,8 @@ describe('electron-builder packaging config', () => {
       validateConfiguration: (config: unknown) => Promise<void>;
     };
     await expect(validateConfiguration({ ...pkg.build })).resolves.toBeUndefined();
+
+    // deb/fpm requires author.email for the Maintainer field.
+    expect(pkg.author && typeof pkg.author === 'object' ? pkg.author.email : '').toMatch(/@/);
   });
 });
