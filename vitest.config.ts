@@ -4,6 +4,6 @@ import { defineConfig } from 'vitest/config';
 // vite-plugin-electron setup would try to spawn Electron during a test run.
 export default defineConfig({
   test: {
-    include: ['electron/**/*.test.ts', 'src/**/*.test.ts'],
+    include: ['electron/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts'],
   },
 });

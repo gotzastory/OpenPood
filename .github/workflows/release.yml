@@ -1,20 +1,32 @@
 name: Release
 
-# Builds the Windows NSIS installer and attaches it to a GitHub Release
-# whenever a version tag (v1.2.3) is pushed. Can also be run by hand from
-# the Actions tab to produce a build artifact without publishing.
+# Builds platform installers. Tag pushes (v*) also publish a GitHub Release.
+# workflow_dispatch on any non-tag ref only builds, verifies, and uploads
+# workflow artifacts — it never creates a tag, draft, or published release.
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
-    runs-on: windows-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: windows
+          - os: ubuntu-latest
+            platform: linux
+            artifact: linux
+          - os: macos-latest
+            platform: mac
+            artifact: mac
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
 
@@ -31,33 +43,114 @@ jobs:
           npm run typecheck
           npm test
 
-      # `npm run dist` passes --publish never: electron-builder otherwise
-      # auto-publishes when it detects a git tag and fails without GH_TOKEN.
-      # We publish explicitly below so the release notes stay under our control.
+      # Always --publish never here. electron-builder otherwise auto-publishes
+      # when it sees a git tag. Publishing is owned exclusively by the publish job.
+      # Ad-hoc mac signing comes from package.json mac.identity: "-" (not CSC_IDENTITY).
       - name: Build installer
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - name: Verify update artifacts
-        run: node scripts/verify-update-artifacts.cjs
+      - name: Verify ad-hoc macOS signature
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # macOS ships Bash 3.2 — no mapfile. Collect .app paths portably.
+          apps=()
+          while IFS= read -r app_path; do
+            apps+=("$app_path")
+          done < <(find release -type d -name '*.app' | sort)
+          if [ "${#apps[@]}" -eq 0 ]; then
+            echo "No .app bundle found under release/ (expected release/mac and release/mac-arm64)." >&2
+            exit 1
+          fi
+          found_arm64=0
+          for app_path in "${apps[@]}"; do
+            echo "Verifying codesign on: $app_path"
+            safe_name="$(basename "$app_path" | tr '/ ' '__')"
+            codesign_out="$(codesign -dv --verbose=2 "$app_path" 2>&1 || true)"
+            printf '%s\n' "$codesign_out" | tee "/tmp/codesign-${safe_name}.txt"
+            if ! printf '%s\n' "$codesign_out" | grep -q 'Signature=adhoc'; then
+              echo "Expected Signature=adhoc for $app_path (required for arm64)." >&2
+              exit 1
+            fi
+            if [[ "$app_path" == *arm64* ]] || printf '%s\n' "$codesign_out" | grep -Eqi '(arm64|aarch64)'; then
+              found_arm64=1
+            fi
+          done
+          if [ "$found_arm64" -ne 1 ]; then
+            echo "No arm64 .app found under release/ (looked for mac-arm64 / arm64 in path or codesign output)." >&2
+            printf 'Apps checked:\n' >&2
+            printf '  %s\n' "${apps[@]}" >&2
+            exit 1
+          fi
+          echo "Verified ad-hoc signatures on ${#apps[@]} app bundle(s), including arm64."
 
-      - name: Upload build artifact
+      - name: Verify update artifacts
+        run: node scripts/verify-update-artifacts.cjs release ${{ matrix.platform }}
+
+      # Use run_id (not ref_name): branch refs contain '/' which upload-artifact rejects.
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'win'
         uses: actions/upload-artifact@v5
         with:
-          name: OpenPood-Setup-${{ github.ref_name }}
+          name: OpenPood-windows-${{ github.run_id }}
           path: |
             release/*.exe
             release/*.exe.blockmap
             release/latest.yml
           if-no-files-found: error
 
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v5
+        with:
+          name: OpenPood-linux-${{ github.run_id }}
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/latest-linux.yml
+          if-no-files-found: error
+
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v5
+        with:
+          name: OpenPood-mac-${{ github.run_id }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.zip.blockmap
+            release/latest-mac.yml
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    # Tag pushes only — never on workflow_dispatch, even if the ref looks like a tag.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-assets -type f ! -name '.*' | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release assets found" >&2
+            exit 1
+          fi
           notes_file="release-notes/${GITHUB_REF_NAME}.md"
           notes_args=(--generate-notes)
           if [ -f "$notes_file" ]; then
@@ -68,5 +161,5 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "OpenPood ${GITHUB_REF_NAME#v}" \
             "${notes_args[@]}" \
-            release/*.exe release/*.exe.blockmap release/latest.yml
+            "${files[@]}"
           gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest

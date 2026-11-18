@@ -14,7 +14,7 @@ vi.mock('../src/lib/runtimeConfig', async (original) => {
   const module = await original<typeof import('../src/lib/runtimeConfig')>();
   return { RUNTIME: { ...module.RUNTIME, clipboardSettleMs: 1, clipboardRestoreMs: 1 } };
 });
-import { pasteAtCursor } from './pasteText';
+import { pasteWindows as pasteAtCursor } from './pasteWindows';
 
 beforeEach(() => {
   vi.resetAllMocks();

@@ -44,6 +44,15 @@ const api = {
   setSettings: (partial: Partial<AppSettings>): Promise<RendererSettings> =>
     ipcRenderer.invoke('settings:set', partial),
   openMainWindow: (route = '/'): Promise<void> => ipcRenderer.invoke('app:open-main-window', route),
+  quitApp: (): Promise<void> => ipcRenderer.invoke('app:quit'),
+  onWidgetPresence: (callback: (state: { persistent: boolean }) => void) => {
+    const listener = (_event: unknown, state: { persistent: boolean }) => callback(state);
+    ipcRenderer.on('widget:presence', listener);
+    return () => ipcRenderer.removeListener('widget:presence', listener);
+  },
+  reportWidgetHitRegion: (rect: { x: number; y: number; width: number; height: number }): void => {
+    ipcRenderer.send('widget:hit-region', rect);
+  },
   runTranscription: (
     buffer: ArrayBuffer,
     mimeType: string,

@@ -125,6 +125,14 @@ export function DashboardPage() {
               location.hash = "/settings";
             }}
           />
+          <DashboardNavItem
+            label="ออกจากโปรแกรม"
+            icon={icons.logOut}
+            active={false}
+            onSelect={() => {
+              void window.typeless.quitApp();
+            }}
+          />
         </div>
       </aside>
       <main
