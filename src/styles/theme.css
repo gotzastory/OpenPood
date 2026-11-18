@@ -1,0 +1,73 @@
+/* Brand daisyUI themes shared by the dashboard and onboarding.
+   The recording widget does not load this file. */
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+  include: rootcolor, properties, button, input, select, textarea, toggle, badge, list, alert, card, modal, menu, join, kbd, fieldset, label, navbar, tab, table, tooltip, status, loading, steps, divider, progress, stat, range, toast;
+  logs: false;
+}
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #eef4ff;
+  --color-base-300: #e2e8f0;
+  --color-base-content: #0b1218;
+  --color-primary: #0055ff;
+  --color-primary-content: #ffffff;
+  --color-secondary: #64748b;
+  --color-secondary-content: #ffffff;
+  --color-accent: #eef4ff;
+  --color-accent-content: #0055ff;
+  --color-neutral: #0b1218;
+  --color-neutral-content: #ffffff;
+  --color-info: #0055ff;
+  --color-info-content: #ffffff;
+  --color-success: #15803d;
+  --color-success-content: #ffffff;
+  --color-warning: #a16207;
+  --color-warning-content: #ffffff;
+  --color-error: #b91c1c;
+  --color-error-content: #ffffff;
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+@plugin "daisyui/theme" {
+  name: "dark";
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #111a24;
+  --color-base-200: #0b1218;
+  --color-base-300: #223041;
+  --color-base-content: #e6edf6;
+  --color-primary: #2563eb;
+  --color-primary-content: #ffffff;
+  --color-secondary: #94a3b8;
+  --color-secondary-content: #0b1218;
+  --color-accent: #16243a;
+  --color-accent-content: #7fb0ff;
+  --color-neutral: #1c2a3a;
+  --color-neutral-content: #e6edf6;
+  --color-info: #2563eb;
+  --color-info-content: #ffffff;
+  --color-success: #4ade80;
+  --color-success-content: #0b1218;
+  --color-warning: #facc15;
+  --color-warning-content: #0b1218;
+  --color-error: #f87171;
+  --color-error-content: #0b1218;
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}

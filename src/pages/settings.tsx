@@ -10,6 +10,7 @@ import {
   OPENROUTER_MODELS,
   type TranscriptionModel,
 } from "../lib/transcriptionModels";
+import { StatusToast } from "../components/StatusToast";
 import {
   BTN_PRIMARY,
   FIELD_INPUT,
@@ -233,254 +234,206 @@ export function SettingsPage() {
 
   const models = provider === "custom" ? [] : PROVIDER_PRESETS[provider].models;
   const sttOnly = isElevenLabsProvider(form);
-  const statusClass =
-    message.kind === "success"
-      ? "text-success"
-      : message.kind === "error"
-        ? "text-error"
-        : "text-base-content/65";
 
   return (
-    <div className="mx-auto max-w-[920px]">
-      <header className="mb-6">
+    <div className="mx-auto max-w-3xl">
+      <header className="mb-4">
         <h1 className={PAGE_TITLE}>การตั้งค่า</h1>
-        <p className="mt-1 text-sm text-base-content/65">
+        <p className="mt-1 text-sm text-secondary">
           ตั้งค่าการถอดเสียง ผลลัพธ์ และอุปกรณ์ของ OpenPood
         </p>
       </header>
 
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-        <section
-          className="card card-border bg-base-100"
-          aria-labelledby="provider-title"
-        >
-          <div className="card-body gap-0 p-6">
-            <h2 id="provider-title" className="mb-5 text-base font-semibold">
-              ผู้ให้บริการและโมเดล
-            </h2>
-            <label className={FIELD_LABEL}>
-              ผู้ให้บริการ
-              <select
-                className={FIELD_SELECT}
-                value={provider}
-                onChange={(event) =>
-                  changeProvider(event.target.value as ProviderKey)
-                }
-              >
-                <option value="openai">OpenAI (api.openai.com)</option>
-                <option value="openrouter">OpenRouter (openrouter.ai)</option>
-                <option value="gemini">Gemini (Google AI Studio)</option>
-                <option value="elevenlabs">ElevenLabs (Speech to Text)</option>
-                <option value="custom">กำหนดเอง</option>
-              </select>
-            </label>
-            <label className={FIELD_LABEL}>
-              API Key
-              <input
-                className={FIELD_INPUT}
-                type="password"
-                value={form.apiKey}
-                onChange={(event) => update("apiKey", event.target.value)}
-                placeholder={
-                  form.hasApiKey
-                    ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน"
-                    : provider === "gemini"
-                      ? "AIza..."
-                      : sttOnly ? "ElevenLabs API key"
-                      : "sk-..."
-                }
-              />
-            </label>
-            <label className={FIELD_LABEL}>
-              API Base URL
-              <input
-                className={FIELD_INPUT}
-                type="text"
-                value={form.apiBaseUrl}
-                disabled={provider !== "custom"}
-                onChange={(event) => update("apiBaseUrl", event.target.value)}
-              />
-            </label>
-            <label className={FIELD_LABEL}>
-              Model
-              {provider === "custom" ? (
-                <input
-                  className={FIELD_INPUT}
-                  type="text"
-                  value={form.model}
-                  onChange={(event) => update("model", event.target.value)}
-                  placeholder="whisper-1"
-                />
-              ) : (
-                <select
-                  className={FIELD_SELECT}
-                  value={form.model}
-                  onChange={(event) => update("model", event.target.value)}
-                >
-                  {models.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </label>
-            <label className={FIELD_LABEL}>
-              ภาษา
-              <select
-                className={FIELD_SELECT}
-                value={form.language}
-                onChange={(event) => update("language", event.target.value)}
-              >
-                <option value="">ไทย + อังกฤษ (แนะนำ)</option>
-                <option value="th">ไทยเท่านั้น</option>
-                <option value="en">อังกฤษเท่านั้น</option>
-              </select>
-            </label>
-            <p className="-mt-3 text-xs leading-relaxed text-base-content/65">
-              โหมดแนะนำช่วยรองรับคำพูดหลายภาษา หากพูดภาษาเดียวเป็นหลัก
-              ให้เลือกภาษานั้นเพื่อช่วยความแม่นยำ
-            </p>
-            {sttOnly && (
-              <p className="mt-3 text-xs leading-relaxed text-base-content/65">
-                {ELEVENLABS_STT_ONLY_MESSAGE} · Dictionary ใช้กฎแก้คำในเครื่อง;
-                ยังไม่ส่งคำศัพท์เป็น keyterms
-              </p>
-            )}
+      <div className="flex flex-col gap-4">
+        <fieldset className="fieldset rounded-box border border-base-300 bg-base-100 p-4" aria-labelledby="provider-title">
+          <legend id="provider-title" className="fieldset-legend text-base font-semibold">ผู้ให้บริการและโมเดล</legend>
+          <label className={FIELD_LABEL} htmlFor="settings-provider">ผู้ให้บริการ</label>
+          <select
+            id="settings-provider"
+            className={FIELD_SELECT}
+            value={provider}
+            onChange={(event) => changeProvider(event.target.value as ProviderKey)}
+          >
+            <option value="openai">OpenAI (api.openai.com)</option>
+            <option value="openrouter">OpenRouter (openrouter.ai)</option>
+            <option value="gemini">Gemini (Google AI Studio)</option>
+            <option value="elevenlabs">ElevenLabs (Speech to Text)</option>
+            <option value="custom">กำหนดเอง</option>
+          </select>
+          <label className={FIELD_LABEL} htmlFor="settings-api-key">API Key</label>
+          <input
+            id="settings-api-key"
+            className={FIELD_INPUT}
+            type="password"
+            value={form.apiKey}
+            onChange={(event) => update("apiKey", event.target.value)}
+            placeholder={
+              form.hasApiKey
+                ? "•••• บันทึกไว้แล้ว — พิมพ์ใหม่เพื่อเปลี่ยน"
+                : provider === "gemini"
+                  ? "AIza..."
+                  : sttOnly ? "ElevenLabs API key"
+                  : "sk-..."
+            }
+          />
+          <label className={FIELD_LABEL} htmlFor="settings-base-url">API Base URL</label>
+          <input
+            id="settings-base-url"
+            className={FIELD_INPUT}
+            type="text"
+            value={form.apiBaseUrl}
+            disabled={provider !== "custom"}
+            onChange={(event) => update("apiBaseUrl", event.target.value)}
+          />
+          <label className={FIELD_LABEL} htmlFor="settings-model">Model</label>
+          {provider === "custom" ? (
+            <input
+              id="settings-model"
+              className={FIELD_INPUT}
+              type="text"
+              value={form.model}
+              onChange={(event) => update("model", event.target.value)}
+              placeholder="whisper-1"
+            />
+          ) : (
+            <select
+              id="settings-model"
+              className={FIELD_SELECT}
+              value={form.model}
+              onChange={(event) => update("model", event.target.value)}
+            >
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>{model.name}</option>
+              ))}
+            </select>
+          )}
+          <label className={FIELD_LABEL} htmlFor="settings-language">ภาษา</label>
+          <select
+            id="settings-language"
+            className={FIELD_SELECT}
+            value={form.language}
+            onChange={(event) => update("language", event.target.value)}
+          >
+            <option value="">ไทย + อังกฤษ (แนะนำ)</option>
+            <option value="th">ไทยเท่านั้น</option>
+            <option value="en">อังกฤษเท่านั้น</option>
+          </select>
+          <p className="label px-0 text-xs font-normal text-secondary">
+            โหมดแนะนำช่วยรองรับคำพูดหลายภาษา หากพูดภาษาเดียวเป็นหลัก ให้เลือกภาษานั้นเพื่อช่วยความแม่นยำ
+          </p>
+          {sttOnly && (
+            <div role="status" className="alert alert-info alert-soft mt-2 text-sm">
+              {ELEVENLABS_STT_ONLY_MESSAGE} · Dictionary ใช้กฎแก้คำในเครื่อง; ยังไม่ส่งคำศัพท์เป็น keyterms
+            </div>
+          )}
+        </fieldset>
+
+        <fieldset className="fieldset rounded-box border border-base-300 bg-base-100 p-4" aria-labelledby="output-title">
+          <legend id="output-title" className="fieldset-legend text-base font-semibold">ผลลัพธ์และการแปล</legend>
+          <label className={FIELD_LABEL} htmlFor="settings-translate">แปลเป็นภาษา (โหมด Translate)</label>
+          <select
+            id="settings-translate"
+            className={FIELD_SELECT}
+            value={form.translateTargetLang}
+            disabled={sttOnly}
+            onChange={(event) => update("translateTargetLang", event.target.value)}
+          >
+            {Object.entries(TRANSLATE_LANGUAGES).map(([code, name]) => (
+              <option key={code} value={code}>{name}</option>
+            ))}
+          </select>
+          <Toggle
+            label="ตัดคำติดปากอัตโนมัติ"
+            hint="อืม, เอ่อ, um, uh — ไม่ใช้ AI"
+            checked={form.stripFillersEnabled}
+            onChange={(value) => update("stripFillersEnabled", value)}
+          />
+          <Toggle
+            label="ปรับข้อความด้วย AI"
+            hint="ใส่วรรคตอนและปรับโทนตามแอปปลายทาง"
+            checked={!sttOnly && form.aiPolishEnabled}
+            disabled={sttOnly}
+            onChange={(value) => update("aiPolishEnabled", value)}
+          />
+          <label className={FIELD_LABEL} htmlFor="settings-chat-model">Chat model (ใช้กับ AI polish และ Translate)</label>
+          <input
+            id="settings-chat-model"
+            className={FIELD_INPUT}
+            type="text"
+            value={form.chatModel}
+            disabled={sttOnly}
+            onChange={(event) => update("chatModel", event.target.value)}
+            placeholder="google/gemini-3.5-flash-lite"
+          />
+        </fieldset>
+
+        <fieldset className="fieldset rounded-box border border-base-300 bg-base-100 p-4" aria-labelledby="device-title">
+          <legend id="device-title" className="fieldset-legend text-base font-semibold">อุปกรณ์และระบบ</legend>
+          <label className={FIELD_LABEL} htmlFor="settings-mic">ไมโครโฟน</label>
+          <select
+            id="settings-mic"
+            className={FIELD_SELECT}
+            value={form.micDeviceId}
+            onChange={(event) => update("micDeviceId", event.target.value)}
+          >
+            <option value="">ค่าเริ่มต้นของระบบ</option>
+            {mics.map((mic, index) => (
+              <option key={mic.deviceId} value={mic.deviceId}>
+                {mic.label || `Microphone ${index + 1}`}
+              </option>
+            ))}
+          </select>
+          <label className={FIELD_LABEL} htmlFor="settings-duration">
+            ระยะเวลาอัดสูงสุด <span className="badge badge-soft badge-sm ml-1">{form.maxDurationSec} วินาที</span>
+          </label>
+          <input
+            id="settings-duration"
+            className="range range-primary range-sm"
+            type="range"
+            min={10}
+            max={600}
+            step={10}
+            value={form.maxDurationSec}
+            aria-valuetext={`${form.maxDurationSec} วินาที`}
+            onChange={(event) => update("maxDurationSec", Number(event.target.value))}
+          />
+          <div className="flex justify-between px-1 text-xs text-secondary">
+            <span>10 วินาที</span>
+            <span>600 วินาที</span>
           </div>
-        </section>
-
-        <div className="flex flex-col gap-5">
-          <section
-            className="card card-border bg-base-100"
-            aria-labelledby="output-title"
-          >
-            <div className="card-body gap-0 p-6">
-              <h2 id="output-title" className="mb-5 text-base font-semibold">
-                ผลลัพธ์และการแปล
-              </h2>
-              <label className={FIELD_LABEL}>
-                แปลเป็นภาษา (โหมด Translate)
-                <select
-                  className={FIELD_SELECT}
-                  value={form.translateTargetLang}
-                  disabled={sttOnly}
-                  onChange={(event) =>
-                    update("translateTargetLang", event.target.value)
-                  }
-                >
-                  {Object.entries(TRANSLATE_LANGUAGES).map(([code, name]) => (
-                    <option key={code} value={code}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Toggle
-                label="ตัดคำติดปากอัตโนมัติ"
-                hint="อืม, เอ่อ, um, uh — ไม่ใช้ AI"
-                checked={form.stripFillersEnabled}
-                onChange={(value) => update("stripFillersEnabled", value)}
-              />
-              <Toggle
-                label="ปรับข้อความด้วย AI"
-                hint="ใส่วรรคตอนและปรับโทนตามแอปปลายทาง"
-                checked={!sttOnly && form.aiPolishEnabled}
-                disabled={sttOnly}
-                onChange={(value) => update("aiPolishEnabled", value)}
-              />
-              <label className={`${FIELD_LABEL} mb-0`}>
-                Chat model (ใช้กับ AI polish และ Translate)
-                <input
-                  className={FIELD_INPUT}
-                  type="text"
-                  value={form.chatModel}
-                  disabled={sttOnly}
-                  onChange={(event) => update("chatModel", event.target.value)}
-                  placeholder="google/gemini-3.5-flash-lite"
-                />
-              </label>
-            </div>
-          </section>
-
-          <section
-            className="card card-border bg-base-100"
-            aria-labelledby="device-title"
-          >
-            <div className="card-body gap-0 p-6">
-              <h2 id="device-title" className="mb-5 text-base font-semibold">
-                อุปกรณ์และระบบ
-              </h2>
-              <label className={FIELD_LABEL}>
-                ไมโครโฟน
-                <select
-                  className={FIELD_SELECT}
-                  value={form.micDeviceId}
-                  onChange={(event) =>
-                    update("micDeviceId", event.target.value)
-                  }
-                >
-                  <option value="">ค่าเริ่มต้นของระบบ</option>
-                  {mics.map((mic, index) => (
-                    <option key={mic.deviceId} value={mic.deviceId}>
-                      {mic.label || `Microphone ${index + 1}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={FIELD_LABEL}>
-                ระยะเวลาอัดสูงสุด (วินาที)
-                <input
-                  className={FIELD_INPUT}
-                  type="number"
-                  min="10"
-                  max="600"
-                  value={form.maxDurationSec}
-                  onChange={(event) =>
-                    update("maxDurationSec", Number(event.target.value))
-                  }
-                />
-              </label>
-              <Toggle
-                label="เล่นเสียงเมื่อเริ่ม/หยุดอัด"
-                checked={form.playSound}
-                onChange={(value) => update("playSound", value)}
-              />
-              <Toggle
-                label="เปิดแอปอัตโนมัติเมื่อเปิดเครื่อง"
-                checked={form.launchAtStartup}
-                onChange={(value) => update("launchAtStartup", value)}
-              />
-              <Toggle
-                label="บันทึกประวัติการถอดเสียง"
-                hint="ข้อความถูกเข้ารหัสเก็บในเครื่องนี้ ปิดแล้วจะไม่เก็บข้อความใหม่ ประวัติเดิมล้างได้ที่หน้าประวัติ"
-                checked={form.saveHistory}
-                onChange={(value) => update("saveHistory", value)}
-              />
-            </div>
-          </section>
-        </div>
+          <Toggle
+            label="เล่นเสียงเมื่อเริ่ม/หยุดอัด"
+            checked={form.playSound}
+            onChange={(value) => update("playSound", value)}
+          />
+          <Toggle
+            label="เปิดแอปอัตโนมัติเมื่อเปิดเครื่อง"
+            checked={form.launchAtStartup}
+            onChange={(value) => update("launchAtStartup", value)}
+          />
+          <Toggle
+            label="บันทึกประวัติการถอดเสียง"
+            hint="ข้อความถูกเข้ารหัสเก็บในเครื่องนี้ ปิดแล้วจะไม่เก็บข้อความใหม่ ประวัติเดิมล้างได้ที่หน้าประวัติ"
+            checked={form.saveHistory}
+            onChange={(value) => update("saveHistory", value)}
+          />
+        </fieldset>
       </div>
 
       <UpdatePanel />
 
-      <div className="mt-5 flex items-center justify-end gap-3">
-        <p
-          className={`min-h-4 text-xs ${statusClass}`}
-          role="status"
-          aria-live="polite"
-        >
-          {message.text}
-        </p>
+      <div className="mt-4 flex items-center justify-end border-t border-base-300 py-3">
         <button
           type="button"
           className={`${BTN_PRIMARY} px-5`}
           disabled={saving}
           onClick={() => void save()}
         >
+          {saving && <span className="loading loading-spinner loading-xs" aria-hidden="true" />}
           {saving ? "กำลังบันทึก…" : "บันทึกการตั้งค่า"}
         </button>
       </div>
+      <StatusToast text={message.text} kind={message.kind} />
     </div>
   );
 }
@@ -499,16 +452,14 @@ function Toggle({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="mb-4 flex min-h-11 cursor-pointer flex-row items-center justify-between gap-4 rounded-lg border border-base-300 px-3 text-[13px] text-base-content/75">
+    <label className="label mt-2 cursor-pointer justify-between gap-4 rounded-lg border border-base-300 px-3 py-2">
       <span>
-        {label}
-        {hint && (
-          <small className="block text-xs text-base-content/65">{hint}</small>
-        )}
+        <span className="block font-medium text-base-content">{label}</span>
+        {hint && <span className="block text-xs font-normal text-secondary">{hint}</span>}
       </span>
       <input
         type="checkbox"
-        className="toggle toggle-primary toggle-sm"
+        className="toggle toggle-primary"
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}

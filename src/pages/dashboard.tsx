@@ -86,49 +86,62 @@ export function DashboardPage() {
   return (
     <div className="dashboard-shell flex h-screen bg-base-200 text-base-content">
       <aside
-        className="flex w-48 shrink-0 flex-col border-r border-base-300 bg-base-100 p-4 lg:w-56"
+        className="flex w-52 shrink-0 flex-col border-r border-base-300 bg-base-100"
         aria-label="เมนูหลัก"
       >
-        <div className="mb-8 px-1 pt-1">
+        <div className="px-4 pt-4 pb-2">
           <span className="brand-logo max-w-full" role="img" aria-label="OpenPood" />
           <p className="mt-1 px-1 text-xs text-secondary">พูดให้เป็นข้อความ</p>
         </div>
-        <nav className="flex flex-col gap-1" aria-label="หน้าหลัก">
+        <ul className="menu menu-vertical w-full flex-1 px-2" aria-label="หน้าหลัก">
           {NAV_ITEMS.map((item) => (
+            <li key={item.route}>
+              <DashboardNavItem
+                label={item.label}
+                icon={item.icon}
+                active={item.route === navigation.route}
+                onSelect={() => {
+                  location.hash = item.route;
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+        <ul className="menu menu-vertical mt-auto w-full border-t border-base-300 px-2 py-2" aria-label="เครื่องมือ">
+          <UsageNavItem key={navigation.refreshKey} />
+          <li>
             <DashboardNavItem
-              key={item.route}
-              label={item.label}
-              icon={item.icon}
-              active={item.route === navigation.route}
+              label="ธีมมืด"
+              icon={theme === "light" ? icons.moon : icons.sun}
+              active={false}
+              pressed={theme === "dark"}
               onSelect={() => {
-                location.hash = item.route;
+                setTheme((current) => (current === "light" ? "dark" : "light"));
               }}
             />
-          ))}
-        </nav>
-        <div className="mt-auto flex flex-col gap-1 border-t border-base-300 pt-4">
-          <UsageNavItem key={navigation.refreshKey} />
-          <DashboardNavItem
-            label="ธีมมืด"
-            icon={theme === "light" ? icons.moon : icons.sun}
-            active={false}
-            pressed={theme === "dark"}
-            onSelect={() => {
-              setTheme((current) => (current === "light" ? "dark" : "light"));
-            }}
-          />
-          <DashboardNavItem
-            label="การตั้งค่า"
-            icon={icons.settings}
-            active={navigation.route === "/settings"}
-            onSelect={() => {
-              location.hash = "/settings";
-            }}
-          />
-        </div>
+          </li>
+          <li>
+            <DashboardNavItem
+              label="การตั้งค่า"
+              icon={icons.settings}
+              active={navigation.route === "/settings"}
+              onSelect={() => {
+                location.hash = "/settings";
+              }}
+            />
+          </li>
+          {/* PR #6 replaces this placeholder with DashboardNavItem
+              label="ออกจากโปรแกรม" icon={icons.logOut}
+              onSelect={() => void window.typeless.quitApp()}.
+              Keep it last so settings stays above the quit action.
+              The child span keeps the li non-empty: daisyUI draws li:empty as a divider. */}
+          <li id="sidebar-quit-slot" data-slot="quit">
+            <span className="pointer-events-none min-h-11" aria-hidden="true" />
+          </li>
+        </ul>
       </aside>
       <main
-        className="dashboard-scrollbar min-w-0 flex-1 overflow-y-auto px-6 py-8 outline-none lg:px-10 lg:py-10"
+        className="dashboard-scrollbar min-w-0 flex-1 overflow-y-auto px-4 py-5 outline-none lg:px-8 lg:py-8"
         id="content"
         tabIndex={-1}
       >

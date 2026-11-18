@@ -88,76 +88,103 @@ export function HomePage() {
   }
 
   if (!settings || !stats) {
-    return <div className="mx-auto max-w-[1120px] text-sm text-base-content/65">กำลังโหลด...</div>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-secondary" role="status">
+        <span className="loading loading-spinner loading-sm" aria-hidden="true" />
+        กำลังโหลด...
+      </div>
+    );
   }
 
   return (
-    <div className="mx-auto max-w-[1120px]">
-      <header className="mb-7">
-        <h1 className="text-[36px] font-semibold tracking-tight">พูดไปเลย ไม่ต้องพิมพ์</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-secondary">
+    <div className="mx-auto max-w-5xl">
+      <header className="mb-5">
+        <h1 className="text-2xl font-semibold tracking-tight">หน้าหลัก</h1>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-secondary">
           กดปุ่มลัดเพื่อเริ่มพูด กดอีกครั้งเพื่อจบ แล้ว OpenPood จะวางข้อความให้ตรง cursor
         </p>
       </header>
 
-      <div className="space-y-7">
-        <section aria-labelledby="modes-title">
-          <h2 id="modes-title" className="mb-3 text-sm font-semibold">เริ่มด้วยปุ่มลัดของคุณ</h2>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {MODES.map((mode) => (
-              <div key={mode.settingsKey} className={`card rounded-xl border ${mode.settingsKey === "hotkey" ? "border-primary bg-primary bg-linear-to-br from-primary from-35% to-neutral text-primary-content" : "border-base-300 bg-base-100 text-base-content"}`}>
-                <div className="card-body gap-0 p-6">
-                <div className="mb-5 flex items-center justify-between">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-lg [&_svg]:h-6 [&_svg]:w-6 ${mode.settingsKey === "hotkey" ? "bg-primary-content/15" : "bg-base-200 text-primary"}`}>
-                  <Icon svg={mode.icon} />
-                </div>
-                <button type="button" onClick={() => setEditingMode(mode)}
-                  className={`btn btn-ghost btn-sm ${mode.settingsKey === "hotkey" ? "text-primary-content hover:bg-primary-content/15" : "text-secondary"}`}
-                  aria-label={`ตั้งค่าคีย์ลัด ${mode.name}`}>
-                  <Icon svg={icons.settings} /><span>เปลี่ยนปุ่มลัด</span>
-                </button>
-                </div>
-                <h3 className="text-2xl font-semibold">{mode.name}</h3>
-                <p className={`mt-2 min-h-10 text-sm leading-relaxed ${mode.settingsKey === "hotkey" ? "text-primary-content" : "text-secondary"}`}>{mode.desc}</p>
-                <div className={`mt-6 flex flex-wrap gap-2 ${mode.settingsKey === "hotkey" ? "[&_kbd]:border-primary-content/30 [&_kbd]:bg-primary-content/15 [&_kbd]:text-primary-content [&_kbd]:shadow-none" : ""}`}>
-                  <HotkeyBadges hotkey={settings[mode.settingsKey]} />
-                </div>
+      <section aria-labelledby="modes-title">
+        <h2 id="modes-title" className="mb-2 text-sm font-semibold">ปุ่มลัด</h2>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {MODES.map((mode) => {
+            const primary = mode.settingsKey === "hotkey";
+            return (
+              <div key={mode.settingsKey} className={`card card-border bg-base-100 ${primary ? "border-primary" : ""}`}>
+                <div className="card-body gap-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-base-200 [&_svg]:h-5 [&_svg]:w-5 ${primary ? "text-primary" : "text-secondary"}`}>
+                        <Icon svg={mode.icon} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-semibold">{mode.name}</h3>
+                        <p className="text-sm leading-relaxed text-secondary">{mode.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingMode(mode)}
+                      className="btn btn-ghost btn-sm shrink-0"
+                      aria-label={`ตั้งค่าคีย์ลัด ${mode.name}`}
+                    >
+                      <Icon svg={icons.settings} />
+                      <span>เปลี่ยน</span>
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <HotkeyBadges hotkey={settings[mode.settingsKey]} />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
+            );
+          })}
+        </div>
+      </section>
 
-        <aside className="border-y border-base-300 py-5" aria-labelledby="stats-title">
-          <div className="space-y-4">
-            <h2 id="stats-title" className="text-sm font-semibold">การใช้งานของคุณ</h2>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-4">
-              <div><dt className="text-xs text-base-content/65">เวลาที่ใช้พูด</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.totalMinutes}<span className="ml-1 text-xs font-normal text-base-content/65">min</span></dd></div>
-              <div><dt className="text-xs text-base-content/65">จำนวนคำ</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.totalWords}</dd></div>
-              <div><dt className="text-xs text-base-content/65">ความเร็ว</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.wpm}<span className="ml-1 text-xs font-normal text-base-content/65">WPM</span></dd></div>
-              <div><dt className="text-xs text-base-content/65">ครั้งที่ใช้งาน</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{stats.sessions}</dd></div>
-            </dl>
-            <div className="flex items-start gap-2 border-t border-base-200 pt-3 text-xs leading-relaxed text-base-content/65 [&_svg]:mt-0.5 [&_svg]:h-3.5 [&_svg]:w-3.5" aria-label="ข้อมูลความเป็นส่วนตัว">
-              <Icon svg={icons.lock} />
-              <span>เสียงส่งไปยังผู้ให้บริการที่คุณเลือก และข้อความอาจส่งเพื่อปรับหรือแปลตามการตั้งค่า ประวัติถูกเข้ารหัสเก็บในเครื่อง</span>
-            </div>
+      <section className="mt-5" aria-labelledby="stats-title">
+        <h2 id="stats-title" className="mb-2 text-sm font-semibold">การใช้งานของคุณ</h2>
+        <div className="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-none sm:stats-horizontal">
+          <div className="stat py-3">
+            <div className="stat-title">เวลาที่ใช้พูด</div>
+            <div className="stat-value text-2xl tabular-nums">{stats.totalMinutes}</div>
+            <div className="stat-desc">นาที</div>
           </div>
-        </aside>
+          <div className="stat py-3">
+            <div className="stat-title">จำนวนคำ</div>
+            <div className="stat-value text-2xl tabular-nums">{stats.totalWords}</div>
+          </div>
+          <div className="stat py-3">
+            <div className="stat-title">ความเร็ว</div>
+            <div className="stat-value text-2xl tabular-nums">{stats.wpm}</div>
+            <div className="stat-desc">คำต่อนาที</div>
+          </div>
+          <div className="stat py-3">
+            <div className="stat-title">ครั้งที่ใช้งาน</div>
+            <div className="stat-value text-2xl tabular-nums">{stats.sessions}</div>
+          </div>
+        </div>
+      </section>
+
+      <div className="alert alert-soft mt-4 text-sm" aria-label="ข้อมูลความเป็นส่วนตัว">
+        <Icon svg={icons.lock} />
+        <span>เสียงส่งไปยังผู้ให้บริการที่คุณเลือก และข้อความอาจส่งเพื่อปรับหรือแปลตามการตั้งค่า ประวัติถูกเข้ารหัสเก็บในเครื่อง</span>
       </div>
 
-      <section className="mt-8" aria-labelledby="use-cases-title">
-        <h2 id="use-cases-title" className="mb-3 text-sm font-semibold">ใช้ได้ทุกที่ที่พิมพ์ข้อความ</h2>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 xl:grid-cols-3">
+      <section className="mt-5" aria-labelledby="use-cases-title">
+        <h2 id="use-cases-title" className="mb-2 text-sm font-semibold">ใช้ได้ทุกที่ที่พิมพ์ข้อความ</h2>
+        <ul className="list rounded-box border border-base-300 bg-base-100">
           {USE_CASES.map((useCase) => (
-            <article key={useCase.name} className="flex min-w-0 items-start gap-3">
-                <img src={useCase.logo} alt="" width="24" height="24" loading="lazy" className="mt-0.5 h-6 w-6 shrink-0 object-contain" />
-              <div>
+            <li key={useCase.name} className="list-row items-center gap-3 px-3 py-2">
+              <img src={useCase.logo} alt="" width="24" height="24" loading="lazy" className="h-6 w-6 shrink-0 object-contain" />
+              <div className="min-w-0">
                 <h3 className="text-sm font-semibold">{useCase.name}</h3>
-                <p className="text-[13px] leading-relaxed text-base-content/65">{useCase.desc}</p>
+                <p className="text-sm leading-relaxed text-secondary">{useCase.desc}</p>
               </div>
-            </article>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
       {editingMode && (

@@ -1,35 +1,12 @@
 @import 'tailwindcss';
+@import './theme.css';
 
-@theme {
-  --font-display: 'Segoe UI', system-ui, sans-serif;
-  --color-ink: #0b1218;
-  --color-ink-raised: #0b1218;
-  --color-paper: #ffffff;
-  --color-blue: #0055ff;
+.ob-root :is(button, input, select, textarea, a):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
-
-.ob-root {
-  color-scheme: dark;
-}
-.ob-root :is(input, select, .ob-provider-card) {
-  background: color-mix(in srgb, var(--color-paper) 5%, var(--color-ink));
-}
-.ob-root :is(button, input, select):focus-visible {
-  outline: 2px solid var(--color-paper);
-  outline-offset: 4px;
-}
-.ob-root .text-paper\/55 {
-  color: color-mix(in srgb, var(--color-paper) 72%, var(--color-ink));
-}
+.ob-root button { min-height: 2.75rem; cursor: pointer; }
 .ob-root canvas { max-width: 100%; }
-.ob-root .text-blue { color: var(--color-paper); }
-.ob-root button { min-height: 44px; }
-.ob-root select { color-scheme: dark; }
-.ob-root select option { background: var(--color-ink); color: var(--color-paper); }
-.ob-root .ob-provider-card[aria-pressed="true"] {
-  border-color: var(--color-blue);
-  background: color-mix(in srgb, var(--color-blue) 15%, var(--color-ink));
-}
 
 .ob-panel {
   outline: none;

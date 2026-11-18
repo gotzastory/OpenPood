@@ -50,7 +50,7 @@ export function UsageNavItem() {
     : [];
 
   return (
-    <div>
+    <li>
       <DashboardNavItem
         label="เครดิต"
         icon={icons.wallet}
@@ -70,23 +70,26 @@ export function UsageNavItem() {
         }
       />
       {open && (
-        <div id={PANEL_ID} className="mx-1 mt-1 mb-2 rounded-lg border border-base-300 bg-base-200 p-3 text-xs">
+        <ul className="before:hidden">
+        <li className="menu-title block px-1 py-1">
+        <div id={PANEL_ID} className="rounded-lg border border-base-300 bg-base-200 p-3 text-xs font-normal normal-case">
           <div className="flex items-center justify-between gap-2">
             <p className="text-base-content/65">{headline?.label ?? "เครดิต OpenRouter"}</p>
-            <button
-              type="button"
-              className={`${BTN} btn-ghost btn-square btn-xs -my-1 text-base-content/65`}
-              onClick={load}
-              disabled={loading}
-              aria-label="รีเฟรช"
-              title="รีเฟรช"
-            >
-              <span
-                aria-hidden="true"
-                className={loading ? "motion-safe:animate-spin" : ""}
-                dangerouslySetInnerHTML={{ __html: icons.refresh }}
-              />
-            </button>
+            <div className="tooltip tooltip-left" data-tip="รีเฟรช">
+              <button
+                type="button"
+                className={`${BTN} btn-ghost btn-square btn-xs -my-1 text-base-content/65`}
+                onClick={load}
+                disabled={loading}
+                aria-label="รีเฟรช"
+              >
+                {loading ? (
+                  <span className="loading loading-spinner loading-xs" aria-hidden="true" />
+                ) : (
+                  <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: icons.refresh }} />
+                )}
+              </button>
+            </div>
           </div>
           {result && !result.ok && <p role="alert" className="mt-1 leading-relaxed text-error">{result.error}</p>}
           {headline && usage && (
@@ -109,7 +112,9 @@ export function UsageNavItem() {
             </>
           )}
         </div>
+        </li>
+        </ul>
       )}
-    </div>
+    </li>
   );
 }

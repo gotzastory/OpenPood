@@ -3,6 +3,7 @@ import { Icon } from "../components/Icon";
 import { icons } from "../lib/icons";
 import type { HistoryEntry } from "../types";
 import { BTN, EMPTY_STATE, PAGE_TITLE } from "../lib/uiClasses";
+import { StatusToast } from "../components/StatusToast";
 import { HistoryEntryCard } from "../components/HistoryEntryCard";
 import { RUNTIME } from '../lib/runtimeConfig';
 
@@ -85,13 +86,12 @@ export function HistoryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[920px]">
-      <header className="mb-6 flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-5xl">
+      <header className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h1 className={PAGE_TITLE}>ประวัติการถอดเสียง</h1>
-          <p className="mt-1 text-sm text-base-content/65">
+          <p className="mt-1 text-sm text-secondary">
             ข้อความถูกเข้ารหัสเก็บในเครื่องนี้
-            {saveHistory ? "" : " การบันทึกประวัติถูกปิดอยู่ในการตั้งค่า"}
           </p>
         </div>
         <button
@@ -105,35 +105,54 @@ export function HistoryPage() {
         </button>
       </header>
 
-      <div className="sr-only" aria-live="polite">
-        {status}
-      </div>
+      {!saveHistory && (
+        <div role="status" className="alert alert-warning alert-soft mb-4 text-sm">
+          การบันทึกประวัติถูกปิดอยู่ในการตั้งค่า
+        </div>
+      )}
+
+      <StatusToast text={status} kind={status.includes("ไม่สำเร็จ") ? "error" : "success"} />
 
       {loadError ? (
         <div role="alert" className="alert alert-error alert-soft text-sm">
           โหลดประวัติไม่สำเร็จ กรุณาลองเปิดหน้านี้ใหม่อีกครั้ง
         </div>
+      ) : entries === null ? (
+        <div className={EMPTY_STATE} role="status">
+          <span className="loading loading-spinner loading-sm mr-2 align-middle" aria-hidden="true" />
+          กำลังโหลดประวัติ...
+        </div>
+      ) : entries.length === 0 ? (
+        <div className={EMPTY_STATE}>ยังไม่มีประวัติการอัดเสียง</div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-base-300 bg-base-100">
-          {entries === null ? (
-            <div className={EMPTY_STATE}>กำลังโหลดประวัติ...</div>
-          ) : entries.length === 0 ? (
-            <div className={EMPTY_STATE}>ยังไม่มีประวัติการอัดเสียง</div>
-          ) : (
-            visibleEntries?.map((entry) => (
-              <HistoryEntryCard
-                key={entry.id}
-                entry={entry}
-                copied={copiedId === entry.id}
-                onCopy={() => void copyEntry(entry)}
-              />
-            ))
-          )}
+        <div className="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+          <table className="table table-sm">
+            <thead>
+              <tr>
+                <th>เวลา</th>
+                <th>ข้อความ</th>
+                <th>โมเดล</th>
+                <th>คำ</th>
+                <th>ระยะเวลา</th>
+                <th><span className="sr-only">การทำงาน</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleEntries?.map((entry) => (
+                <HistoryEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  copied={copiedId === entry.id}
+                  onCopy={() => void copyEntry(entry)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       {!loadError && pageCount > 1 && (
         <nav aria-label="หน้าประวัติ" className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p aria-live="polite" className="text-sm text-base-content/65">หน้า {currentPage + 1} / {pageCount} · {entries?.length} รายการ</p>
+          <p aria-live="polite" className="text-sm text-secondary">หน้า {currentPage + 1} / {pageCount} · {entries?.length} รายการ</p>
           <div className="join">
             <button type="button" className="btn join-item" disabled={currentPage === 0}
               onClick={() => setPage(currentPage - 1)}>ก่อนหน้า</button>
