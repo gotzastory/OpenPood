@@ -50,7 +50,7 @@ const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
 
 const TOTAL_STEPS = 5;
 const STEP_LABELS = ["ต้อนรับ", "ผู้ให้บริการ", "ไมโครโฟน", "ปุ่มลัด", "ทดสอบ"];
-const BTN_PRIMARY = "btn btn-primary";
+const BTN_PRIMARY = "btn btn-primary w-fit";
 const BTN_GHOST = "btn btn-ghost";
 const FIELD_LABEL = "label px-0 pt-1";
 const FIELD_INPUT = "input w-full";
@@ -72,7 +72,7 @@ function providerFromUrl(baseUrl: string): ProviderPreset["key"] {
 
 function Waveform() {
   return (
-    <div className="ob-waveform mb-10 mt-2 flex h-16 items-end gap-1" aria-hidden="true">
+    <div className="ob-waveform mb-4 mt-1 flex h-12 items-end gap-1" aria-hidden="true">
       {Array.from({ length: 22 }, (_, index) => (
         <span
           key={index}
@@ -344,8 +344,8 @@ export function OnboardingPage() {
       </header>
 
       <div className="relative z-10 flex flex-1 items-start justify-center px-4 py-6 lg:items-center">
-        <div className="ob-panel card card-border w-full max-w-2xl bg-base-100" tabIndex={-1}>
-          <div className="card-body gap-4 p-5 lg:p-6">
+        <div className="ob-panel w-full max-w-2xl" tabIndex={-1}>
+          <div className="flex flex-col gap-4">
           {state.step === 0 && <WelcomeStep onNext={next} />}
           {state.step === 1 && (
             <ProviderStep
@@ -410,19 +410,11 @@ export function OnboardingPage() {
   );
 }
 
-function StepLabel({ step }: { step: number }) {
-  return (
-    <div className="text-xs font-medium text-primary">
-      ขั้นตอนที่ {step} จาก {TOTAL_STEPS}
-    </div>
-  );
-}
-
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <>
       <Waveform />
-      <h1 className="text-2xl font-semibold leading-tight lg:text-3xl">
+      <h1 className="text-2xl font-semibold leading-tight">
         พูด แล้วให้ตัวอักษร
         <br />
         <em className="not-italic font-semibold">ตามทัน</em>
@@ -455,8 +447,7 @@ function ProviderStep({
 }) {
   return (
     <>
-      <StepLabel step={2} />
-      <h1 className="text-2xl font-semibold leading-tight lg:text-3xl">
+      <h1 className="text-2xl font-semibold leading-tight">
         เสียงของคุณจะถูกส่งไป
         <br />
         <em className="not-italic font-semibold">ที่ไหน</em>
@@ -465,13 +456,13 @@ function ProviderStep({
         เลือก API สำหรับถอดเสียง ใช้ API Key ของคุณเอง โดย key
         จะถูกเก็บในเครื่องและไม่แสดงกลับในฟอร์ม
       </p>
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {PROVIDERS.map((item) => (
           <button
             type="button"
             key={item.key}
             aria-pressed={state.provider === item.key}
-            className={`cursor-pointer rounded-box border p-4 text-left transition ${state.provider === item.key ? "border-primary bg-primary/10" : "border-base-300 bg-base-100 hover:border-primary/40"}`}
+            className={`cursor-pointer rounded-box border p-3 text-left transition ${state.provider === item.key ? "border-primary bg-primary/10" : "border-base-300 bg-base-100 hover:border-primary/40"}`}
             onClick={() => onProviderChange(item.key)}
           >
             <span className="mb-1 block text-sm font-semibold">
@@ -480,9 +471,6 @@ function ProviderStep({
             <span className="block break-words text-xs leading-relaxed text-secondary">
               {item.sub}
             </span>
-            {state.provider === item.key && (
-              <span className="badge badge-primary badge-soft mt-2">เลือกแล้ว</span>
-            )}
           </button>
         ))}
       </div>
@@ -537,8 +525,7 @@ function MicrophoneStep({
 }) {
   return (
     <>
-      <StepLabel step={3} />
-      <h1 className="text-2xl font-semibold leading-tight lg:text-3xl">
+      <h1 className="text-2xl font-semibold leading-tight">
         ให้เราฟังเสียง
         <br />
         <em className="not-italic font-semibold">คุณหน่อย</em>
@@ -608,8 +595,7 @@ function HotkeyStep({
     .filter(Boolean);
   return (
     <>
-      <StepLabel step={4} />
-      <h1 className="text-2xl font-semibold leading-tight lg:text-3xl">
+      <h1 className="text-2xl font-semibold leading-tight">
         จำ shortcut
         <br />
         นี้ไว้<em className="not-italic font-semibold">.</em>
@@ -670,8 +656,7 @@ function TestStep({
 
   return (
     <>
-      <StepLabel step={TOTAL_STEPS} />
-      <h1 className="text-2xl font-semibold leading-tight lg:text-3xl">
+      <h1 className="text-2xl font-semibold leading-tight">
         ลองพูดดู<br />ว่าทำงานไหม
       </h1>
       <p id="ob-test-help" className="max-w-xl text-sm leading-relaxed text-secondary">

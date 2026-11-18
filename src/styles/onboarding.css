@@ -1,6 +1,13 @@
 @import 'tailwindcss';
 @import './theme.css';
 
+.ob-root ::selection {
+  background: color-mix(in oklab, var(--color-primary) 28%, transparent);
+  color: var(--color-base-content);
+}
+.ob-root :is(input, textarea) {
+  caret-color: var(--color-primary);
+}
 .ob-root :is(button, input, select, textarea, a):focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;

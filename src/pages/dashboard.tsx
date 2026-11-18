@@ -130,14 +130,9 @@ export function DashboardPage() {
               }}
             />
           </li>
-          {/* PR #6 replaces this placeholder with DashboardNavItem
-              label="ออกจากโปรแกรม" icon={icons.logOut}
-              onSelect={() => void window.typeless.quitApp()}.
-              Keep it last so settings stays above the quit action.
-              The child span keeps the li non-empty: daisyUI draws li:empty as a divider. */}
-          <li id="sidebar-quit-slot" data-slot="quit">
-            <span className="pointer-events-none min-h-11" aria-hidden="true" />
-          </li>
+          {/* PR #6 appends DashboardNavItem label="ออกจากโปรแกรม" here.
+              The slot stays in the footer menu and takes no height until that item exists. */}
+          <li id="sidebar-quit-slot" data-slot="quit" hidden />
         </ul>
       </aside>
       <main
