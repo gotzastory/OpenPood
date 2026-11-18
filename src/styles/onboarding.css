@@ -18,16 +18,33 @@
   text-align: left;
   cursor: pointer;
 }
-.ob-provider-card:hover,
-.ob-provider-card:active {
-  background: color-mix(in oklab, var(--color-base-content) 6%, var(--color-base-100));
+.ob-provider-card:hover:not([aria-pressed="true"]),
+.ob-provider-card:active:not([aria-pressed="true"]) {
+  background: var(--color-base-100) !important;
+  box-shadow: none !important;
+  color: var(--color-base-content) !important;
 }
 .ob-provider-card[aria-pressed="true"],
 .ob-provider-card[aria-pressed="true"]:hover,
 .ob-provider-card[aria-pressed="true"]:active {
-  background: color-mix(in oklab, var(--color-primary) 12%, var(--color-base-100));
-  box-shadow: inset 3px 0 0 var(--color-primary);
-  color: var(--color-base-content);
+  background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
+  box-shadow: inset 3px 0 0 var(--color-primary) !important;
+  color: var(--color-base-content) !important;
+  font-weight: 600;
+}
+.ob-provider-card:focus,
+.ob-provider-card:focus-visible {
+  background: var(--color-base-100) !important;
+  box-shadow: none !important;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.ob-provider-card[aria-pressed="true"]:focus,
+.ob-provider-card[aria-pressed="true"]:focus-visible {
+  background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
+  box-shadow: inset 3px 0 0 var(--color-primary) !important;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 .ob-root :is(button, input, select, textarea, a):focus-visible {
   outline: 2px solid var(--color-primary);
