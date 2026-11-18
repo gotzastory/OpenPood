@@ -44,7 +44,7 @@ The dashboard is a quiet Windows utility surface for history, dictionary, settin
 - Light palette: use Light Blue `#EEF4FF` for the app background, White `#FFFFFF` for content surfaces, Ink `#0B1218` for primary text, Highlight Slate `#64748B` for secondary text, Border `#E2E8F0` for lines, and Blue `#0055FF` for primary action/brand states.
 - Dark palette (`data-theme="dark"`): Ink `#0B1218` for the app background (`base-200`), `#111A24` for content surfaces (`base-100`), `#223041` for lines (`base-300`), `#E6EDF6` for primary text, Slate `#94A3B8` for secondary text, `#1C2A3A` for neutral surfaces, and `#2563EB` for primary/info actions. Status colors: success `#4ADE80`, warning `#FACC15`, error `#F87171`. The sidebar logo uses the White wordmark with the Blue symbol.
 - Theme toggle: the sidebar button (label `ธีมมืด`, sun/moon icon, `aria-pressed`) switches between light and dark. With no saved choice, the OS `prefers-color-scheme` decides; a manual choice is saved in localStorage key `openpood-theme` and applied as `data-theme` on `<html>` on later launches.
-- Onboarding and the recording widget are dark-only and do not follow the dashboard theme toggle.
+- Onboarding follows the system theme through daisyUI `--prefersdark` and does not read the dashboard's saved toggle. The recording widget stays a dark translucent pill and does not follow either theme.
 - Structure: Light Blue page background, White content surfaces, subtle Border lines, restrained `shadow-sm` only where hierarchy needs it.
 - Shape: `rounded-lg` controls and `rounded-xl` cards; do not flatten the interface or make every surface equally rounded.
 - Density: compact controls with generous page padding; prefer clear grouping over decorative containers.
@@ -60,7 +60,7 @@ Onboarding is a deliberate editorial welcome flow, separate from the dashboard t
 - Blue is the single primary accent for progress, selection, and primary action.
 - Preserve the restrained entrance animation and focused five-step pacing.
 - Keep the five-step flow full-bleed and sidebar-free.
-- Keep onboarding dark and full-bleed while sharing the new brand palette with the dashboard.
+- Keep onboarding full-bleed and sidebar-free. It uses the same brand light and dark themes as the dashboard, including the ink surface when the system theme is dark.
 
 ## Recording widget
 
@@ -74,7 +74,7 @@ The widget is a transient status indicator, not an interactive control.
 ## Implementation rules
 
 - Use Tailwind CSS v4 utilities in existing template strings.
-- Use daisyUI 5 components and semantic colors for dashboard controls; keep its plugin and the `light` and `dark` themes scoped to `src/styles/dashboard.css`.
+- Use daisyUI 5 components and semantic colors for dashboard and onboarding controls. Brand `light` (`--default`) and `dark` (`--prefersdark`) themes live in `src/styles/theme.css` and are imported by the dashboard and onboarding stylesheets. The recording widget does not load that file.
 - New dashboard colors must use daisyUI semantic tokens (`bg-base-100`, `border-base-300`, `text-base-content`, `primary`, etc.) rather than hard-coded hex or light-only palette classes, so both themes work.
 - Keep route-specific CSS in `src/styles/dashboard.css` and `src/styles/onboarding.css`; shared reset/runtime styling stays in `src/styles/style.css`.
 - Reuse `src/lib/uiClasses.ts` before duplicating a multi-utility class group.

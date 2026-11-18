@@ -1,84 +1,232 @@
 @import 'tailwindcss';
-@plugin "daisyui" {
-  /* Built-in light/dark ship pink --color-secondary; only our theme plugins below. */
-  themes: false;
-  include: rootcolor, properties, button, input, select, toggle, badge, list, alert, card, modal, menu, join;
-  logs: false;
+@import './theme.css';
+
+/* One menu shape in both themes. States differ by fill and weight, not by a second component style.
+   The row is a fixed 44px flex line so the icon and the Thai label share one centered box. */
+.dashboard-shell .menu {
+  --menu-active-bg: transparent;
+  --menu-active-fg: var(--color-base-content);
+  --menu-row: 2.75rem;
+  --menu-line: 1.75;
 }
-@plugin "daisyui/theme" {
-  name: "light";
-  default: true;
-  color-scheme: light;
-  --color-base-100: #ffffff;
-  --color-base-200: #eef4ff;
-  --color-base-300: #e2e8f0;
-  --color-base-content: #0b1218;
-  --color-primary: #0055ff;
-  --color-primary-content: #ffffff;
-  --color-secondary: #64748b;
-  --color-secondary-content: #ffffff;
-  --color-accent: #eef4ff;
-  --color-accent-content: #0055ff;
-  --color-neutral: #0b1218;
-  --color-neutral-content: #ffffff;
-  --color-info: #0055ff;
-  --color-info-content: #ffffff;
-  --color-success: #15803d;
-  --color-success-content: #ffffff;
-  --color-warning: #a16207;
-  --color-warning-content: #ffffff;
-  --color-error: #b91c1c;
-  --color-error-content: #ffffff;
-  --radius-selector: 2rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
+.dashboard-shell .menu > li > button,
+.dashboard-shell .menu > li > button:hover,
+.dashboard-shell .menu > li > button:active,
+.dashboard-shell .menu > li > button.menu-active,
+.dashboard-shell .menu > li > button:focus,
+.dashboard-shell .menu > li > button:focus-visible {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start;
+  width: 100%;
+  height: var(--menu-row) !important;
+  min-height: var(--menu-row) !important;
+  max-height: var(--menu-row) !important;
+  margin: 0;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+  padding: 0 0.75rem !important;
+  position: relative;
+  overflow: visible;
+  color: color-mix(in oklab, var(--color-base-content) 65%, var(--color-base-100));
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  font-weight: 400;
+  line-height: var(--menu-line);
+  gap: 0.75rem;
 }
-@plugin "daisyui/theme" {
-  name: "dark";
-  prefersdark: true;
-  color-scheme: dark;
-  --color-base-100: #111a24;
-  --color-base-200: #0b1218;
-  --color-base-300: #223041;
-  --color-base-content: #e6edf6;
-  --color-primary: #2563eb;
-  --color-primary-content: #ffffff;
-  --color-secondary: #94a3b8;
-  --color-secondary-content: #0b1218;
-  --color-accent: #16243a;
-  --color-accent-content: #7fb0ff;
-  --color-neutral: #1c2a3a;
-  --color-neutral-content: #e6edf6;
-  --color-info: #2563eb;
-  --color-info-content: #ffffff;
-  --color-success: #4ade80;
-  --color-success-content: #0b1218;
-  --color-warning: #facc15;
-  --color-warning-content: #0b1218;
-  --color-error: #f87171;
-  --color-error-content: #0b1218;
-  --radius-selector: 2rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
+.dashboard-shell .menu > li > button > span:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: calc(1em * var(--menu-line));
+  height: calc(1em * var(--menu-line));
+  line-height: 1;
+}
+.dashboard-shell .menu > li > button > span:first-child .icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.dashboard-shell .menu > li > button > span:nth-child(2) {
+  display: block;
+  min-width: 0;
+  line-height: var(--menu-line);
+  white-space: nowrap;
+}
+/* !important so these beat daisyUI menu :hover/:focus no matter which @layer wins.
+   Hover has no fill and stays regular weight. Only .menu-active is bold and filled. */
+.dashboard-shell .menu > li > button:hover:not(.menu-active),
+.dashboard-shell .menu > li > button:active:not(.menu-active) {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: color-mix(in oklab, var(--color-base-content) 85%, var(--color-base-100)) !important;
+  font-weight: 400 !important;
+}
+.dashboard-shell .menu > li > button.menu-active,
+.dashboard-shell .menu > li > button.menu-active:hover,
+.dashboard-shell .menu > li > button.menu-active:active {
+  background-color: color-mix(in oklab, var(--color-primary) 17%, transparent) !important;
+  color: var(--color-base-content) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+.dashboard-shell .menu > li > button.menu-active::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+.dashboard-shell .menu > li > button:focus {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.dashboard-shell .menu > li > button:focus-visible {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px;
+}
+.dashboard-shell .menu > li > button.menu-active:focus {
+  background-color: color-mix(in oklab, var(--color-primary) 17%, transparent) !important;
+  box-shadow: none !important;
+  color: var(--color-base-content) !important;
+  font-weight: 600 !important;
+  outline: none !important;
+}
+.dashboard-shell .menu > li > button.menu-active:focus-visible {
+  background-color: color-mix(in oklab, var(--color-primary) 17%, transparent) !important;
+  box-shadow: none !important;
+  color: var(--color-base-content) !important;
+  font-weight: 600 !important;
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px;
+}
+.dashboard-shell .sidebar-tagline {
+  margin: 0.75rem 0 0.75rem;
+  padding: 0.2em 0.25rem 0.15em;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow: visible;
+}
+.dashboard-shell tbody tr:hover,
+.dashboard-shell .list > .list-row:hover {
+  background-color: color-mix(in oklab, var(--color-base-content) 3%, transparent);
+}
+.dashboard-shell :is(button, a, input, select, textarea, summary, [role="tab"]):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+/* Keep legends inside the border. A native legend straddles the stroke and clips Thai vowels. */
+.dashboard-shell fieldset.fieldset {
+  padding: 0.85rem 1rem 1rem;
+  overflow: visible;
+}
+#sidebar-quit-slot {
+  display: none;
+  height: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  opacity: 0;
+}
+.dashboard-shell ::selection {
+  background: color-mix(in oklab, var(--color-primary) 28%, transparent);
+  color: var(--color-base-content);
+}
+.dashboard-shell :is(input, textarea) {
+  caret-color: var(--color-primary);
+}
+.dashboard-shell fieldset.fieldset > legend.fieldset-legend {
+  float: left;
+  clear: both;
+  width: 100%;
+  margin: 0 0 0.75rem;
+  padding: 0.15rem 0 0;
+  line-height: 1.5;
+  background: var(--color-base-100);
+}
+
+/* Settings: two columns when the page is wide enough for a pair of fieldsets.
+   At the 760px minimum window the content column is about 520px, below this
+   threshold, so the stack falls back to one column. */
+.settings-page {
+  container-type: inline-size;
+  container-name: settings;
+}
+.settings-columns,
+.settings-columns-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+@container settings (min-width: 46rem) {
+  .settings-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.dashboard-shell .settings-columns fieldset.fieldset {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.dashboard-shell .settings-columns fieldset.fieldset > :is(.label, .input, .select, p) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.dashboard-shell .settings-columns fieldset.fieldset > p.label {
+  display: block;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dashboard-shell .settings-columns fieldset.fieldset > label.label {
+  min-width: 0;
+  height: auto;
+  align-items: flex-start;
+}
+.dashboard-shell .settings-columns fieldset.fieldset > label.label > span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dashboard-shell .settings-columns .toggle {
+  width: 2.25rem;
+  flex: none;
 }
 
 @layer components {
-  .dashboard-shell .btn:not(.btn-xs) { min-height: 2.75rem; }
-  .dashboard-shell :is(.input, .select) { min-height: 2.75rem; }
-  .dashboard-shell :is(button, input, select, a):focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 3px;
+  .dashboard-shell .menu > li > button {
+    width: 100%;
+    height: var(--menu-row);
+    min-height: var(--menu-row);
+    cursor: pointer;
   }
+  .dashboard-shell :is(.btn, .input, .select, .textarea, .range) { font-weight: 400; }
+  .dashboard-shell .btn:not(.btn-xs) { min-height: 2.75rem; }
+  .dashboard-shell :is(.input, .select, .textarea) { min-height: 2.75rem; }
   .dashboard-shell .text-base-content\/65 { color: var(--color-secondary); }
   .dashboard-shell .bg-primary button:focus-visible { outline-color: var(--color-primary-content); }
 
@@ -99,6 +247,7 @@
       transparent;
     scrollbar-width: thin;
   }
+
 }
 
 :root[data-theme="dark"] .dashboard-shell .brand-logo { background: none; }

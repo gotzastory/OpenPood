@@ -1,35 +1,80 @@
 @import 'tailwindcss';
+@import './theme.css';
 
-@theme {
-  --font-display: 'Segoe UI', system-ui, sans-serif;
-  --color-ink: #0b1218;
-  --color-ink-raised: #0b1218;
-  --color-paper: #ffffff;
-  --color-blue: #0055ff;
+.ob-root ::selection {
+  background: color-mix(in oklab, var(--color-primary) 28%, transparent);
+  color: var(--color-base-content);
 }
-
-.ob-root {
-  color-scheme: dark;
+.ob-root :is(input, textarea) {
+  caret-color: var(--color-primary);
 }
-.ob-root :is(input, select, .ob-provider-card) {
-  background: color-mix(in srgb, var(--color-paper) 5%, var(--color-ink));
+.ob-provider-card {
+  position: relative;
+  min-height: 4.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-100);
+  color: color-mix(in oklab, var(--color-base-content) 65%, var(--color-base-100));
+  padding: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 400;
 }
-.ob-root :is(button, input, select):focus-visible {
-  outline: 2px solid var(--color-paper);
-  outline-offset: 4px;
+.ob-provider-card:hover:not([aria-pressed="true"]),
+.ob-provider-card:active:not([aria-pressed="true"]) {
+  background: var(--color-base-100) !important;
+  box-shadow: none !important;
+  color: color-mix(in oklab, var(--color-base-content) 85%, var(--color-base-100)) !important;
+  font-weight: 400 !important;
 }
-.ob-root .text-paper\/55 {
-  color: color-mix(in srgb, var(--color-paper) 72%, var(--color-ink));
+:root[data-theme="dark"] .ob-provider-card:hover:not([aria-pressed="true"]) {
+  border-color: color-mix(in oklab, var(--color-base-content) 38%, var(--color-base-300)) !important;
 }
+.ob-provider-card[aria-pressed="true"],
+.ob-provider-card[aria-pressed="true"]:hover,
+.ob-provider-card[aria-pressed="true"]:active {
+  background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
+  box-shadow: none !important;
+  color: var(--color-base-content) !important;
+  font-weight: 600 !important;
+}
+.ob-provider-card[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+.ob-provider-card:focus {
+  outline: none !important;
+}
+.ob-provider-card:focus-visible {
+  background: var(--color-base-100) !important;
+  box-shadow: none !important;
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px;
+}
+.ob-provider-card[aria-pressed="true"]:focus {
+  background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.ob-provider-card[aria-pressed="true"]:focus-visible {
+  background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
+  box-shadow: none !important;
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px;
+}
+.ob-root :is(button, input, select, textarea, a):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.ob-root button { min-height: 2.75rem; cursor: pointer; }
 .ob-root canvas { max-width: 100%; }
-.ob-root .text-blue { color: var(--color-paper); }
-.ob-root button { min-height: 44px; }
-.ob-root select { color-scheme: dark; }
-.ob-root select option { background: var(--color-ink); color: var(--color-paper); }
-.ob-root .ob-provider-card[aria-pressed="true"] {
-  border-color: var(--color-blue);
-  background: color-mix(in srgb, var(--color-blue) 15%, var(--color-ink));
-}
 
 .ob-panel {
   outline: none;

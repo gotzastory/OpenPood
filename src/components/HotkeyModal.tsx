@@ -6,10 +6,7 @@ export function HotkeyBadges({ hotkey }: { hotkey: string }) {
   return (
     <>
       {hotkey.split("+").map((key, index) => (
-        <kbd
-          key={`${key}:${index}`}
-          className="rounded-md border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-semibold text-base-content/75 shadow-[0_1px_0_var(--color-base-300)]"
-        >
+        <kbd key={`${key}:${index}`} className="kbd kbd-sm">
           {key.trim()}
         </kbd>
       ))}

@@ -48,15 +48,26 @@ export function UpdatePanel() {
         <p className="text-sm text-base-content/65">
           {status ? `เวอร์ชันปัจจุบัน ${status.currentVersion}${status.version ? ` → ${status.version}` : ''}` : 'กำลังโหลด…'}
         </p>
-        <p role="status" aria-live="polite" className="text-sm">{status && LABELS[status.phase]}</p>
+        <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm">
+          {status && (
+            <span
+              className={`status ${status.phase === 'error' ? 'status-error' : status.phase === 'available' || status.phase === 'downloaded' ? 'status-success' : status.phase === 'checking' || status.phase === 'downloading' || status.phase === 'installing' ? 'status-info' : 'status-neutral'}`}
+              aria-hidden="true"
+            />
+          )}
+          {(status?.phase === 'checking' || status?.phase === 'downloading' || status?.phase === 'installing') && (
+            <span className="loading loading-spinner loading-xs" aria-hidden="true" />
+          )}
+          <span>{status ? LABELS[status.phase] : ''}</span>
+        </p>
         {status?.phase === 'downloading' && (
           <div>
-            <progress className="progress w-full" max={100} value={status.percent ?? 0} aria-label="ความคืบหน้าดาวน์โหลด" />
-            <p className="mt-1 text-xs text-base-content/65">{Math.round(status.percent ?? 0)}%</p>
+            <progress className="progress progress-primary w-full" max={100} value={status.percent ?? 0} aria-label="ความคืบหน้าดาวน์โหลด" />
+            <p className="mt-1 text-xs text-secondary">{Math.round(status.percent ?? 0)}%</p>
           </div>
         )}
-        {status?.releaseNotes && <details className="text-sm"><summary className="cursor-pointer">มีอะไรใหม่</summary><pre className="mt-3 whitespace-pre-wrap break-words font-sans text-base-content/65">{status.releaseNotes}</pre></details>}
-        {(bridgeError || status?.error) && <p role="alert" className="text-sm text-error">{bridgeError || status?.error}</p>}
+        {status?.releaseNotes && <details className="text-sm"><summary className="cursor-pointer">มีอะไรใหม่</summary><pre className="mt-3 whitespace-pre-wrap break-words font-sans text-secondary">{status.releaseNotes}</pre></details>}
+        {(bridgeError || status?.error) && <div role="alert" className="alert alert-error alert-soft text-sm">{bridgeError || status?.error}</div>}
         {status?.busy && status.phase === 'downloaded' && <p className="text-sm text-base-content/65">รอให้การอัดเสียง ถอดเสียง และวางข้อความเสร็จก่อนติดตั้ง</p>}
         {status && status.phase !== 'disabled' && (
           <div className="flex flex-wrap gap-2">

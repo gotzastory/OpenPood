@@ -49,14 +49,11 @@ const CHAT_MODEL_BY_PROVIDER: Record<ProviderPreset["key"], string> = {
 };
 
 const TOTAL_STEPS = 5;
-const BTN_PRIMARY =
-  "btn rounded-lg border-0 bg-blue px-7 py-3.5 font-display text-[13px] font-bold tracking-normal text-paper transition hover:shadow-[0_6px_20px_rgba(0,85,255,0.35)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none";
-const BTN_GHOST =
-  "btn btn-ghost h-auto min-h-0 px-1 py-3.5 font-display text-[13px] font-normal tracking-normal text-paper/55 hover:bg-transparent hover:text-paper";
-const FIELD_LABEL =
-  "block font-display text-[11px] tracking-normal text-paper/55";
-const FIELD_INPUT =
-  "input h-auto min-h-0 w-full rounded-lg border border-paper/10 bg-ink-raised px-3.5 py-3 font-display text-sm text-paper outline-none transition focus:border-blue focus:shadow-[0_0_0_3px_rgba(0,85,255,0.16)] placeholder:text-paper/55";
+const STEP_LABELS = ["ต้อนรับ", "ผู้ให้บริการ", "ไมโครโฟน", "ปุ่มลัด", "ทดสอบ"];
+const BTN_PRIMARY = "btn btn-primary w-fit";
+const BTN_GHOST = "btn btn-ghost";
+const FIELD_LABEL = "label px-0 pt-1";
+const FIELD_INPUT = "input w-full";
 
 interface OnboardingState {
   step: number;
@@ -75,11 +72,11 @@ function providerFromUrl(baseUrl: string): ProviderPreset["key"] {
 
 function Waveform() {
   return (
-    <div className="ob-waveform mb-10 mt-2 flex h-16 items-end gap-1" aria-hidden="true">
+    <div className="ob-waveform mb-4 mt-1 flex h-12 items-end gap-1" aria-hidden="true">
       {Array.from({ length: 22 }, (_, index) => (
         <span
           key={index}
-          className="ob-waveform-bar w-1 rounded-full bg-blue"
+          className="ob-waveform-bar w-1 rounded-full bg-primary"
           style={{
             height: `${14 + Math.round(Math.sin(index * 0.7) * 10 + 24)}px`,
             animationDelay: `calc(${index} * var(--ob-wave-stagger))`,
@@ -206,7 +203,7 @@ export function OnboardingPage() {
           analyser.getByteFrequencyData(data);
           context.clearRect(0, 0, canvas.width, canvas.height);
           context.fillStyle = getComputedStyle(document.documentElement)
-            .getPropertyValue("--color-blue")
+            .getPropertyValue("--color-primary")
             .trim();
           const barCount = 40;
           const barWidth = 4;
@@ -275,13 +272,16 @@ export function OnboardingPage() {
 
   if (loadingError)
     return (
-      <div className="ob-root flex h-full items-center justify-center bg-ink p-8 font-display text-paper">
-        เปิดหน้าเริ่มต้นไม่สำเร็จ กรุณาลองใหม่
+      <div className="ob-root flex h-full items-center justify-center bg-base-200 p-8 text-base-content">
+        <div role="alert" className="alert alert-error alert-soft max-w-md">
+          เปิดหน้าเริ่มต้นไม่สำเร็จ กรุณาลองใหม่
+        </div>
       </div>
     );
   if (!state)
     return (
-      <div className="ob-root flex h-full items-center justify-center bg-ink p-8 font-display text-paper/55">
+      <div className="ob-root flex h-full items-center justify-center gap-2 bg-base-200 p-8 text-secondary" role="status">
+        <span className="loading loading-spinner loading-md" aria-hidden="true" />
         กำลังเตรียม OpenPood…
       </div>
     );
@@ -302,43 +302,50 @@ export function OnboardingPage() {
   };
 
   return (
-    <div className="ob-root relative flex h-full w-full flex-col overflow-y-auto bg-ink font-display text-paper">
-      {/* Navbar */}
-      <div className="relative z-10 flex items-center justify-between px-8 py-5 text-[11px] tracking-normal text-paper/55">
-        <div className="flex shrink-0 items-center gap-2.5">
-          <img
-            src="./brand/openpood-symbol.png"
-            alt=""
-            aria-hidden="true"
-            className="h-11 w-11"
-            draggable={false}
-          />
-          <span className="text-2xl font-extrabold text-paper">OpenPood</span>
+    <div className="ob-root relative flex h-full w-full flex-col overflow-y-auto bg-base-200 text-base-content">
+      <header className="border-b border-base-300 bg-base-100">
+        <div className="navbar min-h-14 px-4">
+          <div className="navbar-start gap-2">
+            <img
+              src="./brand/openpood-symbol.png"
+              alt=""
+              aria-hidden="true"
+              className="h-9 w-9"
+              draggable={false}
+            />
+            <span className="text-xl font-extrabold">OpenPood</span>
+          </div>
+          <div className="navbar-end">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={saving}
+              onClick={() => void finish({ onboardingCompleted: true })}
+            >
+              ข้ามไปก่อน
+            </button>
+          </div>
         </div>
-        <div
-          className="flex gap-1.5"
-          role="img"
+        <ul
+          className="steps steps-horizontal w-full overflow-x-auto px-4 pb-3 text-xs"
           aria-label={`ขั้นตอนที่ ${state.step + 1} จาก ${TOTAL_STEPS}`}
         >
-          {Array.from({ length: TOTAL_STEPS }, (_, index) => (
-            <div
-              key={index}
-              className={`h-[3px] w-[22px] rounded-sm transition-colors duration-300 ${index < state.step ? "bg-blue" : index === state.step ? "bg-paper" : "bg-paper/10"}`}
-            />
+          {STEP_LABELS.map((label, index) => (
+            <li
+              key={label}
+              className={`step ${index <= state.step ? "step-primary" : ""}`}
+              data-content={String(index + 1)}
+              aria-current={index === state.step ? "step" : undefined}
+            >
+              {label}
+            </li>
           ))}
-        </div>
-        <button
-          type="button"
-          className="cursor-pointer border-0 bg-transparent text-[11px] text-paper/55 hover:text-paper"
-          disabled={saving}
-          onClick={() => void finish({ onboardingCompleted: true })}
-        >
-          ข้ามไปก่อน
-        </button>
-      </div>
+        </ul>
+      </header>
 
-      <div className="relative z-10 flex flex-1 items-center justify-center px-8 py-6 lg:px-12 lg:pb-12">
-        <div className="ob-panel w-full max-w-[620px]" tabIndex={-1}>
+      <div className="relative z-10 flex flex-1 items-start justify-center px-4 py-6 lg:items-center">
+        <div className="ob-panel w-full max-w-2xl" tabIndex={-1}>
+          <div className="flex flex-col gap-4">
           {state.step === 0 && <WelcomeStep onNext={next} />}
           {state.step === 1 && (
             <ProviderStep
@@ -391,19 +398,14 @@ export function OnboardingPage() {
               saving={saving}
             />
           )}
-          <p role="alert" className="mt-4 text-sm text-paper">
-            {saveError}
-          </p>
+          {saveError && (
+            <div role="alert" className="alert alert-error alert-soft text-sm">
+              {saveError}
+            </div>
+          )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function StepLabel({ step }: { step: number }) {
-  return (
-    <div className="mb-4 text-[11px] tracking-[0.14em] text-blue">
-      ขั้นตอนที่ {step} จาก {TOTAL_STEPS}
     </div>
   );
 }
@@ -412,12 +414,12 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <>
       <Waveform />
-      <h1 className="mb-4 text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[44px]">
+      <h1 className="text-2xl font-semibold leading-tight">
         พูด แล้วให้ตัวอักษร
         <br />
-        <em className="not-italic font-semibold text-paper">ตามทัน</em>
+        <em className="not-italic font-semibold">ตามทัน</em>
       </h1>
-      <p className="mb-6 max-w-[540px] text-[13.5px] leading-[1.7] text-paper/55">
+      <p className="max-w-xl text-sm leading-relaxed text-secondary">
         กด hotkey ครั้งเดียว พูดสิ่งที่คิด แล้วข้อความจะถูกพิมพ์ให้ที่ตำแหน่ง
         cursor ทันที ตั้งค่าไม่กี่ขั้นตอนก่อนเริ่มใช้งานจริง
       </p>
@@ -445,34 +447,30 @@ function ProviderStep({
 }) {
   return (
     <>
-      <StepLabel step={2} />
-      <h1 className="mb-4 text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[44px]">
+      <h1 className="text-2xl font-semibold leading-tight">
         เสียงของคุณจะถูกส่งไป
         <br />
-        <em className="not-italic font-semibold text-paper">ที่ไหน</em>
+        <em className="not-italic font-semibold">ที่ไหน</em>
       </h1>
-      <p className="mb-6 max-w-[540px] text-[13.5px] leading-[1.7] text-paper/55">
+      <p className="max-w-xl text-sm leading-relaxed text-secondary">
         เลือก API สำหรับถอดเสียง ใช้ API Key ของคุณเอง โดย key
         จะถูกเก็บในเครื่องและไม่แสดงกลับในฟอร์ม
       </p>
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {PROVIDERS.map((item) => (
           <button
             type="button"
             key={item.key}
             aria-pressed={state.provider === item.key}
-            className={`ob-provider-card cursor-pointer rounded-[10px] border bg-ink-raised p-4 text-left transition hover:border-paper/50 ${state.provider === item.key ? "border-blue shadow-[0_0_0_1px_var(--color-blue)]" : "border-paper/10"}`}
+            className="ob-provider-card"
             onClick={() => onProviderChange(item.key)}
           >
-            <span className="mb-1 block text-sm font-semibold">
+            <span className="mb-1 block text-sm">
               {item.name}
             </span>
-            <span className="block break-words text-xs leading-relaxed text-paper/55">
+            <span className="block break-words text-xs leading-relaxed text-secondary">
               {item.sub}
             </span>
-            {state.provider === item.key && (
-              <span className="mt-2 block text-xs text-paper">เลือกแล้ว</span>
-            )}
           </button>
         ))}
       </div>
@@ -527,13 +525,12 @@ function MicrophoneStep({
 }) {
   return (
     <>
-      <StepLabel step={3} />
-      <h1 className="mb-4 text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[44px]">
+      <h1 className="text-2xl font-semibold leading-tight">
         ให้เราฟังเสียง
         <br />
-        <em className="not-italic font-semibold text-paper">คุณหน่อย</em>
+        <em className="not-italic font-semibold">คุณหน่อย</em>
       </h1>
-      <p className="mb-6 max-w-[540px] text-[13.5px] leading-[1.7] text-paper/55">
+      <p className="max-w-xl text-sm leading-relaxed text-secondary">
         เลือกไมโครโฟน แล้วลองพูดดู แถบคลื่นเสียงด้านล่างจะขยับตามเสียงจริงของคุณ
       </p>
       <label className={FIELD_LABEL} htmlFor="ob-mic">
@@ -541,7 +538,7 @@ function MicrophoneStep({
       </label>
       <select
         id="ob-mic"
-        className={FIELD_INPUT}
+        className="select w-full"
         value={state.micDeviceId}
         onChange={(event) => onMicChange(event.target.value)}
       >
@@ -552,13 +549,14 @@ function MicrophoneStep({
           </option>
         ))}
       </select>
-      <div className="mb-5 mt-4 flex items-center gap-2 text-xs text-paper/55">
+      <div className="mt-4 flex items-center gap-2 text-xs text-secondary">
         <span
-          className={`h-2 w-2 rounded-full ${error ? "bg-error" : status.startsWith("กำลัง") ? "bg-blue shadow-[0_0_0_4px_rgba(0,85,255,0.16)]" : "bg-paper/35"}`}
+          className={`status ${error ? "status-error" : status.startsWith("กำลัง") ? "status-success" : "status-neutral"}`}
+          aria-hidden="true"
         />
-        {error || status}
+        <span role="status">{error || status}</span>
       </div>
-      <div className="mb-5 flex h-[90px] items-center justify-center rounded-xl border border-paper/10 bg-ink-raised">
+      <div className="flex h-[90px] items-center justify-center rounded-box border border-base-300 bg-base-200">
         <canvas
           ref={canvasRef}
           width="500"
@@ -597,24 +595,18 @@ function HotkeyStep({
     .filter(Boolean);
   return (
     <>
-      <StepLabel step={4} />
-      <h1 className="mb-4 text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[44px]">
+      <h1 className="text-2xl font-semibold leading-tight">
         จำ shortcut
         <br />
-        นี้ไว้<em className="not-italic font-semibold text-paper">.</em>
+        นี้ไว้<em className="not-italic font-semibold">.</em>
       </h1>
-      <p className="mb-6 max-w-[540px] text-[13.5px] leading-[1.7] text-paper/55">
+      <p className="max-w-xl text-sm leading-relaxed text-secondary">
         กดปุ่มนี้ที่ไหนก็ได้ในระบบเพื่อเริ่มพูด กดอีกครั้งเพื่อหยุดและส่งข้อความ
         เปลี่ยนได้ทีหลังในหน้า Settings
       </p>
-      <div className="mb-6 flex flex-wrap gap-2.5">
+      <div className="flex flex-wrap gap-2">
         {keys.map((key) => (
-          <span
-            key={key}
-            className="rounded-lg border-[1.5px] border-paper/10 bg-ink-raised px-4 py-3 text-[15px] font-bold shadow-[0_3px_0_rgba(245,239,230,0.1)]"
-          >
-            {key}
-          </span>
+          <kbd key={key} className="kbd kbd-lg">{key}</kbd>
         ))}
       </div>
       <label className={FIELD_LABEL} htmlFor="ob-hotkey">
@@ -664,11 +656,10 @@ function TestStep({
 
   return (
     <>
-      <StepLabel step={TOTAL_STEPS} />
-      <h1 className="mb-4 text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[44px]">
+      <h1 className="text-2xl font-semibold leading-tight">
         ลองพูดดู<br />ว่าทำงานไหม
       </h1>
-      <p id="ob-test-help" className="mb-6 max-w-[540px] text-[13.5px] leading-[1.7] text-paper/55">
+      <p id="ob-test-help" className="max-w-xl text-sm leading-relaxed text-secondary">
         คลิกช่องด้านล่าง กด {hotkey} แล้วพูด เช่น “สวัสดี OpenPood”
         กดอีกครั้งเพื่อหยุด แล้วรอข้อความปรากฏในช่องนี้ โดยยังอยู่ที่หน้าเดิม
       </p>
@@ -685,7 +676,7 @@ function TestStep({
         autoComplete="off"
         spellCheck={false}
       />
-      <p id="ob-test-note" className="mt-3 text-xs leading-relaxed text-paper/55">
+      <p id="ob-test-note" className="text-xs leading-relaxed text-secondary">
         ถ้าข้อความไม่มา ตรวจสอบ API Key และไมโครโฟนด้วยปุ่มย้อนกลับ
         การทดสอบใช้ API ที่คุณตั้งค่าไว้
       </p>
