@@ -16,17 +16,17 @@
 }
 /* Keep legends inside the border. A native legend straddles the stroke and clips Thai vowels. */
 .dashboard-shell fieldset.fieldset {
-  padding: 1rem;
+  padding: 0.85rem 1rem 1rem;
   overflow: visible;
 }
 .dashboard-shell fieldset.fieldset > legend.fieldset-legend {
-  display: block;
-  float: none;
+  float: left;
+  clear: both;
   width: 100%;
   margin: 0 0 0.75rem;
-  padding: 0;
+  padding: 0.15rem 0 0;
   line-height: 1.5;
-  background: transparent;
+  background: var(--color-base-100);
 }
 
 @layer components {
