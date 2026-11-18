@@ -89,9 +89,9 @@ export function DashboardPage() {
         className="flex w-52 shrink-0 flex-col border-r border-base-300 bg-base-100"
         aria-label="เมนูหลัก"
       >
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-4 pt-5 pb-4">
           <span className="brand-logo max-w-full" role="img" aria-label="OpenPood" />
-          <p className="mt-1 px-1 text-xs text-secondary">พูดให้เป็นข้อความ</p>
+          <p className="sidebar-tagline text-secondary">พูดให้เป็นข้อความ</p>
         </div>
         <ul className="menu menu-vertical w-full flex-1 px-2" aria-label="หน้าหลัก">
           {NAV_ITEMS.map((item) => (
