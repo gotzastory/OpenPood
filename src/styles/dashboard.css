@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+  /* Built-in light/dark ship pink --color-secondary; only our theme plugins below. */
+  themes: false;
   include: rootcolor, properties, button, input, select, toggle, badge, list, alert, card, modal, menu, join;
   logs: false;
 }
