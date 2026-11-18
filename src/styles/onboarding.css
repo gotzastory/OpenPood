@@ -9,41 +9,64 @@
   caret-color: var(--color-primary);
 }
 .ob-provider-card {
+  position: relative;
   min-height: 4.5rem;
   border-radius: 0.5rem;
   border: 1px solid var(--color-base-300);
   background: var(--color-base-100);
-  color: var(--color-base-content);
+  color: color-mix(in oklab, var(--color-base-content) 65%, var(--color-base-100));
   padding: 0.75rem;
   text-align: left;
   cursor: pointer;
+  font-weight: 400;
 }
 .ob-provider-card:hover:not([aria-pressed="true"]),
 .ob-provider-card:active:not([aria-pressed="true"]) {
   background: var(--color-base-100) !important;
   box-shadow: none !important;
-  color: var(--color-base-content) !important;
+  color: color-mix(in oklab, var(--color-base-content) 85%, var(--color-base-100)) !important;
+  font-weight: 400 !important;
+}
+:root[data-theme="dark"] .ob-provider-card:hover:not([aria-pressed="true"]) {
+  border-color: color-mix(in oklab, var(--color-base-content) 38%, var(--color-base-300)) !important;
 }
 .ob-provider-card[aria-pressed="true"],
 .ob-provider-card[aria-pressed="true"]:hover,
 .ob-provider-card[aria-pressed="true"]:active {
   background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
-  box-shadow: inset 3px 0 0 var(--color-primary) !important;
+  box-shadow: none !important;
   color: var(--color-base-content) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
 }
-.ob-provider-card:focus,
+.ob-provider-card[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+.ob-provider-card:focus {
+  outline: none !important;
+}
 .ob-provider-card:focus-visible {
   background: var(--color-base-100) !important;
   box-shadow: none !important;
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-primary) !important;
   outline-offset: 2px;
 }
-.ob-provider-card[aria-pressed="true"]:focus,
+.ob-provider-card[aria-pressed="true"]:focus {
+  background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
 .ob-provider-card[aria-pressed="true"]:focus-visible {
   background: color-mix(in oklab, var(--color-primary) 17%, var(--color-base-100)) !important;
-  box-shadow: inset 3px 0 0 var(--color-primary) !important;
-  outline: 2px solid var(--color-primary);
+  box-shadow: none !important;
+  outline: 2px solid var(--color-primary) !important;
   outline-offset: 2px;
 }
 .ob-root :is(button, input, select, textarea, a):focus-visible {

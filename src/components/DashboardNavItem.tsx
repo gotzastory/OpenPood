@@ -28,7 +28,7 @@ export function DashboardNavItem({
   return (
     <button
       type="button"
-      className={`${CLASS_NAME}${active ? "menu-active font-semibold" : ""}`}
+      className={`${CLASS_NAME}${active ? " menu-active font-semibold" : ""}`}
       data-active={active}
       aria-current={active ? "page" : undefined}
       aria-pressed={pressed}

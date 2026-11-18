@@ -236,7 +236,7 @@ export function SettingsPage() {
   const sttOnly = isElevenLabsProvider(form);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="settings-page mx-auto w-full">
       <header className="mb-4">
         <h1 className={PAGE_TITLE}>การตั้งค่า</h1>
         <p className="mt-1 text-sm text-secondary">
@@ -244,7 +244,7 @@ export function SettingsPage() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-4">
+      <div className="settings-columns">
         <fieldset className="fieldset rounded-box border border-base-300 bg-base-100 p-4" aria-labelledby="provider-title">
           <legend id="provider-title" className="fieldset-legend text-base font-semibold">ผู้ให้บริการและโมเดล</legend>
           <label className={FIELD_LABEL} htmlFor="settings-provider">ผู้ให้บริการ</label>
@@ -328,6 +328,7 @@ export function SettingsPage() {
           )}
         </fieldset>
 
+        <div className="settings-columns-side">
         <fieldset className="fieldset rounded-box border border-base-300 bg-base-100 p-4" aria-labelledby="output-title">
           <legend id="output-title" className="fieldset-legend text-base font-semibold">ผลลัพธ์และการแปล</legend>
           <label className={FIELD_LABEL} htmlFor="settings-translate">แปลเป็นภาษา (โหมด Translate)</label>
@@ -418,6 +419,7 @@ export function SettingsPage() {
             onChange={(value) => update("saveHistory", value)}
           />
         </fieldset>
+        </div>
       </div>
 
       <UpdatePanel />

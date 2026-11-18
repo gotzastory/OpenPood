@@ -465,7 +465,7 @@ function ProviderStep({
             className="ob-provider-card"
             onClick={() => onProviderChange(item.key)}
           >
-            <span className="mb-1 block text-sm font-semibold">
+            <span className="mb-1 block text-sm">
               {item.name}
             </span>
             <span className="block break-words text-xs leading-relaxed text-secondary">
