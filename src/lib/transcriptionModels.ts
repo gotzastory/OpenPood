@@ -36,7 +36,7 @@ export const GEMINI_MODELS: TranscriptionModel[] = [
 ];
 
 // OpenRouter's /models?output_modalities=transcription list.
-// Re-checked against OpenRouter's speech-to-text collection on 2026-10-28.
+// Re-checked against OpenRouter's speech-to-text collection on 2026-11-18.
 // First entry is the app default when switching the Settings provider to OpenRouter.
 export const OPENROUTER_MODELS: TranscriptionModel[] = [
   {
@@ -98,7 +98,12 @@ export const OPENROUTER_MODELS: TranscriptionModel[] = [
     id: "mistralai/voxtral-mini-3b-2507",
     name: "Mistral — Voxtral Mini 3B 2507",
   },
+  { id: "moondream/parakeet-ultra", name: "Moondream — Parakeet Ultra" },
   { id: "nvidia/parakeet-tdt-0.6b-v3", name: "NVIDIA — Parakeet TDT 0.6B v3" },
+  {
+    id: "nvidia/nemotron-3.5-transcribe",
+    name: "NVIDIA — Nemotron 3.5 Transcribe",
+  },
   {
     id: "nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b",
     name: "NVIDIA — Nemotron 3.5 ASR Streaming Multilingual 0.6B",
@@ -114,6 +119,7 @@ export const OPENROUTER_MODELS: TranscriptionModel[] = [
     id: "microsoft/mai-transcribe-1.5",
     name: "Microsoft — MAI-Transcribe 1.5",
   },
+  { id: "x-ai/grok-stt-2.0", name: "xAI — Grok STT 2.0" },
   { id: "x-ai/grok-stt-1.0", name: "xAI — Grok STT 1.0" },
   { id: "fish-audio/transcribe-1", name: "Fish Audio — Transcribe 1" },
 ];

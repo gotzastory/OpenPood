@@ -14,6 +14,20 @@
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+/* Keep legends inside the border. A native legend straddles the stroke and clips Thai vowels. */
+.dashboard-shell fieldset.fieldset {
+  padding: 1rem;
+  overflow: visible;
+}
+.dashboard-shell fieldset.fieldset > legend.fieldset-legend {
+  display: block;
+  float: none;
+  width: 100%;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  line-height: 1.5;
+  background: transparent;
+}
 
 @layer components {
   .dashboard-shell .menu > li > button {

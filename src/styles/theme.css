@@ -1,7 +1,8 @@
 /* Brand daisyUI themes shared by the dashboard and onboarding.
    The recording widget does not load this file. */
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+  /* Built-in light/dark ship pink --color-secondary; only our theme plugins below. */
+  themes: false;
   include: rootcolor, properties, button, input, select, textarea, toggle, badge, list, alert, card, modal, menu, join, kbd, fieldset, label, navbar, tab, table, tooltip, status, loading, steps, divider, progress, stat, range, toast;
   logs: false;
 }
