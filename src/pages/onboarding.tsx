@@ -462,7 +462,7 @@ function ProviderStep({
             type="button"
             key={item.key}
             aria-pressed={state.provider === item.key}
-            className={`cursor-pointer rounded-box border p-3 text-left transition ${state.provider === item.key ? "border-primary bg-primary/10" : "border-base-300 bg-base-100 hover:border-primary/40"}`}
+            className="ob-provider-card"
             onClick={() => onProviderChange(item.key)}
           >
             <span className="mb-1 block text-sm font-semibold">

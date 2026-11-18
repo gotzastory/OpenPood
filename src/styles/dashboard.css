@@ -1,14 +1,56 @@
 @import 'tailwindcss';
 @import './theme.css';
 
-/* Unlayered so it wins over daisyUI's menu-active neutral fill. */
+/* One menu shape in both themes. States differ by fill and weight, not by a second component style. */
 .dashboard-shell .menu {
-  --menu-active-bg: color-mix(in oklab, var(--color-primary) 14%, transparent);
-  --menu-active-fg: var(--color-primary);
+  --menu-active-bg: transparent;
+  --menu-active-fg: var(--color-base-content);
 }
-.dashboard-shell .menu > li > button.menu-active {
-  color: var(--color-primary);
-  background-color: color-mix(in oklab, var(--color-primary) 14%, transparent);
+.dashboard-shell .menu > li > button,
+.dashboard-shell .menu > li > button:hover,
+.dashboard-shell .menu > li > button:active,
+.dashboard-shell .menu > li > button.menu-active,
+.dashboard-shell .menu > li > button:focus,
+.dashboard-shell .menu > li > button:focus-visible {
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  color: var(--color-secondary);
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  font-weight: 400;
+}
+.dashboard-shell .menu > li > button:hover,
+.dashboard-shell .menu > li > button:active {
+  background-color: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+  color: var(--color-base-content);
+}
+.dashboard-shell .menu > li > button.menu-active,
+.dashboard-shell .menu > li > button.menu-active:hover,
+.dashboard-shell .menu > li > button.menu-active:active {
+  background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  color: var(--color-base-content);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+.dashboard-shell .menu > li > button:focus-visible,
+.dashboard-shell .menu > li > button.menu-active:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.dashboard-shell .sidebar-tagline {
+  margin: 0.75rem 0 0;
+  padding: 0.2em 0.25rem 0.15em;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow: visible;
+}
+.dashboard-shell tbody tr:hover,
+.dashboard-shell .list > .list-row:hover {
+  background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
 }
 .dashboard-shell :is(button, a, input, select, textarea, summary, [role="tab"]):focus-visible {
   outline: 2px solid var(--color-primary);

@@ -13,7 +13,7 @@ interface DashboardNavItemProps {
 }
 
 const CLASS_NAME =
-  "w-full cursor-pointer gap-3 text-left text-sm font-normal text-secondary";
+  "w-full cursor-pointer gap-3 text-left text-sm";
 
 export function DashboardNavItem({
   label,
