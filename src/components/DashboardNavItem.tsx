@@ -13,7 +13,7 @@ interface DashboardNavItemProps {
 }
 
 const CLASS_NAME =
-  "w-full cursor-pointer gap-3 text-left text-sm font-normal text-secondary";
+  "flex items-center w-full cursor-pointer gap-3 text-left text-sm font-normal text-secondary";
 
 export function DashboardNavItem({
   label,
@@ -28,7 +28,7 @@ export function DashboardNavItem({
   return (
     <button
       type="button"
-      className={`${CLASS_NAME}${active ? " menu-active font-semibold" : ""}`}
+      className={`${CLASS_NAME}${active ? "menu-active font-semibold" : ""}`}
       data-active={active}
       aria-current={active ? "page" : undefined}
       aria-pressed={pressed}
